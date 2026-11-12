@@ -14,7 +14,9 @@ const APP_URL = `http://localhost:${PORT}`;
 const WEB_DIR = path.resolve(__dirname, "../web");
 const PROJECTS_DIR =
 	process.env.JEO_PROJECTS_DIR || path.resolve(__dirname, "../../../projects");
-const ICON_PATH = path.join(__dirname, "icon.ico");
+const OUTPUT_DIR =
+	process.env.JEO_OUTPUT_DIR || path.resolve(__dirname, "../../../output");
+const ICON_PATH =path.join(__dirname, "icon.ico");
 
 // Test helpers: --capture=<png path> [--eval-file=<js path>] [--capture-delay=<ms>]
 const argValue = (name) => {
@@ -285,7 +287,7 @@ async function createWindow() {
 		title: "JEO Editor",
 		backgroundColor: "#0d0d0d",
 		autoHideMenuBar: true,
-		show: !CAPTURE_PATH,
+		show: !CAPTURE_PATH || process.argv.includes("--visible"),
 		icon: fs.existsSync(ICON_PATH) ? ICON_PATH : undefined,
 		webPreferences: {
 			preload: path.join(__dirname, "preload.cjs"),
@@ -301,6 +303,31 @@ async function createWindow() {
 	mainWindow.webContents.setWindowOpenHandler(({ url }) => {
 		if (!url.startsWith(APP_URL)) shell.openExternal(url);
 		return { action: "deny" };
+	});
+
+	// Exports are saved straight into the output folder (never overwriting).
+	mainWindow.webContents.session.on("will-download", (_event, item) => {
+		fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+		const parsed = path.parse(item.getFilename() || "export.mp4");
+		let target = path.join(OUTPUT_DIR, `${parsed.name}${parsed.ext}`);
+		for (let version = 2; fs.existsSync(target); version++) {
+			target = path.join(OUTPUT_DIR, `${parsed.name}_v${version}${parsed.ext}`);
+		}
+		item.setSavePath(target);
+		item.once("done", (_doneEvent, state) => {
+			if (!mainWindow || mainWindow.isDestroyed()) return;
+			const message =
+				state === "completed"
+					? `Saved to output\\${path.basename(target)}`
+					: "Export could not be saved";
+			mainWindow.webContents
+				.executeJavaScript(
+					`window.dispatchEvent(new CustomEvent("jeo:export-saved", { detail: ${JSON.stringify(
+						{ ok: state === "completed", message, path: target },
+					)} }))`,
+				)
+				.catch(() => {});
+		});
 	});
 
 	await mainWindow.loadURL(APP_URL);

@@ -332,7 +332,15 @@ async function resolveAudioBufferForAsset({
 		return await offlineContext.startRendering();
 	} catch (error) {
 		console.warn("Failed to decode asset audio:", error);
-		return null;
+		// JEO: second try with the browser's built-in decoder, so a clip's
+		// sound is not silently dropped from the export.
+		try {
+			const arrayBuffer = await asset.file.arrayBuffer();
+			return await audioContext.decodeAudioData(arrayBuffer);
+		} catch (fallbackError) {
+			console.warn("Fallback audio decode also failed:", fallbackError);
+			return null;
+		}
 	} finally {
 		input.dispose();
 	}

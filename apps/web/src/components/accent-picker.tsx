@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/utils/ui";
@@ -68,6 +69,16 @@ function readStoredAccent(): string {
 export function AccentApplier() {
 	useEffect(() => {
 		applyAccent({ color: readStoredAccent() });
+
+		// Desktop app: tell the user where an export was saved.
+		const onExportSaved = (event: Event) => {
+			const detail = (event as CustomEvent<{ ok: boolean; message: string }>)
+				.detail;
+			if (detail?.ok) toast.success(detail.message);
+			else toast.error(detail?.message ?? "Export could not be saved");
+		};
+		window.addEventListener("jeo:export-saved", onExportSaved);
+		return () => window.removeEventListener("jeo:export-saved", onExportSaved);
 	}, []);
 	return null;
 }

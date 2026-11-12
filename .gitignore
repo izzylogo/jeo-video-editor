@@ -28,3 +28,6 @@ target/
 rust-migration-notes.md
 # JEO test files
 apps/web/public/_jeotest/
+
+# JEO desktop runtime (Electron program files, copied locally)
+apps/jeo-desktop/runtime/
