@@ -721,7 +721,13 @@ async function createWindow() {
 		});
 	});
 
-	await mainWindow.loadURL(APP_URL);
+	// --open-project=<id> opens that project instead of the most recent one
+	const openProject = argValue("open-project");
+	await mainWindow.loadURL(
+		openProject && isSafeId(openProject)
+			? `${APP_URL}/editor/${openProject}`
+			: APP_URL,
+	);
 
 	if (CAPTURE_PATH) {
 		await new Promise((resolve) => setTimeout(resolve, CAPTURE_DELAY));
