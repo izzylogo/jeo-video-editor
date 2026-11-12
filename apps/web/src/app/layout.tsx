@@ -4,6 +4,7 @@ import { Toaster } from "../components/ui/sonner";
 import { TooltipProvider } from "../components/ui/tooltip";
 import { baseMetaData } from "./metadata";
 import { AccentApplier } from "../components/accent-picker";
+import { UpdateNotice } from "@/jeo/components/update-notice";
 
 export const metadata = baseMetaData;
 
@@ -22,6 +23,7 @@ export default function RootLayout({
 				>
 					<TooltipProvider>
 						<AccentApplier />
+						<UpdateNotice />
 						<Toaster />
 						{children}
 					</TooltipProvider>

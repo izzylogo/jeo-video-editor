@@ -424,6 +424,7 @@ function registerIpc() {
 		await writeFileAtomic(path.join(dir, "chat.json"), String(json));
 	});
 
+	ipcMain.handle("jeo:updateNow", async (_event, args) => restartForUpdate(args || {}));
 	ipcMain.handle("jeo:chatSend", async (_event, args) => chatSend(args));
 	ipcMain.handle("jeo:chatStop", async () => chatStop());
 
@@ -667,6 +668,84 @@ function chatStop() {
 	}
 }
 
+// ---------- updates ----------
+// When Claude (or anyone) rebuilds the editor while it is open, the window
+// keeps running the old version. This notices a finished new build and tells
+// the page, which shows "Update ready" with the latest whats-new lines.
+
+function versionPrint() {
+	try {
+		const buildId = fs.readFileSync(path.join(WEB_DIR, ".next", "BUILD_ID"), "utf8");
+		const hash = crypto.createHash("sha1").update(buildId);
+		for (const file of ["main.cjs", "preload.cjs", "mcp-server.cjs", "ai-instructions.md"]) {
+			hash.update(fs.readFileSync(path.join(__dirname, file)));
+		}
+		for (const file of fs.readdirSync(path.join(__dirname, "tools")).sort()) {
+			if (file.endsWith(".py")) hash.update(fs.readFileSync(path.join(__dirname, "tools", file)));
+		}
+		return hash.digest("hex");
+	} catch {
+		return null; // a build is being written right now
+	}
+}
+
+function whatsNew() {
+	try {
+		const items = JSON.parse(
+			fs.readFileSync(path.join(WEB_DIR, "public", "whats-new.json"), "utf8"),
+		).items;
+		return Array.isArray(items) ? items.map(String) : [];
+	} catch {
+		return [];
+	}
+}
+
+function watchForUpdates() {
+	const running = versionPrint();
+	let seen = null;
+	let announced = null;
+	setInterval(() => {
+		const now = versionPrint();
+		if (!now || now === running || now === announced) {
+			seen = null;
+			return;
+		}
+		// announce only once it has stayed the same for two checks, so a build
+		// that is still being written is never offered
+		if (now !== seen) {
+			seen = now;
+			return;
+		}
+		announced = now;
+		if (mainWindow && !mainWindow.isDestroyed()) {
+			mainWindow.webContents.send("jeo:updateReady", whatsNew());
+		}
+	}, 3000);
+}
+
+function restartForUpdate({ projectId }) {
+	chatStop();
+	if (serverProcess && process.platform === "win32") {
+		// wait for the old server to be gone, so the new window starts a fresh one
+		try {
+			require("node:child_process").execFileSync(
+				"taskkill",
+				["/pid", String(serverProcess.pid), "/T", "/F"],
+				{ windowsHide: true },
+			);
+		} catch {
+			// already gone
+		}
+		serverProcess = null;
+	}
+	const args = [__dirname];
+	if (typeof projectId === "string" && isSafeId(projectId)) {
+		args.push(`--open-project=${projectId}`);
+	}
+	app.relaunch({ args });
+	app.exit(0);
+}
+
 // ---------- window ----------
 
 async function createWindow() {
@@ -731,6 +810,9 @@ async function createWindow() {
 
 	if (CAPTURE_PATH) {
 		await new Promise((resolve) => setTimeout(resolve, CAPTURE_DELAY));
+		if (process.argv.includes("--test-update-notice")) {
+			mainWindow.webContents.send("jeo:updateReady", whatsNew());
+		}
 		let evalResult = null;
 		if (EVAL_FILE) {
 			try {
@@ -769,6 +851,7 @@ if (!app.requestSingleInstanceLock()) {
 		try {
 			await startControlServer();
 			await startServer();
+			if (!CAPTURE_PATH) watchForUpdates();
 			await createWindow();
 		} catch (error) {
 			const { dialog } = require("electron");

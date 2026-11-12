@@ -21,6 +21,12 @@ contextBridge.exposeInMainWorld("jeoDesktop", {
 		ipcRenderer.on("jeo:chatEvent", handler);
 		return () => ipcRenderer.removeListener("jeo:chatEvent", handler);
 	},
+	onUpdateReady: (listener) => {
+		const handler = (_event, items) => listener(items);
+		ipcRenderer.on("jeo:updateReady", handler);
+		return () => ipcRenderer.removeListener("jeo:updateReady", handler);
+	},
+	updateNow: (args) => ipcRenderer.invoke("jeo:updateNow", args),
 	exportToCapCut: (args) => ipcRenderer.invoke("jeo:exportToCapCut", args),
 	readChat: (args) => ipcRenderer.invoke("jeo:readChat", args),
 	writeChat: (args) => ipcRenderer.invoke("jeo:writeChat", args),

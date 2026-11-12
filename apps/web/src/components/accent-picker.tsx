@@ -56,6 +56,31 @@ export function applyAccent({ color }: { color: string }): void {
 	root.style.setProperty("--jeo-l", `${Math.min(Math.max(l, 45), 70)}%`);
 }
 
+const TINT_KEY = "jeo-tint";
+const TINTS: Array<{ name: string; value: string }> = [
+	{ name: "Grey", value: "0%" },
+	{ name: "Soft", value: "5%" },
+	{ name: "Deep", value: "11%" },
+];
+const DEFAULT_TINT = "5%";
+
+/** How much of the accent hue the dark panels carry. */
+export function applyTint({ value }: { value: string }): void {
+	if (!TINTS.some((tint) => tint.value === value)) return;
+	document.documentElement.style.setProperty("--jeo-base-s", value);
+}
+
+function readStoredTint(): string {
+	try {
+		const stored = window.localStorage.getItem(TINT_KEY);
+		return stored && TINTS.some((tint) => tint.value === stored)
+			? stored
+			: DEFAULT_TINT;
+	} catch {
+		return DEFAULT_TINT;
+	}
+}
+
 function readStoredAccent(): string {
 	try {
 		const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -69,6 +94,7 @@ function readStoredAccent(): string {
 export function AccentApplier() {
 	useEffect(() => {
 		applyAccent({ color: readStoredAccent() });
+		applyTint({ value: readStoredTint() });
 
 		// Desktop app: tell the user where an export was saved.
 		const onExportSaved = (event: Event) => {
@@ -85,10 +111,22 @@ export function AccentApplier() {
 
 export function AccentPicker() {
 	const [accent, setAccent] = useState(DEFAULT_ACCENT);
+	const [tint, setTint] = useState(DEFAULT_TINT);
 
 	useEffect(() => {
 		setAccent(readStoredAccent());
+		setTint(readStoredTint());
 	}, []);
+
+	const chooseTint = ({ value }: { value: string }) => {
+		setTint(value);
+		applyTint({ value });
+		try {
+			window.localStorage.setItem(TINT_KEY, value);
+		} catch {
+			// Tint still applies for this session.
+		}
+	};
 
 	const choose = ({ color }: { color: string }) => {
 		setAccent(color);
@@ -107,8 +145,8 @@ export function AccentPicker() {
 					size="icon"
 					variant="ghost"
 					className="size-8"
-					aria-label="Accent colour"
-					title="Accent colour"
+					aria-label="Colours"
+					title="Accent and panel colours"
 				>
 					<span className="bg-primary size-4 rounded-full ring-1 ring-white/30" />
 				</Button>
@@ -141,6 +179,25 @@ export function AccentPicker() {
 						className="h-7 w-12 cursor-pointer rounded border-0 bg-transparent p-0"
 					/>
 				</label>
+				<p className="text-muted-foreground mt-3 mb-2 text-xs">Panel colour</p>
+				<div className="grid grid-cols-3 gap-1.5">
+					{TINTS.map((option) => (
+						<button
+							key={option.value}
+							type="button"
+							aria-pressed={tint === option.value}
+							onClick={() => chooseTint({ value: option.value })}
+							className={cn(
+								"cursor-pointer rounded-md px-2 py-1.5 text-xs transition-colors duration-150",
+								tint === option.value
+									? "bg-secondary text-secondary-foreground"
+									: "bg-accent hover:bg-accent/70",
+							)}
+						>
+							{option.name}
+						</button>
+					))}
+				</div>
 			</PopoverContent>
 		</Popover>
 	);

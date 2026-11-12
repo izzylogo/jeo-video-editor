@@ -43,6 +43,8 @@ def find_pattern():
     candidates = []
     for name in os.listdir(DRAFTS):
         folder = os.path.join(DRAFTS, name)
+        if name.startswith("JEO "):
+            continue  # never use our own exports as the pattern
         content = os.path.join(folder, "draft_content.json")
         meta = os.path.join(folder, "draft_meta_info.json")
         if os.path.isfile(content) and os.path.isfile(meta):
@@ -54,10 +56,10 @@ def find_pattern():
             has_video = any(t.get("type") == "video" and t.get("segments") for t in tracks)
             has_text = any(t.get("type") == "text" and t.get("segments") for t in tracks)
             if has_video and has_text and content["materials"].get("videos") and content["materials"].get("texts"):
-                return content, read_json(meta_path)
+                return content, read_json(meta_path), os.path.dirname(content_path)
         except (OSError, ValueError, KeyError):
             continue
-    return None, None
+    return None, None, None
 
 
 def first(materials, kind, type_name=None):
@@ -240,8 +242,9 @@ class Draft:
             animation["animations"] = []
             refs.append(animation["id"])
         segment = copy.deepcopy(pattern)
-        # JEO size 4.2 (about 67 px on 1080 wide) matches CapCut size 12 at 120 %
-        box = self.clip_box({**item, "scale": 1.2 * float(item.get("size", 4.2)) / 4.2 * float(item.get("scale", 1))})
+        # JEO size 4.2 (about 67 px on 1080 wide) matches CapCut size 12 at about 92 %
+        # (measured by opening an exported draft in CapCut 9.7)
+        box = self.clip_box({**item, "scale": 0.92 * float(item.get("size", 4.2)) / 4.2 * float(item.get("scale", 1))})
         segment.update(
             {
                 "id": new_id(),
@@ -335,7 +338,7 @@ def main():
     data = json.load(sys.stdin)
     if not os.path.isdir(DRAFTS):
         return {"ok": False, "error": "CapCut's project folder was not found on this computer."}
-    pattern, pattern_meta = find_pattern()
+    pattern, pattern_meta, pattern_folder = find_pattern()
     if pattern is None:
         return {"ok": False, "error": "No existing CapCut project with a video and a text was found to use as the pattern."}
 
@@ -417,13 +420,88 @@ def main():
     )
 
     os.makedirs(folder)  # fails if it exists: never overwrite
-    with open(os.path.join(folder, "draft_content.json"), "w", encoding="utf-8") as handle:
-        json.dump(content, handle, ensure_ascii=False, separators=(",", ":"))
-    with open(os.path.join(folder, "draft_meta_info.json"), "w", encoding="utf-8") as handle:
-        json.dump(meta, handle, ensure_ascii=False, separators=(",", ":"))
+
+    def write(relative, value):
+        target = os.path.join(folder, relative)
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        with open(target, "w", encoding="utf-8") as handle:
+            if isinstance(value, str):
+                handle.write(value)
+            else:
+                json.dump(value, handle, ensure_ascii=False, separators=(",", ":"))
+
+    def copy_from_pattern(relative, target_relative=None, fallback=None):
+        """Small settings files have no project data; reuse the pattern's."""
+        source = os.path.join(pattern_folder, relative)
+        target = os.path.join(folder, target_relative or relative)
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        if os.path.isfile(source):
+            shutil.copyfile(source, target)
+        elif fallback is not None:
+            write(target_relative or relative, fallback)
+
+    # CapCut 9.x layout: the project lists its timelines in Timelines\project.json
+    # and keeps each timeline in Timelines\<timeline id>\, mirrored at the top.
+    timeline_id = content["id"]
+    timeline_dir = os.path.join("Timelines", timeline_id)
+    write("draft_content.json", content)
+    write(os.path.join(timeline_dir, "draft_content.json"), content)
+    write("draft_meta_info.json", meta)
+    write(
+        os.path.join("Timelines", "project.json"),
+        {
+            "config": {
+                "color_space": -1,
+                "hdr_vivid": False,
+                "mixed_track_mode_on": bool(content.get("mixed_track_mode_on", False)),
+                "render_index_track_mode_on": bool(content.get("render_index_track_mode_on", False)),
+                "use_float_render": False,
+            },
+            "create_time": now,
+            "id": new_id(),
+            "main_timeline_id": timeline_id,
+            "timelines": [
+                {"create_time": now, "id": timeline_id, "is_marked_delete": False, "name": folder_name, "update_time": now}
+            ],
+            "update_time": now,
+            "version": 0,
+        },
+    )
+    write(
+        "timeline_layout.json",
+        {
+            "dockItems": [{"dockIndex": 0, "ratio": 1, "timelineIds": [timeline_id], "timelineNames": [folder_name]}],
+            "layoutOrientation": 1,
+        },
+    )
+    seconds_now = int(time.time())
+    write(
+        "draft_settings",
+        "[General]\ncloud_last_modify_platform=windows\n"
+        f"draft_create_time={seconds_now}\ndraft_last_edit_time={seconds_now}\nreal_edit_seconds=0\nreal_edit_keys=0\n",
+    )
+    write("draft_biz_config.json", "")
+    write("draft_virtual_store.json", {"draft_materials": [], "draft_virtual_store": []})
+    write("performance_opt_info.json", {"manual_cancle_precombine_segs": None, "need_auto_precombine_segs": None})
+    write(os.path.join("common_attachment", "attachment_action_scene.json"), {"action_scene": {"removed_segments": [], "segment_infos": []}})
+    write(os.path.join("common_attachment", "coperate_create.json"), {"roomInfo": {"room_id": ""}})
+    timeline_guides = {
+        "reference_lines_config": {"horizontal_lines": [], "is_lock": False, "is_visible": False, "vertical_lines": []},
+        "safe_area_type": 0,
+    }
+    for base in ("", timeline_dir):
+        write(os.path.join(base, "common_attachment", "attachment_pc_timeline.json"), timeline_guides)
+        copy_from_pattern("attachment_pc_common.json", os.path.join(base, "attachment_pc_common.json"))
+        copy_from_pattern("attachment_editing.json", os.path.join(base, "attachment_editing.json"))
+    copy_from_pattern("draft_agency_config.json")
+    copy_from_pattern(os.path.join("common_attachment", "attachment_script_video.json"))
+
     cover = data.get("cover")
     if cover and os.path.isfile(cover):
-        shutil.copyfile(cover, os.path.join(folder, "draft_cover.jpg"))
+        for base in ("", "Timelines", timeline_dir):
+            shutil.copyfile(cover, os.path.join(folder, base, "draft_cover.jpg"))
+        meta["draft_cover"] = "draft_cover.jpg"
+        write("draft_meta_info.json", meta)
 
     return {
         "ok": True,

@@ -235,7 +235,7 @@ export const TAG_PRESETS: Array<{
 	{ id: "feeling", label: "Feeling tag", sample: "*SCARED*", hint: "A feeling, above the head." },
 	{ id: "arrow", label: "↗ Arrow", sample: "↗", hint: "Points at an object. Rotate and drag it." },
 	{ id: "arrow-phrase", label: "↗ Arrow + phrase", sample: "HE IS TRAPPED ↗", hint: "A longer phrase (2+ words) instead of a ▼ label." },
-	{ id: "arrow-spotlight", label: "↗ Arrow + spotlight", sample: "◐ ↗", hint: "Dark spotlight on an object, with the arrow. For a freeze." },
+	{ id: "arrow-spotlight", label: "↗ Arrow + spotlight", sample: "↗ + SPOT", hint: "Dark spotlight on an object, with the arrow. For a freeze." },
 ];
 
 export function graphicItem({

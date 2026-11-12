@@ -221,7 +221,7 @@ function AiChatPanel() {
 								key={example}
 								type="button"
 								onClick={() => setDraft(example)}
-								className="bg-accent/60 hover:bg-accent block w-full cursor-pointer rounded p-2 text-left"
+								className="bg-accent/60 hover:bg-accent block w-full cursor-pointer rounded p-2 text-left transition-colors duration-150"
 							>
 								{example}
 							</button>
@@ -237,7 +237,7 @@ function AiChatPanel() {
 								"bg-primary text-primary-foreground ml-auto",
 							message.role === "assistant" && "bg-accent",
 							message.role === "tool" &&
-								"text-muted-foreground border-l-2 py-1 text-xs",
+								"text-muted-foreground max-w-full px-1 py-0 text-xs leading-relaxed",
 							message.role === "error" &&
 								"bg-destructive/15 text-destructive text-xs",
 						)}

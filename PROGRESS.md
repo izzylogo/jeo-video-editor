@@ -91,6 +91,35 @@ Differences from your edit:
 - No music (the music folder is empty).
 - Fair warning: your style file already describes HIDING MONEY in detail, so this test was easier than a brand-new clip will be.
 
+## Fixes after your first try (12 Nov 2026, late)
+
+**Restart JEO Editor to see these.** From now on the app tells you itself: see "Update popup".
+
+| You reported | What was wrong | Now |
+|---|---|---|
+| "Open in CapCut" made a project that would not open | CapCut 9.x keeps each project's timeline in a `Timelines` folder with an index. The draft only had the two main files, so CapCut listed it but could not load it. | The full layout is written. **Checked for real:** CapCut 9.7 opened `JEO New project (2)` with the cuts, speeds, freeze, texts in LEMON MILK, the 😂 overlay and 21:29 length (`output\phase4-proof\draft_open_in_capcut.jpg`). Text came out about 30% too big; the size conversion is corrected but that correction is not re-checked in CapCut yet. |
+| Text clips on the timeline only coloured under their label | A layout quirk of this app's engine shrank the colour to the label. | Clips are coloured along their whole length. |
+| "The script is not following the script I did" | In the test I gave Claude only a storyline, so it wrote its own lines, added one, and used its own cuts and speeds. | New project **HIDING MONEY - your script**: your cuts and per-shot speeds, your 16 texts at your times and places, `?!`, both colour flashes, pop-up, the 😂 ending, 21:29. Side-by-side with your `after.mp4`: `output\script-proof\`. And the in-app Claude now has a rule: when you give a script, use exactly your words, order and notes, add nothing, and list where each line went. |
+| "Use the skills from my animator for the UI" | The animator used the **impeccable** design skill. | Polish pass done with it (below). |
+| "Show when an update is available, like my animator" | — | **Update popup:** when a new version has been built while the app is open, a card appears bottom-right with what's new. "Update now" saves your project and restarts on it; "Later" leaves a small "Update ready" button. |
+
+### UI polish (impeccable, "polish" for a tool-type app)
+- Small hint text is brighter, so it is comfortably readable on the dark panels.
+- Dark surfaces carry a little of your accent colour. The colour dot (top right) now also has **Panel colour: Grey / Soft / Deep**.
+- Effect buttons use real icons instead of symbols; every category shows a tip when the mouse rests on it.
+- Buttons respond on hover and press; keyboard focus shows an accent ring.
+- Number box, drop-down, scrollbars, text cursor and selection follow the app's colours.
+- The Export button is a plain accent button, the same shape as the others.
+- Chat: Claude's step lines are quieter.
+
+**Not done / to know**
+- The three earlier broken CapCut drafts (`JEO New project`, `JEO HIDING MONEY - Claude edit`, `… (2)`) are still in CapCut. They are safe to delete there.
+- The update popup was checked with a forced test, not by a real rebuild while your window was open.
+- The in-app Claude's new script rule is written but has not been run on a script yet.
+- On a narrow window the last categories (Subtitles, Settings) scroll out behind the project name.
+
+**Rule for every future change (Claude):** add one plain line to the top of
+`apps/web/public/whats-new.json`, then run `bun run build` in `apps/web`.
 ## Phase 4: extras (12 Nov 2026)
 
 **Restart JEO Editor to see this.**
@@ -109,7 +138,7 @@ CapCut's format); none is changed, and CapCut's own index file is not touched.
 | The ending emoji (as a see-through still on top) | Arrows and spotlights |
 | Music and sound effects, with speed and volume | |
 
-**Status: written and checked on paper, NOT yet opened in CapCut.** In the test it wrote
+**Status: fixed and opened in CapCut 9.7 (see "Fixes after your first try" above).** The paragraph below describes the first, broken attempt. In the test it wrote
 `JEO New project` (9 clips, 16 texts, emoji overlay; all internal links valid) into CapCut's
 project folder. CapCut was open with one of your projects at the time, so it was not restarted.
 **To check:** close CapCut, open it again, and open `JEO New project` from its home screen.

@@ -50,6 +50,10 @@ export interface JeoDesktopBridge {
 	}): Promise<{ ok: boolean; error?: string }>;
 	chatStop(): Promise<void>;
 	onChatEvent(listener: (event: JeoChatEvent) => void): () => void;
+	/** Fires when a newer build of the editor is ready; items = what's new. */
+	onUpdateReady(listener: (items: string[]) => void): () => void;
+	/** Restarts the app on the new build, reopening the given project. */
+	updateNow(args: { projectId: string | null }): Promise<void>;
 	/** Writes the timeline as a new CapCut draft and starts CapCut. */
 	exportToCapCut(args: {
 		projectId: string;

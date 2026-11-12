@@ -17,114 +17,121 @@
 @plugin "tailwindcss-animate";
 
 :root {
-  --background: hsl(0, 0%, 100%);
-  --foreground: hsl(0 0% 11%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(0 0% 11%);
-  --popover: hsl(0, 0%, 100%);
-  --popover-hover: hsl(0, 0%, 96%);
-  --popover-foreground: hsl(0 0% 2%);
+  --background: hsl(var(--jeo-base-h) var(--jeo-base-s) 100%);
+  --foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 11%);
+  --card: hsl(var(--jeo-base-h) var(--jeo-base-s) 100%);
+  --card-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 11%);
+  --popover: hsl(var(--jeo-base-h) var(--jeo-base-s) 100%);
+  --popover-hover: hsl(var(--jeo-base-h) var(--jeo-base-s) 96%);
+  --popover-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 2%);
   --jeo-h: 262;
   --jeo-s: 83%;
   --jeo-l: 66%;
+  /* neutrals carry a little of the accent hue; --jeo-base-s: 0% makes them pure grey */
+  --jeo-base-h: var(--jeo-h);
+  --jeo-base-s: 5%;
   --primary: hsl(var(--jeo-h) var(--jeo-s) var(--jeo-l));
-  --primary-foreground: hsl(0, 0%, 100%);
+  --primary-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 100%);
   --secondary: hsl(var(--jeo-h), 100%, 97%);
   --secondary-border: hsl(var(--jeo-h), 100%, 94%);
   --secondary-foreground: hsl(var(--jeo-h), 98%, 39%);
-  --muted: hsl(0 0% 85.1%);
-  --muted-foreground: hsl(0 0% 50%);
-  --accent: hsl(0, 0%, 96%);
-  --accent-foreground: hsl(0 0% 2%);
+  --muted: hsl(var(--jeo-base-h) var(--jeo-base-s) 85.1%);
+  --muted-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 50%);
+  --accent: hsl(var(--jeo-base-h) var(--jeo-base-s) 96%);
+  --accent-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 2%);
   --destructive: hsl(0, 83%, 50%);
-  --destructive-foreground: hsl(0, 0%, 100%);
+  --destructive-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 100%);
   --constructive: hsl(141, 71%, 48%);
-  --constructive-foreground: hsl(0, 0%, 100%);
+  --constructive-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 100%);
   --caution: hsl(38, 92%, 50%);
-  --caution-foreground: hsl(0, 0%, 10%);
-  --border: hsl(0 0% 91%);
-  --input: hsl(0, 0%, 100%);
-  --ring: hsl(0, 0%, 55%);
+  --caution-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 10%);
+  --border: hsl(var(--jeo-base-h) var(--jeo-base-s) 91%);
+  --input: hsl(var(--jeo-base-h) var(--jeo-base-s) 100%);
+  --ring: hsl(var(--jeo-base-h) var(--jeo-base-s) 55%);
   --chart-1: hsl(220 70% 50%);
   --chart-2: hsl(160 60% 45%);
   --chart-3: hsl(30 80% 55%);
   --chart-4: hsl(280 65% 60%);
   --chart-5: hsl(340 75% 55%);
-  --sidebar-background: hsl(0 0% 96.1%);
-  --sidebar-foreground: hsl(0 0% 2%);
-  --sidebar-primary: hsl(0 0% 2%);
-  --sidebar-primary-foreground: hsl(0 0% 91%);
-  --sidebar-accent: hsl(0 0% 85.1%);
-  --sidebar-accent-foreground: hsl(0 0% 2%);
-  --sidebar-border: hsl(0 0% 85.1%);
-  --sidebar-ring: hsl(0 0% 16.9%);
-  --sidebar: hsl(0 0% 98%);
+  --sidebar-background: hsl(var(--jeo-base-h) var(--jeo-base-s) 96.1%);
+  --sidebar-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 2%);
+  --sidebar-primary: hsl(var(--jeo-base-h) var(--jeo-base-s) 2%);
+  --sidebar-primary-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 91%);
+  --sidebar-accent: hsl(var(--jeo-base-h) var(--jeo-base-s) 85.1%);
+  --sidebar-accent-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 2%);
+  --sidebar-border: hsl(var(--jeo-base-h) var(--jeo-base-s) 85.1%);
+  --sidebar-ring: hsl(var(--jeo-base-h) var(--jeo-base-s) 16.9%);
+  --sidebar: hsl(var(--jeo-base-h) var(--jeo-base-s) 98%);
 }
 
 .panel {
   --background: hsl(210, 20%, 98%);
-  --foreground: hsl(0 0% 13%);
-  --card: hsl(0, 0%, 98%);
-  --card-foreground: hsl(0 0% 13%);
-  --primary-foreground: hsl(0, 0%, 98%);
+  --foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 13%);
+  --card: hsl(var(--jeo-base-h) var(--jeo-base-s) 98%);
+  --card-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 13%);
+  --primary-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 98%);
   --secondary: hsl(var(--jeo-h), 100%, 95%);
   --secondary-border: hsl(var(--jeo-h), 100%, 92%);
   --secondary-foreground: hsl(var(--jeo-h), 98%, 37%);
-  --muted: hsl(0 0% 83.1%);
-  --muted-foreground: hsl(0 0% 48%);
-  --accent: hsl(0, 0%, 93%);
-  --accent-foreground: hsl(0 0% 5%);
-  --destructive-foreground: hsl(0, 0%, 98%);
-  --constructive-foreground: hsl(0, 0%, 98%);
-  --border: hsl(0 0% 87%);
-  --input: hsl(0 0% 93%);
-  --ring: hsl(0, 0%, 53%);
+  --muted: hsl(var(--jeo-base-h) var(--jeo-base-s) 83.1%);
+  --muted-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 48%);
+  --accent: hsl(var(--jeo-base-h) var(--jeo-base-s) 93%);
+  --accent-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 5%);
+  --destructive-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 98%);
+  --constructive-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 98%);
+  --border: hsl(var(--jeo-base-h) var(--jeo-base-s) 87%);
+  --input: hsl(var(--jeo-base-h) var(--jeo-base-s) 93%);
+  --ring: hsl(var(--jeo-base-h) var(--jeo-base-s) 53%);
 }
 
 .dark {
-  --background: hsl(0, 0%, 5%);
-  --foreground: hsl(0 0% 87%);
-  --card: hsl(0, 0%, 5%);
-  --card-foreground: hsl(0 0% 87%);
-  --popover: hsl(0, 0%, 5%);
-  --popover-hover: hsl(0, 0%, 13%);
-  --popover-foreground: hsl(0 0% 95%);
+  color-scheme: dark;
+  /* hint text: 66% keeps small labels above 4.5:1 on the panels */
+  --muted-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 66%);
+  --background: hsl(var(--jeo-base-h) var(--jeo-base-s) 5%);
+  --foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 87%);
+  --card: hsl(var(--jeo-base-h) var(--jeo-base-s) 5%);
+  --card-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 87%);
+  --popover: hsl(var(--jeo-base-h) var(--jeo-base-s) 5%);
+  --popover-hover: hsl(var(--jeo-base-h) var(--jeo-base-s) 13%);
+  --popover-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 95%);
   --secondary: hsl(var(--jeo-h), 100%, 12%);
   --secondary-border: hsl(var(--jeo-h), 100%, 15%);
   --secondary-foreground: hsl(var(--jeo-h), 98%, 61%);
-  --muted: hsl(0 0% 20%);
-  --accent: hsl(0, 0%, 14%);
-  --accent-foreground: hsl(0 0% 95%);
-  --border: hsl(0 0% 16%);
-  --input: hsl(0 0% 5%);
-  --ring: hsl(0, 0%, 50%);
+  --muted: hsl(var(--jeo-base-h) var(--jeo-base-s) 20%);
+  --accent: hsl(var(--jeo-base-h) var(--jeo-base-s) 14%);
+  --accent-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 95%);
+  --border: hsl(var(--jeo-base-h) var(--jeo-base-s) 16%);
+  --input: hsl(var(--jeo-base-h) var(--jeo-base-s) 5%);
+  --ring: hsl(var(--jeo-base-h) var(--jeo-base-s) 50%);
   --caution: hsl(38, 92%, 60%);
-  --caution-foreground: hsl(0, 0%, 10%);
-  --sidebar-background: hsl(0 0% 8%);
-  --sidebar-foreground: hsl(0 0% 95%);
-  --sidebar-primary: hsl(0 0% 95%);
-  --sidebar-primary-foreground: hsl(0 0% 15%);
-  --sidebar-accent: hsl(0 0% 20%);
-  --sidebar-accent-foreground: hsl(0 0% 95%);
-  --sidebar-border: hsl(0 0% 20%);
-  --sidebar-ring: hsl(0 0% 83.1%);
-  --sidebar: hsl(0 0% 6%);
+  --caution-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 10%);
+  --sidebar-background: hsl(var(--jeo-base-h) var(--jeo-base-s) 8%);
+  --sidebar-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 95%);
+  --sidebar-primary: hsl(var(--jeo-base-h) var(--jeo-base-s) 95%);
+  --sidebar-primary-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 15%);
+  --sidebar-accent: hsl(var(--jeo-base-h) var(--jeo-base-s) 20%);
+  --sidebar-accent-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 95%);
+  --sidebar-border: hsl(var(--jeo-base-h) var(--jeo-base-s) 20%);
+  --sidebar-ring: hsl(var(--jeo-base-h) var(--jeo-base-s) 83.1%);
+  --sidebar: hsl(var(--jeo-base-h) var(--jeo-base-s) 6%);
 }
 
 .dark .panel {
-  --background: hsl(0 0% 10%);
-  --foreground: hsl(0 0% 85%);
-  --card: hsl(0, 0%, 10%);
-  --card-foreground: hsl(0 0% 85%);
+  --muted-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 66%);
+  --background: hsl(var(--jeo-base-h) var(--jeo-base-s) 10%);
+  --foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 85%);
+  --card: hsl(var(--jeo-base-h) var(--jeo-base-s) 10%);
+  --card-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 85%);
   --secondary: hsl(var(--jeo-h), 67%, 9%);
   --secondary-border: hsl(var(--jeo-h), 100%, 14%);
   --secondary-foreground: hsl(var(--jeo-h), 98%, 63%);
-  --muted: hsl(0 0% 22%);
-  --accent: hsl(0, 0%, 15%);
-  --accent-foreground: hsl(0 0% 93%);
-  --border: hsl(0 0% 18%);
-  --input: hsl(0 0% 22%);
-  --ring: hsl(0, 0%, 52%);
+  --muted: hsl(var(--jeo-base-h) var(--jeo-base-s) 22%);
+  --accent: hsl(var(--jeo-base-h) var(--jeo-base-s) 15%);
+  --accent-foreground: hsl(var(--jeo-base-h) var(--jeo-base-s) 93%);
+  --border: hsl(var(--jeo-base-h) var(--jeo-base-s) 18%);
+  --input: hsl(var(--jeo-base-h) var(--jeo-base-s) 22%);
+  --ring: hsl(var(--jeo-base-h) var(--jeo-base-s) 52%);
 }
 
 @layer base {
@@ -151,6 +158,21 @@
     @apply bg-background text-foreground;
     /* Prevent back/forward swipe */
     overscroll-behavior-x: contain;
+  }
+  /* JEO: the parts the browser draws follow the palette too */
+  :root {
+    accent-color: var(--primary);
+    caret-color: var(--primary);
+    scrollbar-color: var(--border) transparent;
+  }
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
   ::selection {
     @apply bg-primary/35 selection:text-primary-foreground;

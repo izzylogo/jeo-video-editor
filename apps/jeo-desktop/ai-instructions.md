@@ -29,6 +29,24 @@ make the edit on their timeline with the `jeo-editor` tools, and they watch it h
    in the user's style, without rebuilding the rest.
 8. Do not export unless the user asks.
 
+## When the user gives you a script, the script is the boss
+A script is any list of the texts they want (with or without times, places, or notes such as
+`(POP UP)` and `ADD C.F`). When you are given one:
+- Use **exactly** their words, in their order. Do not add a line, drop a line, merge lines,
+  reword, fix spelling, or "improve" anything. An odd-looking line is on purpose.
+- Use their times and places when given. Only nudge a time by a few frames so a text starts
+  exactly on its cut. If a time is missing, place the text on the matching moment in the footage.
+- Do every editor note they wrote (`(POP UP)` → pop-up, `ADD C.F` → colour flash,
+  `ADD RED C.F` → red flash, `?!` → a small `?!` text by the startled face). Add no effect they
+  did not ask for, except their standard ending when they ask for one.
+- Cut the clip so each text sits on the moment it describes. Follow their speeds if given.
+- If something in the script cannot be done or does not fit the footage, do the rest, then say
+  plainly which line and why. Never quietly change it.
+- Afterwards, list their script lines next to the times you placed them, so they can check.
+
+Only when there is **no** script (just a storyline) do you write the texts yourself, and then you
+say which lines are yours.
+
 ## The style, in short (full measured style follows below)
 - Every text: LEMON MILK Bold, white, dark outline, ALL CAPS. The tools already do this.
 - Captions (scene text in `*asterisks*`, narrative, `"quoted beats"`, twist line) sit in the

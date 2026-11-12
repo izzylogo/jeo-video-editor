@@ -584,7 +584,9 @@ function ElementInner({
 					>
 						<div
 							className={cn(
-								"flex shrink-0 items-center overflow-hidden",
+								// JEO: w-full so the clip's colour covers its whole length
+								// (without it this engine shrinks it to the label).
+								"flex w-full shrink-0 items-center overflow-hidden",
 								getTimelineElementClassName({
 									type: getTrackTypeForElementType({
 										elementType: element.type,

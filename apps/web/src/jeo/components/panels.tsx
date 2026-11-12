@@ -1,6 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+	BlurIcon,
+	ColorsIcon,
+	FlashIcon,
+	TextFontIcon,
+} from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { Button } from "@/components/ui/button";
@@ -86,7 +93,8 @@ function PresetRow({
 	onClick,
 	disabled,
 }: {
-	sample: string;
+	/** a caption sample (string) or an icon */
+	sample: React.ReactNode;
 	label: string;
 	hint: string;
 	onClick: () => void;
@@ -98,7 +106,7 @@ function PresetRow({
 			onClick={onClick}
 			disabled={disabled}
 			className={cn(
-				"bg-accent/60 hover:bg-accent flex w-full cursor-pointer items-center gap-3 rounded-md p-2 text-left",
+				"bg-accent/60 hover:bg-accent active:bg-accent/80 flex w-full cursor-pointer items-center gap-3 rounded-md p-2 text-left transition-colors duration-150",
 				"disabled:cursor-not-allowed disabled:opacity-50",
 			)}
 		>
@@ -292,7 +300,7 @@ export function FreezeView() {
 								Math.min(10, Math.max(0.2, Number(event.target.value) || 2)),
 							)
 						}
-						className="bg-input w-20 rounded border px-2 py-1 text-right"
+						className="bg-input h-8 w-20 rounded-md border px-2 text-right text-sm tabular-nums"
 					/>
 				</label>
 				<label className="flex items-center justify-between gap-2 px-1 text-sm">
@@ -301,7 +309,7 @@ export function FreezeView() {
 						value={soundPath}
 						onChange={(event) => setSoundPath(event.target.value)}
 						disabled={sounds.length === 0}
-						className="bg-input max-w-40 rounded border px-2 py-1"
+						className="bg-input h-8 max-w-40 rounded-md border px-2 text-sm"
 					>
 						<option value="">None</option>
 						{sounds.map((file) => (
@@ -342,7 +350,7 @@ export function JeoEffectsSection() {
 		<>
 			<Section title="Text">
 				<PresetRow
-					sample="(POP UP)"
+					sample={<HugeiconsIcon icon={TextFontIcon} className="size-6" />}
 					label="Pop-up"
 					hint="Selected text pops in: 30% → 115% → 100% in 0.2 s."
 					onClick={() => run(addPopUp)}
@@ -350,25 +358,25 @@ export function JeoEffectsSection() {
 			</Section>
 			<Section title="At the playhead">
 				<PresetRow
-					sample="C.F"
-					label="Colour flash"
+					sample={<HugeiconsIcon icon={FlashIcon} className="size-6" />}
+					label="Colour flash (C.F)"
 					hint="White flash on a reaction or surprise moment."
 					onClick={() => run(() => addColourFlash({ color: "white" }))}
 				/>
 				<PresetRow
-					sample="RED C.F"
+					sample={<HugeiconsIcon icon={FlashIcon} className="size-6 text-red-500" />}
 					label="Red colour flash"
 					hint="Red flash for an angry moment."
 					onClick={() => run(() => addColourFlash({ color: "red" }))}
 				/>
 				<PresetRow
-					sample="≋"
+					sample={<HugeiconsIcon icon={BlurIcon} className="size-6" />}
 					label="Blur shake"
 					hint="0.3 s blurry camera shake, like the start of your endings."
 					onClick={() => run(addBlurShake)}
 				/>
 				<PresetRow
-					sample="R|B"
+					sample={<HugeiconsIcon icon={ColorsIcon} className="size-6" />}
 					label="Colour split"
 					hint="Soft red/blue fringes from the playhead to the end."
 					onClick={() => run(addColourSplit)}
@@ -495,7 +503,7 @@ export function AudioView() {
 					type="button"
 					disabled={busyPath !== null}
 					onClick={() => handleAdd(file)}
-					className="bg-accent/60 hover:bg-accent flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm disabled:opacity-50"
+					className="bg-accent/60 hover:bg-accent flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					<span className="truncate">{file.name}</span>
 					<span className="text-muted-foreground shrink-0 text-xs">
@@ -529,7 +537,7 @@ export function AudioView() {
 							aria-pressed={musicSpeed === speed}
 							onClick={() => setMusicSpeed(speed)}
 							className={cn(
-								"cursor-pointer rounded px-2 py-1",
+								"cursor-pointer rounded px-2 py-1 tabular-nums transition-colors duration-150",
 								musicSpeed === speed
 									? "bg-secondary text-secondary-foreground"
 									: "hover:bg-accent",
