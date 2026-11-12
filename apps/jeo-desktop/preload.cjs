@@ -13,5 +13,15 @@ contextBridge.exposeInMainWorld("jeoDesktop", {
 	listAssets: () => ipcRenderer.invoke("jeo:listAssets"),
 	readAsset: (args) => ipcRenderer.invoke("jeo:readAsset", args),
 	showAssetsFolder: (args) => ipcRenderer.invoke("jeo:showAssetsFolder", args),
+	trackPoint: (args) => ipcRenderer.invoke("jeo:trackPoint", args),
+	chatSend: (args) => ipcRenderer.invoke("jeo:chatSend", args),
+	chatStop: () => ipcRenderer.invoke("jeo:chatStop"),
+	onChatEvent: (listener) => {
+		const handler = (_event, payload) => listener(payload);
+		ipcRenderer.on("jeo:chatEvent", handler);
+		return () => ipcRenderer.removeListener("jeo:chatEvent", handler);
+	},
+	readChat: (args) => ipcRenderer.invoke("jeo:readChat", args),
+	writeChat: (args) => ipcRenderer.invoke("jeo:writeChat", args),
 	showProjectFolder: (args) => ipcRenderer.invoke("jeo:showProjectFolder", args),
 });

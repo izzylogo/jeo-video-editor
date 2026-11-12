@@ -16,6 +16,7 @@ import { MigrationDialog } from "@/project/components/migration-dialog";
 import { usePanelStore } from "@/editor/panel-store";
 import { usePasteMedia } from "@/media/use-paste-media";
 import { MobileGate } from "@/components/editor/mobile-gate";
+import { AiChatRuntime } from "@/jeo/components/ai-chat";
 import { useMemo, useState } from "react";
 import { useEditor } from "@/editor/use-editor";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
@@ -47,6 +48,7 @@ export default function Editor() {
 						<EditorLayout />
 					</div>
 					<MigrationDialog />
+					<AiChatRuntime />
 				</div>
 			</EditorProvider>
 		</MobileGate>

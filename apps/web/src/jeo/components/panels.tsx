@@ -8,6 +8,7 @@ import { useEditor } from "@/editor/use-editor";
 import { getDesktopBridge, type JeoAssetFile } from "@/services/desktop/bridge";
 import { cn } from "@/utils/ui";
 import * as jeoActions from "../actions";
+import { callTool, followHead, listTools } from "../control";
 import {
 	type ActionResult,
 	CAPTION_PRESETS,
@@ -34,8 +35,12 @@ import {
  */
 export function useExposeJeoActions(): void {
 	useEffect(() => {
-		(window as unknown as { __jeoActions?: typeof jeoActions }).__jeoActions =
-			jeoActions;
+		const target = window as unknown as {
+			__jeoActions?: typeof jeoActions;
+			__jeoControl?: { listTools: typeof listTools; callTool: typeof callTool };
+		};
+		target.__jeoActions = jeoActions;
+		target.__jeoControl = { listTools, callTool };
 	}, []);
 }
 
@@ -150,6 +155,33 @@ export function CaptionsView() {
 
 // ---------- Tags ----------
 
+function FollowButton() {
+	const editor = useEditor();
+	const [isBusy, setIsBusy] = useState(false);
+	const handleFollow = async () => {
+		const selected = editor.selection.getSelectedElements();
+		if (selected.length !== 1) {
+			toast.error("Select one tag on the timeline first.");
+			return;
+		}
+		setIsBusy(true);
+		try {
+			const outcome = await followHead({ id: selected[0].elementId });
+			if (outcome.ok) toast.success("The tag now follows the person.");
+			else toast.error(outcome.error ?? "Could not follow.");
+		} catch (error) {
+			console.error("[jeo] follow failed:", error);
+			toast.error("Could not follow. Nothing was changed.");
+		}
+		setIsBusy(false);
+	};
+	return (
+		<Button variant="outline" onClick={handleFollow} disabled={isBusy}>
+			{isBusy ? "Tracking…" : "Make selected tag follow the head"}
+		</Button>
+	);
+}
+
 export function TagsView() {
 	return (
 		<PanelView title="Tags">
@@ -178,6 +210,14 @@ export function TagsView() {
 						/>
 					),
 				)}
+			</Section>
+			<Section title="Auto-follow">
+				<FollowButton />
+				<Note>
+					Put the tag on the head at its first frame, select it, then click. It
+					follows the person through that clip (not on a freeze). You can still
+					drag the keyframes afterwards.
+				</Note>
 			</Section>
 			<Section title="Triangle or arrow?">
 				<Note>

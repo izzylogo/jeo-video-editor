@@ -321,10 +321,298 @@ function registerIpc() {
 		await shell.openPath(dir);
 	});
 
+	// ---- auto-follow: track a point with OpenCV (Python) ----
+	ipcMain.handle(
+		"jeo:trackPoint",
+		async (_event, { projectId, mediaId, start, end, x, y, box }) => {
+			if (!isSafeId(mediaId)) throw new Error("Bad media id");
+			const dir = await findProjectDir({ id: projectId });
+			const mediaDir = dir ? path.join(dir, "media") : null;
+			const names = mediaDir ? await fsp.readdir(mediaDir).catch(() => []) : [];
+			const fileName = names.find(
+				(name) =>
+					!name.endsWith(".json") &&
+					!name.endsWith(".tmp") &&
+					path.parse(name).name === mediaId,
+			);
+			if (!fileName) {
+				return { ok: false, error: "The clip's file is not in the project folder.", points: [] };
+			}
+			const numbers = [start, end, x, y, box].map((value) => String(Number(value)));
+			return await new Promise((resolve) => {
+				execFile(
+					"py",
+					[path.join(__dirname, "tools", "track_point.py"), path.join(mediaDir, fileName), ...numbers],
+					{ windowsHide: true, timeout: 120000, maxBuffer: 16 * 1024 * 1024 },
+					(error, stdout) => {
+						try {
+							resolve(JSON.parse(String(stdout).trim().split(/\r?\n/).pop()));
+						} catch {
+							resolve({
+								ok: false,
+								error: error ? `Tracking could not run: ${error.message}` : "Tracking gave no result.",
+								points: [],
+							});
+						}
+					},
+				);
+			});
+		},
+	);
+
+	// ---- AI chat history, kept in the project folder ----
+	ipcMain.handle("jeo:readChat", async (_event, { projectId }) => {
+		const dir = await findProjectDir({ id: projectId });
+		if (!dir) return null;
+		return await fsp.readFile(path.join(dir, "chat.json"), "utf8").catch(() => null);
+	});
+
+	ipcMain.handle("jeo:writeChat", async (_event, { projectId, json }) => {
+		const dir = await ensureProjectDir({ id: projectId });
+		await writeFileAtomic(path.join(dir, "chat.json"), String(json));
+	});
+
+	ipcMain.handle("jeo:chatSend", async (_event, args) => chatSend(args));
+	ipcMain.handle("jeo:chatStop", async () => chatStop());
+
 	ipcMain.handle("jeo:showProjectFolder", async (_event, { id }) => {
 		const dir = (await findProjectDir({ id })) || PROJECTS_DIR;
 		await shell.openPath(dir);
 	});
+}
+
+// ---------- control channel (for the MCP server) ----------
+
+const crypto = require("node:crypto");
+const CONTROL_TOKEN = crypto.randomBytes(24).toString("hex");
+let controlPort = 0;
+
+async function callEditor(payload) {
+	if (!mainWindow || mainWindow.isDestroyed()) {
+		return { ok: false, error: "The JEO Editor window is closed." };
+	}
+	const script = payload.list
+		? `(() => ({ tools: window.__jeoControl ? window.__jeoControl.listTools() : [] }))()`
+		: `(async () => window.__jeoControl
+				? await window.__jeoControl.callTool(${JSON.stringify({
+						name: String(payload.tool || ""),
+						args: payload.args || {},
+					})})
+				: { ok: false, error: "Open a project in JEO Editor first." })()`;
+	try {
+		return await mainWindow.webContents.executeJavaScript(script, true);
+	} catch (error) {
+		return { ok: false, error: String(error && error.message ? error.message : error) };
+	}
+}
+
+function startControlServer() {
+	return new Promise((resolve) => {
+		const server = http.createServer((request, response) => {
+			const reply = (status, body) => {
+				response.writeHead(status, { "content-type": "application/json" });
+				response.end(JSON.stringify(body));
+			};
+			if (
+				request.method !== "POST" ||
+				request.url !== "/call" ||
+				request.headers["x-jeo-token"] !== CONTROL_TOKEN
+			) {
+				reply(403, { ok: false, error: "Not allowed." });
+				return;
+			}
+			let body = "";
+			request.setEncoding("utf8");
+			request.on("data", (chunk) => {
+				body += chunk;
+				if (body.length > 2 * 1024 * 1024) request.destroy();
+			});
+			request.on("end", async () => {
+				try {
+					reply(200, await callEditor(JSON.parse(body)));
+				} catch (error) {
+					reply(200, { ok: false, error: String(error) });
+				}
+			});
+		});
+		// local machine only
+		server.listen(0, "127.0.0.1", () => {
+			controlPort = server.address().port;
+			resolve();
+		});
+	});
+}
+
+// ---------- AI chat: Claude Code, headless ----------
+
+const STYLE_FILE = path.resolve(__dirname, "../../../style/your-style.md");
+let chatProcess = null;
+let chatStopped = false;
+
+function sendChatEvent(event) {
+	if (mainWindow && !mainWindow.isDestroyed()) {
+		mainWindow.webContents.send("jeo:chatEvent", event);
+	}
+}
+
+function findClaude() {
+	const candidates = [
+		process.env.JEO_CLAUDE_PATH,
+		path.join(process.env.USERPROFILE || "", ".local", "bin", "claude.exe"),
+		path.join(process.env.APPDATA || "", "npm", "claude.cmd"),
+	].filter(Boolean);
+	return candidates.find((candidate) => fs.existsSync(candidate)) || "claude";
+}
+
+async function prepareChatFiles() {
+	const dir = path.join(app.getPath("userData"), "ai");
+	await fsp.mkdir(dir, { recursive: true });
+	const instructions = await fsp.readFile(path.join(__dirname, "ai-instructions.md"), "utf8");
+	const style = await fsp.readFile(STYLE_FILE, "utf8").catch(() => "");
+	const promptFile = path.join(dir, "system-prompt.md");
+	await fsp.writeFile(
+		promptFile,
+		`${instructions}\n\n---\n\n# The user's measured style (style/your-style.md)\n\n${style}`,
+	);
+	const configFile = path.join(dir, "mcp.json");
+	await fsp.writeFile(
+		configFile,
+		JSON.stringify({
+			mcpServers: {
+				"jeo-editor": {
+					command: process.execPath,
+					args: [path.join(__dirname, "mcp-server.cjs")],
+					env: {
+						ELECTRON_RUN_AS_NODE: "1",
+						JEO_CONTROL_PORT: String(controlPort),
+						JEO_CONTROL_TOKEN: CONTROL_TOKEN,
+					},
+				},
+			},
+		}),
+	);
+	return { dir, promptFile, configFile };
+}
+
+const TOOL_LABELS = {
+	get_state: "Reading the timeline",
+	view_source: "Looking at the raw clip",
+	view_timeline: "Checking the edit",
+	build_cut: "Cutting the clip",
+	set_clip: "Re-framing a shot",
+	add_freeze: "Adding the freeze",
+	add_text: "Adding a text",
+	update_element: "Adjusting",
+	delete_elements: "Removing",
+	clear_overlays: "Clearing texts and effects",
+	add_effect: "Adding an effect",
+	add_arrow: "Adding an arrow",
+	add_ending: "Building the ending",
+	end_on_29: "Ending on :29",
+	snap_texts_to_cuts: "Snapping texts to cuts",
+	follow_head: "Making a tag follow",
+	list_audio: "Looking at your sounds",
+	add_audio: "Adding sound",
+	undo: "Undoing",
+	export_video: "Exporting",
+};
+
+function describeToolUse({ name, input }) {
+	const short = String(name || "").replace(/^mcp__jeo-editor__/, "");
+	const label = TOOL_LABELS[short] || short;
+	const detail =
+		typeof input?.text === "string"
+			? `: ${input.text}`
+			: typeof input?.kind === "string"
+				? `: ${input.kind.replace(/_/g, " ")}`
+				: "";
+	return { name: short, summary: `${label}${detail}` };
+}
+
+async function chatSend({ text, sessionId }) {
+	if (chatProcess) return { ok: false, error: "Claude is still working on the last message." };
+	const { dir, promptFile, configFile } = await prepareChatFiles();
+	const args = [
+		"-p",
+		"--output-format", "stream-json",
+		"--verbose",
+		"--mcp-config", configFile,
+		"--strict-mcp-config",
+		"--append-system-prompt-file", promptFile,
+		"--allowedTools", "mcp__jeo-editor",
+		"--disallowedTools", "Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,NotebookEdit,Task,Agent",
+	];
+	if (typeof sessionId === "string" && /^[0-9a-fA-F-]{8,64}$/.test(sessionId)) {
+		args.push("--resume", sessionId);
+	}
+
+	let child;
+	try {
+		child = spawn(findClaude(), args, { cwd: dir, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
+	} catch (error) {
+		return { ok: false, error: `Could not start Claude Code: ${error.message}` };
+	}
+	chatProcess = child;
+	chatStopped = false;
+	let latestSession = typeof sessionId === "string" ? sessionId : null;
+	let finished = false;
+	let errorText = "";
+	const finish = (error) => {
+		if (finished) return;
+		finished = true;
+		chatProcess = null;
+		sendChatEvent({ type: "done", sessionId: latestSession, ...(error ? { error } : {}) });
+	};
+
+	const lines = require("node:readline").createInterface({ input: child.stdout });
+	lines.on("line", (line) => {
+		let event;
+		try {
+			event = JSON.parse(line);
+		} catch {
+			return;
+		}
+		if (event.session_id) latestSession = event.session_id;
+		if (event.type === "assistant" && Array.isArray(event.message?.content)) {
+			for (const part of event.message.content) {
+				if (part.type === "text" && part.text) {
+					sendChatEvent({ type: "text", text: part.text });
+				} else if (part.type === "tool_use") {
+					sendChatEvent({ type: "tool", ...describeToolUse(part) });
+				}
+			}
+		} else if (event.type === "result" && event.is_error) {
+			errorText = String(event.result || "Claude stopped with an error.");
+		}
+	});
+	child.stderr.on("data", (chunk) => {
+		errorText = (errorText + String(chunk)).slice(-600);
+	});
+	child.on("error", (error) =>
+		finish(
+			error.code === "ENOENT"
+				? "Claude Code was not found on this computer."
+				: `Could not start Claude Code: ${error.message}`,
+		),
+	);
+	child.on("close", (code) =>
+		finish(code === 0 || chatStopped ? undefined : errorText.trim() || `Claude stopped (code ${code}).`),
+	);
+
+	child.stdin.write(String(text));
+	child.stdin.end();
+	return { ok: true };
+}
+
+function chatStop() {
+	if (!chatProcess) return;
+	const pid = chatProcess.pid;
+	chatStopped = true;
+	if (process.platform === "win32") {
+		execFile("taskkill", ["/pid", String(pid), "/T", "/F"], () => {});
+	} else {
+		chatProcess.kill();
+	}
 }
 
 // ---------- window ----------
@@ -421,6 +709,7 @@ if (!app.requestSingleInstanceLock()) {
 	app.whenReady().then(async () => {
 		registerIpc();
 		try {
+			await startControlServer();
 			await startServer();
 			await createWindow();
 		} catch (error) {
@@ -431,5 +720,8 @@ if (!app.requestSingleInstanceLock()) {
 	});
 
 	app.on("window-all-closed", () => app.quit());
-	app.on("before-quit", stopServer);
+	app.on("before-quit", () => {
+		chatStop();
+		stopServer();
+	});
 }

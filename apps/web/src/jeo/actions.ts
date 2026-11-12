@@ -42,7 +42,7 @@ function editor(): EditorCore {
 	return EditorCore.getInstance();
 }
 
-function frameTicks(): number {
+export function frameTicks(): number {
 	const fps = editor().project.getActive()?.settings.fps ?? {
 		numerator: 30,
 		denominator: 1,
@@ -50,41 +50,41 @@ function frameTicks(): number {
 	return Math.round((TICKS_PER_SECOND * fps.denominator) / fps.numerator);
 }
 
-function toTime(ticks: number): MediaTime {
+export function toTime(ticks: number): MediaTime {
 	return Math.round(ticks) as MediaTime;
 }
 
 /** seconds → ticks, landing exactly on a frame */
-function seconds(value: number): MediaTime {
+export function seconds(value: number): MediaTime {
 	const frame = frameTicks();
 	return toTime(Math.round((value * TICKS_PER_SECOND) / frame) * frame);
 }
 
-function snapToFrame(ticks: number): MediaTime {
+export function snapToFrame(ticks: number): MediaTime {
 	const frame = frameTicks();
 	return toTime(Math.round(ticks / frame) * frame);
 }
 
-function playhead(): MediaTime {
+export function playhead(): MediaTime {
 	return snapToFrame(editor().playback.getCurrentTime());
 }
 
-function totalDuration(): MediaTime {
+export function totalDuration(): MediaTime {
 	return editor().timeline.getTotalDuration();
 }
 
-function tracks(): SceneTracks | null {
+export function tracks(): SceneTracks | null {
 	return editor().scenes.getActiveSceneOrNull()?.tracks ?? null;
 }
 
-function allTracks(sceneTracks: SceneTracks): TimelineTrack[] {
+export function allTracks(sceneTracks: SceneTracks): TimelineTrack[] {
 	return [...sceneTracks.overlay, sceneTracks.main, ...sceneTracks.audio];
 }
 
-type KeyPoint = [atSeconds: number, value: number];
+export type KeyPoint = [atSeconds: number, value: number];
 
 /** Linear keyframes for one number property (time is from the element start). */
-function keys(points: KeyPoint[]) {
+export function keys(points: KeyPoint[]) {
 	return {
 		keys: points.map(([at, value]) => ({
 			id: generateUUID(),
@@ -96,7 +96,7 @@ function keys(points: KeyPoint[]) {
 	};
 }
 
-function insertAll({ items }: { items: InsertElementParams[] }): void {
+export function insertAll({ items }: { items: InsertElementParams[] }): void {
 	if (items.length === 0) return;
 	const commands = items.map((item) => new InsertElementCommand(item));
 	editor().command.execute({
@@ -133,7 +133,7 @@ export const CAPTION_PRESETS: Array<{
 const SMALL_TEXT_SIZE = 3.0;
 const TAG_TEXT_SIZE = 3.5;
 
-function textItem({
+export function textItem({
 	content,
 	start,
 	durationSeconds,
@@ -238,7 +238,7 @@ export const TAG_PRESETS: Array<{
 	{ id: "arrow-spotlight", label: "↗ Arrow + spotlight", sample: "◐ ↗", hint: "Dark spotlight on an object, with the arrow. For a freeze." },
 ];
 
-function graphicItem({
+export function graphicItem({
 	definitionId,
 	name,
 	start,
@@ -367,7 +367,7 @@ export function addPopUp(): ActionResult {
 	return ok("Pop-up added.");
 }
 
-function effectItem({
+export function effectItem({
 	effectType,
 	name,
 	start,
@@ -458,7 +458,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 };
 
 /** Bring a file from the assets folder into this project's media (once). */
-async function importAssetFile({
+export async function importAssetFile({
 	file,
 }: {
 	file: Pick<JeoAssetFile, "name" | "relPath">;
@@ -479,7 +479,7 @@ async function importAssetFile({
 	});
 }
 
-async function importFile({ file }: { file: File }): Promise<MediaAsset | null> {
+export async function importFile({ file }: { file: File }): Promise<MediaAsset | null> {
 	const project = editor().project.getActive();
 	if (!project) return null;
 	const [processed] = await processMediaAssets({ files: [file] });
@@ -538,13 +538,13 @@ export async function addLibraryAudio({
 
 // ---------- freeze ----------
 
-function isVideo(
+export function isVideo(
 	element: TimelineElement,
 ): element is Extract<TimelineElement, { type: "video" }> {
 	return element.type === "video";
 }
 
-async function grabVideoFrame({
+export async function grabVideoFrame({
 	asset,
 	atSeconds,
 }: {

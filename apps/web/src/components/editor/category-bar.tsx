@@ -1,6 +1,6 @@
 "use client";
 
-import { toast } from "sonner";
+import { useChatStore } from "@/jeo/components/ai-chat";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { BubbleChatIcon } from "@hugeicons/core-free-icons";
 import { cn } from "@/utils/ui";
@@ -16,17 +16,22 @@ import {
  */
 export function CategoryBar() {
 	const { activeTab, setActiveTab } = useAssetsPanelStore();
+	const isChatOpen = useChatStore((state) => state.isOpen);
+	const toggleChat = useChatStore((state) => state.toggle);
 
 	return (
 		<div className="flex min-w-0 items-center gap-1">
 			<button
 				type="button"
-				onClick={() =>
-					toast("AI chat", {
-						description: "Claude moves in here in Phase 3.",
-					})
-				}
-				className="bg-primary/15 text-primary hover:bg-primary/25 flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-3 text-xs font-semibold"
+				onClick={toggleChat}
+				aria-pressed={isChatOpen}
+				title="Show or hide the Claude chat"
+				className={cn(
+					"flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-3 text-xs font-semibold",
+					isChatOpen
+						? "bg-primary text-primary-foreground"
+						: "bg-primary/15 text-primary hover:bg-primary/25",
+				)}
 			>
 				<HugeiconsIcon icon={BubbleChatIcon} className="size-4" />
 				AI

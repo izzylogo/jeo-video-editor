@@ -28,7 +28,36 @@ export interface JeoDesktopBridge {
 	listAssets(): Promise<JeoAssetFile[]>;
 	readAsset(args: { relPath: string }): Promise<{ data: ArrayBuffer }>;
 	showAssetsFolder(args: { kind?: JeoAssetKind }): Promise<void>;
+	/** Follow a point of the picture through a clip (OpenCV, source pixels). */
+	trackPoint(args: {
+		projectId: string;
+		mediaId: string;
+		start: number;
+		end: number;
+		x: number;
+		y: number;
+		box: number;
+	}): Promise<{
+		ok: boolean;
+		error?: string;
+		points: Array<{ t: number; dx: number; dy: number }>;
+	}>;
+	/** AI chat: runs Claude Code headless against this editor. */
+	chatSend(args: {
+		projectId: string;
+		text: string;
+		sessionId: string | null;
+	}): Promise<{ ok: boolean; error?: string }>;
+	chatStop(): Promise<void>;
+	onChatEvent(listener: (event: JeoChatEvent) => void): () => void;
+	readChat(args: { projectId: string }): Promise<string | null>;
+	writeChat(args: { projectId: string; json: string }): Promise<void>;
 }
+
+export type JeoChatEvent =
+	| { type: "text"; text: string }
+	| { type: "tool"; name: string; summary: string }
+	| { type: "done"; sessionId: string | null; error?: string };
 
 export type JeoAssetKind = "music" | "sound-effects" | "emoji";
 
