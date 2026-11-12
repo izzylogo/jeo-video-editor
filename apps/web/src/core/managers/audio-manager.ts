@@ -40,6 +40,8 @@ export class AudioManager {
 	private queuedSources = new Set<AudioBufferSourceNode>();
 	private preparedClipBuffers = new Map<string, Promise<AudioBuffer | null>>();
 	private decodedBuffers = new Map<string, Promise<AudioBuffer | null>>();
+	/** JEO: sources whose audio must be decoded as a whole (see runClipIterator). */
+	private fallbackSources = new Set<string>();
 	private playbackSessionId = 0;
 	private lastIsPlaying = false;
 	private lastVolume = 1;
@@ -111,7 +113,8 @@ export class AudioManager {
 	private handleTimelineChange = (): void => {
 		this.disposeSinks();
 		this.preparedClipBuffers.clear();
-		this.decodedBuffers.clear();
+		// JEO: decoded source audio is kept (it only depends on the file), so
+		// editing the timeline doesn't force decoding every clip again.
 
 		if (!this.editor.playback.getIsPlaying()) return;
 
@@ -244,6 +247,14 @@ export class AudioManager {
 		if (!audioContext) return;
 
 		const sink = await this.getAudioSink({ clip });
+		if (!sink && this.fallbackSources.has(clip.sourceKey)) {
+			// JEO: this sound format (for example HE-AAC v2 from Douyin/TikTok
+			// downloads) can't be streamed; play it from a fully decoded buffer.
+			if (!this.editor.playback.getIsPlaying()) return;
+			if (sessionId !== this.playbackSessionId) return;
+			await this.schedulePreparedClip({ clip, startTime, sessionId });
+			return;
+		}
 		if (!sink || !this.editor.playback.getIsPlaying()) return;
 		if (sessionId !== this.playbackSessionId) return;
 
@@ -269,7 +280,29 @@ export class AudioManager {
 		this.clipIterators.set(clip.id, iterator);
 		let consecutiveDroppedBufferCount = 0;
 
-		for await (const { buffer, timestamp } of iterator) {
+		// JEO: if the streaming decoder rejects this sound format on its first
+		// packet, switch this source to the whole-file decoder for good.
+		let firstResult: IteratorResult<WrappedAudioBuffer, void>;
+		try {
+			firstResult = await iterator.next();
+		} catch (error) {
+			console.warn("Streaming audio decode failed, using fallback:", error);
+			this.clipIterators.delete(clip.id);
+			this.fallbackSources.add(clip.sourceKey);
+			this.sinks.delete(clip.sourceKey);
+			this.inputs.get(clip.sourceKey)?.dispose();
+			this.inputs.delete(clip.sourceKey);
+			if (!this.editor.playback.getIsPlaying()) return;
+			if (sessionId !== this.playbackSessionId) return;
+			await this.schedulePreparedClip({ clip, startTime, sessionId });
+			return;
+		}
+		const buffered = (async function* () {
+			if (!firstResult.done) yield firstResult.value;
+			yield* iterator;
+		})();
+
+		for await (const { buffer, timestamp } of buffered) {
 			if (!this.editor.playback.getIsPlaying()) return;
 			if (sessionId !== this.playbackSessionId) return;
 
@@ -662,8 +695,14 @@ export class AudioManager {
 
 			return await offlineContext.startRendering();
 		} catch (error) {
-			console.warn("Failed to decode clip audio:", error);
-			return null;
+			// JEO: second try with the browser's built-in decoder.
+			try {
+				const arrayBuffer = await clip.file.arrayBuffer();
+				return await audioContext.decodeAudioData(arrayBuffer);
+			} catch (fallbackError) {
+				console.warn("Failed to decode clip audio:", error, fallbackError);
+				return null;
+			}
 		} finally {
 			input.dispose();
 		}
@@ -676,6 +715,7 @@ export class AudioManager {
 	}): Promise<AudioBufferSink | null> {
 		const existingSink = this.sinks.get(clip.sourceKey);
 		if (existingSink) return existingSink;
+		if (this.fallbackSources.has(clip.sourceKey)) return null;
 
 		try {
 			const input = new Input({
@@ -685,6 +725,11 @@ export class AudioManager {
 			const audioTrack = await input.getPrimaryAudioTrack();
 			if (!audioTrack) {
 				input.dispose();
+				return null;
+			}
+			if (!(await audioTrack.canDecode())) {
+				input.dispose();
+				this.fallbackSources.add(clip.sourceKey);
 				return null;
 			}
 

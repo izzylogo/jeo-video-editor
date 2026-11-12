@@ -5,9 +5,6 @@
   "description": "JEO Editor desktop window (Electron)",
   "main": "main.cjs",
   "scripts": {
-    "start": "electron ."
-  },
-  "devDependencies": {
-    "electron": "^39.0.0"
+    "start": "runtime\\electron.exe ."
   }
 }

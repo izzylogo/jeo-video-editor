@@ -28,6 +28,9 @@ const EVAL_FILE = argValue("eval-file");
 const CAPTURE_DELAY = Number(argValue("capture-delay") || 8000);
 const FORCE_DEV = process.argv.includes("--dev");
 
+// A video editor should never have its preview sound blocked.
+app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+
 let serverProcess = null;
 let mainWindow = null;
 

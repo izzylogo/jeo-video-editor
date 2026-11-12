@@ -33,6 +33,7 @@ Double-click **JEO Editor** on your Desktop (there is a copy of the shortcut in
 - Brand-new app profile: the project was restored from its folder on disk.
 - Playback: about 58 screen frames per second, real time (Phase 0 developer mode: about 20).
 - Export 32 s, 1080×1440, 30 fps: about 28 seconds, with picture and sound.
+- Preview sound: plays. Clips with HE-AAC v2 sound (common on Douyin/TikTok downloads) use a backup decoder; the first play of such a clip may start a moment late.
 
 ## Known problems / gaps
 - **Tags, Freeze and Endings** buttons only show a "Coming in Phase 2" note. The **AI** button only shows a note (Phase 3).
@@ -47,7 +48,7 @@ Double-click **JEO Editor** on your Desktop (there is a copy of the shortcut in
 
 ## For developers / future Claude sessions
 - Web app: `apps/web` (Next.js). Production build: `bun run build` in `apps/web`. The desktop app runs `next start` on port 3210; if there is no build it falls back to dev mode.
-- Desktop shell: `apps/jeo-desktop/main.cjs` + `preload.cjs`. Electron program files live in `apps/jeo-desktop/runtime/` (not in git).
+- Desktop shell: `apps/jeo-desktop/main.cjs` + `preload.cjs`. Electron program files live in `apps/jeo-desktop/runtime/` (not in git). It is Electron 33.2.0, copied from the my-animator project because a fresh download was too slow.
 - After changing web code, run `bun run build` again or the desktop app shows the old version.
 - Control hook: `window.__jeoEditor` (EditorCore). Disk bridge: `window.jeoDesktop`.
 - Test mode: `runtime\electron.exe . --capture=<png> --eval-file=<js> [--capture-delay=ms] [--visible] --user-data-dir=<dir>`, with `JEO_PROJECTS_DIR` / `JEO_OUTPUT_DIR` to keep tests away from real data.
