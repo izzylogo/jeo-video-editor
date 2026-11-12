@@ -705,6 +705,36 @@ export async function addFreeze({
 
 // ---------- endings ----------
 
+/** How much of a picture's width is actually drawn (ignores see-through borders). */
+async function visibleWidthShare({ file }: { file: File }): Promise<number> {
+	try {
+		const bitmap = await createImageBitmap(file);
+		const canvas = document.createElement("canvas");
+		const size = 128;
+		canvas.width = size;
+		canvas.height = size;
+		const ctx = canvas.getContext("2d", { willReadFrequently: true });
+		if (!ctx) return 1;
+		ctx.drawImage(bitmap, 0, 0, size, size);
+		bitmap.close();
+		const { data } = ctx.getImageData(0, 0, size, size);
+		let left = size;
+		let right = -1;
+		for (let y = 0; y < size; y++) {
+			for (let x = 0; x < size; x++) {
+				if (data[(y * size + x) * 4 + 3] > 20) {
+					if (x < left) left = x;
+					if (x > right) right = x;
+				}
+			}
+		}
+		const share = right >= left ? (right - left + 1) / size : 1;
+		return Math.min(1, Math.max(0.2, share));
+	} catch {
+		return 1;
+	}
+}
+
 export type EndingKind = "funny" | "sweet";
 
 const ENDING_EMOJI: Record<EndingKind, string> = {
@@ -734,6 +764,21 @@ export async function addEnding({ kind }: { kind: EndingKind }): Promise<ActionR
 		return fail(`Could not load assets\\emoji\\${emojiName}.`);
 	}
 
+	// Size by the visible emoji, not by the picture file (which may have an
+	// empty border): `widthScale(f)` makes the emoji itself f × the frame width.
+	const share = await visibleWidthShare({ file: emojiAsset.file });
+	const frameWidth =
+		editor().project.getActive()?.settings.canvasSize.width ?? 1080;
+	const frameHeight =
+		editor().project.getActive()?.settings.canvasSize.height ?? 1440;
+	const imageWidth = emojiAsset.width ?? 1;
+	const imageHeight = emojiAsset.height ?? 1;
+	const shownWidthAtScale1 =
+		imageWidth * Math.min(frameWidth / imageWidth, frameHeight / imageHeight);
+	const widthScale = (fraction: number) =>
+		Math.round(((fraction * frameWidth) / (shownWidthAtScale1 * share)) * 1000) /
+		1000;
+
 	const emojiStart = toTime(cut + seconds(0.3));
 	const emojiLength = (end - emojiStart) / TICKS_PER_SECOND;
 	const lastFrame = Math.max(0.7, emojiLength - 1 / 30);
@@ -748,15 +793,15 @@ export async function addEnding({ kind }: { kind: EndingKind }): Promise<ActionR
 		emoji.params = {
 			...emoji.params,
 			opacity: 0.45,
-			"transform.scaleX": 0.333,
-			"transform.scaleY": 0.333,
+			"transform.scaleX": widthScale(1 / 3),
+			"transform.scaleY": widthScale(1 / 3),
 			"transform.positionY": -245,
 		};
 	}
 	const growth: KeyPoint[] = [
-		[0, 0.333],
-		[0.65, 0.667],
-		[lastFrame, 0.833],
+		[0, widthScale(1 / 3)],
+		[0.65, widthScale(2 / 3)],
+		[lastFrame, widthScale(5 / 6)],
 	];
 	(emoji as { animations?: unknown }).animations = {
 		opacity: keys([
@@ -772,8 +817,8 @@ export async function addEnding({ kind }: { kind: EndingKind }): Promise<ActionR
 		]),
 		"transform.positionY": keys([
 			[0, -245],
-			[0.65, -200],
-			[lastFrame, -160],
+			[0.65, -170],
+			[lastFrame, -100],
 		]),
 	};
 
