@@ -26,3 +26,5 @@ target/
 .cargo-tools/
 
 rust-migration-notes.md
+# JEO test files
+apps/web/public/_jeotest/

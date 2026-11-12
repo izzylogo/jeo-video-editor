@@ -71,6 +71,11 @@ export class EditorCore {
 	static getInstance(): EditorCore {
 		if (!EditorCore.instance) {
 			EditorCore.instance = new EditorCore();
+			// JEO: expose the editor for the local control channel (dev/testing).
+			if (typeof window !== "undefined") {
+				(window as unknown as { __jeoEditor?: EditorCore }).__jeoEditor =
+					EditorCore.instance;
+			}
 		}
 		return EditorCore.instance;
 	}
