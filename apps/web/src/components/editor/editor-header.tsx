@@ -34,6 +34,8 @@ export function EditorHeader() {
 		<header className="bg-background flex h-[3.4rem] items-center justify-between gap-3 px-3 pt-0.5">
 			<div className="flex min-w-0 items-center gap-2">
 				<ProjectDropdown />
+				<ProjectsButton />
+				<div className="bg-border h-5 w-px shrink-0" />
 				<CategoryBar />
 			</div>
 			<nav className="flex shrink-0 items-center gap-2">
@@ -44,6 +46,44 @@ export function EditorHeader() {
 				<ThemeToggle />
 			</nav>
 		</header>
+	);
+}
+
+/**
+ * JEO: "Projects" saves the open project and goes to the list of all
+ * projects, where one click opens a project and "New project" starts an
+ * empty one.
+ */
+function ProjectsButton() {
+	const router = useRouter();
+	const editor = useEditor();
+	const [isLeaving, setIsLeaving] = useState(false);
+
+	const goToProjects = async () => {
+		if (isLeaving) return;
+		setIsLeaving(true);
+		try {
+			await editor.project.prepareExit();
+		} catch (error) {
+			console.error("Failed to save before leaving the project:", error);
+		} finally {
+			editor.project.closeProject();
+			router.push("/projects");
+		}
+	};
+
+	return (
+		<Button
+			variant="ghost"
+			size="sm"
+			className="h-9 shrink-0 gap-1.5 px-2.5 text-xs font-medium"
+			onClick={goToProjects}
+			disabled={isLeaving}
+			title="All your projects: open one, or start a new empty project"
+		>
+			<HugeiconsIcon icon={FolderOpenIcon} className="size-4" />
+			{isLeaving ? "Saving…" : "Projects"}
+		</Button>
 	);
 }
 

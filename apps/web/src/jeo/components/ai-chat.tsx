@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { create } from "zustand";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/editor/use-editor";
 import {
 	getDesktopBridge,
@@ -80,7 +78,10 @@ function saveChat(): void {
 		.catch(() => {});
 }
 
-/** Loads the project's chat and listens for Claude's replies. Mount once. */
+/**
+ * Loads the project's chat and listens for Claude's replies. Mounted once for
+ * the whole editor, so replies keep arriving while another tab is showing.
+ */
 export function AiChatRuntime() {
 	const projectId = useEditor(
 		(editor) => editor.project.getActiveOrNull()?.metadata.id ?? null,
@@ -134,7 +135,7 @@ export function AiChatRuntime() {
 		});
 	}, []);
 
-	return <AiChatPanel />;
+	return null;
 }
 
 const EXAMPLES = [
@@ -143,8 +144,9 @@ const EXAMPLES = [
 	"Add a funny ending on the last shot",
 ];
 
-function AiChatPanel() {
-	const { isOpen, isBusy, messages, close } = useChatStore();
+/** The chat itself. Lives in the left panel as the "AI" tab. */
+export function AiChatView() {
+	const { isBusy, messages } = useChatStore();
 	const [draft, setDraft] = useState("");
 	const listRef = useRef<HTMLDivElement>(null);
 	const desktop = getDesktopBridge();
@@ -153,7 +155,7 @@ function AiChatPanel() {
 	useEffect(() => {
 		const list = listRef.current;
 		if (list) list.scrollTop = list.scrollHeight;
-	}, [messages, isOpen, isBusy]);
+	}, [messages, isBusy]);
 
 	const send = useCallback(async () => {
 		const text = draft.trim();
@@ -173,12 +175,10 @@ function AiChatPanel() {
 		}
 	}, [desktop, draft]);
 
-	if (!isOpen) return null;
-
 	return (
-		<div className="panel bg-background fixed top-[3.6rem] left-3 z-90 flex h-[min(70vh,34rem)] w-[23rem] flex-col overflow-hidden rounded-lg border shadow-2xl">
-			<div className="flex h-10 shrink-0 items-center justify-between border-b pr-1 pl-3">
-				<span className="text-sm font-medium">Claude</span>
+		<div className="flex h-full flex-col overflow-hidden">
+			<div className="flex h-11 shrink-0 items-center justify-between border-b pr-1 pl-3">
+				<span className="text-muted-foreground text-sm">Claude</span>
 				<div className="flex items-center gap-1">
 					{messages.length > 0 && !isBusy && (
 						<button
@@ -192,14 +192,6 @@ function AiChatPanel() {
 							New chat
 						</button>
 					)}
-					<button
-						type="button"
-						onClick={close}
-						aria-label="Hide chat"
-						className="hover:bg-accent flex size-7 cursor-pointer items-center justify-center rounded"
-					>
-						<HugeiconsIcon icon={Cancel01Icon} className="size-4" />
-					</button>
 				</div>
 			</div>
 

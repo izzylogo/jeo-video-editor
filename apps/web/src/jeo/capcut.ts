@@ -13,6 +13,7 @@
 import { EditorCore } from "@/core";
 import type { TimelineElement } from "@/timeline";
 import { getDesktopBridge } from "@/services/desktop/bridge";
+import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import { TICKS_PER_SECOND } from "@/wasm";
 
 const S = TICKS_PER_SECOND;
@@ -161,6 +162,36 @@ export async function openInCapCut(): Promise<CapCutExportResult> {
 	}
 
 	await editor.project.saveCurrentProject();
+
+	// a cover picture, so the project is easy to spot in CapCut's list
+	let coverBase64: string | undefined;
+	try {
+		const renderTree = editor.renderer.getRenderTree();
+		if (renderTree) {
+			const { width, height } = project.settings.canvasSize;
+			const renderer = new CanvasRenderer({ width, height, fps: project.settings.fps });
+			const frame = document.createElement("canvas");
+			frame.width = width;
+			frame.height = height;
+			const coverTime = Math.min(
+				Math.round(2.4 * S),
+				editor.timeline.getLastFrameTime(),
+			);
+			await renderer.renderToCanvas({
+				node: renderTree,
+				time: coverTime,
+				targetCanvas: frame,
+			});
+			const small = document.createElement("canvas");
+			small.width = 540;
+			small.height = Math.round((540 * height) / width);
+			small.getContext("2d")?.drawImage(frame, 0, 0, small.width, small.height);
+			coverBase64 = small.toDataURL("image/jpeg", 0.85).split(",")[1];
+		}
+	} catch (error) {
+		console.warn("[jeo] could not make a CapCut cover:", error);
+	}
+
 	const outcome = await desktop.exportToCapCut({
 		projectId: project.metadata.id,
 		data: {
@@ -172,6 +203,7 @@ export async function openInCapCut(): Promise<CapCutExportResult> {
 			clips,
 			texts,
 			audio,
+			coverBase64,
 		},
 	});
 	return {

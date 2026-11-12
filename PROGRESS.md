@@ -91,6 +91,23 @@ Differences from your edit:
 - No music (the music folder is empty).
 - Fair warning: your style file already describes HIDING MONEY in detail, so this test was easier than a brand-new clip will be.
 
+## Round 2 of your feedback (12 Nov 2026, night)
+
+| You said | What I found | Now |
+|---|---|---|
+| CapCut takes too long and sometimes doesn't open | Three of the six JEO drafts in CapCut were the old broken ones (made before the fix). CapCut tries to load those and never finishes. A good draft opens in about 8 seconds (timed: click to timeline ready). | The three broken drafts were **moved** (not deleted) to `output\_capcut-broken-drafts\`. New exports also carry a cover picture, so they are no longer black tiles in CapCut's list. Text size in CapCut is now right. |
+| The AI should be a tab that switches with Media, not a floating box | — | **AI** is the first tab in the top row; the chat fills the left panel. A small dot shows on the tab while Claude is still working and you are on another tab. |
+| Selecting a text should give me more options for that part | — | Quick options at the top of the text's settings: **Place** (Centre / On the head / By the speaker), **Style** (▼ Triangle, Pop-up, Follow the head), **This moment** (Fit to its scene, Flash here, Freeze here). |
+| Timeline pictures only show the start of the video | The original editor repeats the video's first frame on every clip. | Each clip shows pictures from its own part of the video, following its trim and speed. |
+| I can't hear the video's sound | The cut tool muted the clip's own sound by default (your finished videos replace it with music). With no music, that was silence. | Clips keep their sound. Projects that were muted this way are fixed once, automatically, when opened. The speaker icon on the track still mutes it when you want. |
+| I need a projects section; new project should open empty | The list page existed but was hidden in the logo menu. | **Projects** button at the top left: saves, shows all projects, click one to open it, **New project** starts an empty one. |
+
+Tested in a test window: sound plays (real signal), 57 filmstrip tiles with 35 different pictures,
+AI tab has the chat box and no floating box, all nine quick options show on a selected text,
+Projects button present. Picture: `output\round2-proof\`.
+
+**Not checked by clicking:** the nine quick options (only that they appear), the Projects list
+flow, and typing in the AI tab. The CapCut timing is one measurement of one draft.
 ## Fixes after your first try (12 Nov 2026, late)
 
 **Restart JEO Editor to see these.** From now on the app tells you itself: see "Update popup".

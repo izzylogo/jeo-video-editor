@@ -375,8 +375,18 @@ function registerIpc() {
 			);
 			return fileName ? path.join(mediaDir, fileName) : "";
 		};
+		// the cover arrives as base64; hand the converter a file instead
+		let coverFile = "";
+		if (typeof data.coverBase64 === "string" && data.coverBase64.length > 100) {
+			coverFile = path.join(app.getPath("temp"), `jeo-capcut-cover-${Date.now()}.jpg`);
+			await fsp.writeFile(coverFile, Buffer.from(data.coverBase64, "base64")).catch(() => {
+				coverFile = "";
+			});
+		}
 		const payload = {
 			...data,
+			coverBase64: undefined,
+			cover: coverFile,
 			clips: (data.clips || []).map((clip) => ({ ...clip, path: pathFor(clip.mediaId) })),
 			audio: (data.audio || []).map((item) => ({ ...item, path: pathFor(item.mediaId) })),
 		};
@@ -403,6 +413,7 @@ function registerIpc() {
 			child.stdin.end(JSON.stringify(payload));
 		});
 
+		if (coverFile) fsp.rm(coverFile, { force: true }).catch(() => {});
 		if (result.ok && !capcutWasRunning && !process.env.JEO_NO_CAPCUT_LAUNCH) {
 			const exe = path.join(process.env.LOCALAPPDATA || "", "CapCut", "Apps", "CapCut.exe");
 			if (fs.existsSync(exe)) {

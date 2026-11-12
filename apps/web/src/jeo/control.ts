@@ -360,7 +360,8 @@ function buildCut(args: Args): ToolResult {
 	}
 	const sourceDuration = actions.seconds(asset.duration ?? 0);
 	const zoom = fillScale({ asset });
-	const muteOriginal = args.muteOriginal !== false;
+	// the clip keeps its own sound unless muting is asked for
+	const muteOriginal = args.muteOriginal === true;
 	const { height } = canvasSize();
 
 	let cursor = 0;
@@ -919,7 +920,7 @@ const TOOLS: ToolDefinition[] = [
 	{
 		name: "build_cut",
 		description:
-			"Replace the main video track with pieces of the raw clip, in order. segments: [{in, out, speed?, y?}] in SOURCE seconds; speed 1.01–1.05 after cutting; y is the picture's vertical position in the 1440-high frame (720 = centred; larger moves the picture down). The clip is auto-zoomed to fill. Original sound is muted unless muteOriginal=false. Texts and effects are not touched.",
+			"Replace the main video track with pieces of the raw clip, in order. segments: [{in, out, speed?, y?}] in SOURCE seconds; speed 1.01–1.05 after cutting; y is the picture's vertical position in the 1440-high frame (720 = centred; larger moves the picture down). The clip is auto-zoomed to fill. The clip keeps its own sound; pass muteOriginal=true only when the user wants it silent (for example once music is added). Texts and effects are not touched.",
 		inputSchema: schema(
 			{
 				segments: {

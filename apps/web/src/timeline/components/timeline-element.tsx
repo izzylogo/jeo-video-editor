@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { snapThumbnailTime, useClipFrames } from "@/jeo/clip-thumbnails";
 import { useEditor } from "@/editor/use-editor";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import { AudioWaveform, WAVEFORM_GAIN_SAMPLE_COUNT } from "./audio-waveform";
@@ -1098,6 +1099,42 @@ function TiledMediaContent({
 			? mediaAsset?.thumbnailUrl
 			: (mediaAsset?.thumbnailUrl ?? mediaAsset?.url);
 
+	// JEO filmstrip: one picture per tile, read from this clip's own part of
+	// the video (its trim and speed), not from the start of the file.
+	const stripRef = useRef<HTMLDivElement>(null);
+	const [stripWidth, setStripWidth] = useState(0);
+	useEffect(() => {
+		const strip = stripRef.current;
+		if (!strip) return;
+		const observer = new ResizeObserver(([entry]) => {
+			setStripWidth(Math.round(entry.contentRect.width));
+		});
+		observer.observe(strip);
+		return () => observer.disconnect();
+	}, []);
+	const tileWidthForStrip =
+		getTrackHeight({ type: track.type }) * THUMBNAIL_ASPECT_RATIO;
+	const tileCount =
+		element.type === "video" && stripWidth > 0
+			? Math.min(40, Math.max(1, Math.ceil(stripWidth / tileWidthForStrip)))
+			: 0;
+	const clipRate = element.type === "video" ? (element.retime?.rate ?? 1) : 1;
+	const frameTimes = Array.from({ length: tileCount }, (_, index) => {
+		const position = Math.min(
+			1,
+			((index + 0.5) * tileWidthForStrip) / Math.max(1, stripWidth),
+		);
+		return snapThumbnailTime({
+			time:
+				(element.trimStart + position * element.duration * clipRate) /
+				TICKS_PER_SECOND,
+		});
+	});
+	const frames = useClipFrames({
+		asset: element.type === "video" ? mediaAsset : undefined,
+		times: frameTimes,
+	});
+
 	if (!imageUrl) {
 		return (
 			<span className="text-foreground/80 truncate text-xs">
@@ -1112,6 +1149,7 @@ function TiledMediaContent({
 	return (
 		<>
 			<div
+				ref={stripRef}
 				className="absolute inset-0"
 				style={{
 					backgroundColor: "var(--muted)",
@@ -1121,7 +1159,25 @@ function TiledMediaContent({
 					backgroundPosition: "left center",
 					pointerEvents: "none",
 				}}
-			/>
+			>
+				{/* JEO: pictures from inside this clip, laid over the first-frame tiles */}
+				{frames.map((frame, index) =>
+					frame ? (
+						<div
+							// biome-ignore lint/suspicious/noArrayIndexKey: tiles are positional
+							key={index}
+							className="absolute top-0 bottom-0"
+							style={{
+								left: `${index * tileWidthForStrip}px`,
+								width: `${tileWidthForStrip + 0.5}px`,
+								backgroundImage: `url(${frame})`,
+								backgroundSize: "cover",
+								backgroundPosition: "center",
+							}}
+						/>
+					) : null,
+				)}
+			</div>
 			<MediaElementHeader
 				name={mediaAsset?.name}
 				leading={

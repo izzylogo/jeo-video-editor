@@ -1,5 +1,10 @@
 {
   "items": [
+    "Sound: clips keep their own sound now (they were muted when cut by the AI)",
+    "Timeline pictures show what is inside each clip, not the start of the video",
+    "AI is now a tab next to Media instead of a floating box",
+    "Select a text to get quick options: place, ▼, pop-up, follow the head, fit to its scene, flash or freeze here",
+    "Projects button (top left): open any project or start a new empty one",
     "Update popup: when a new version is made, it shows here and is one click away",
     "Open in CapCut now really opens: the project is written in CapCut's full layout, with corrected text size",
     "Text clips on the timeline are now coloured along their whole length",

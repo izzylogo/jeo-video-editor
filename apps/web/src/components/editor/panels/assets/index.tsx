@@ -9,6 +9,7 @@ import { MediaView } from "./views/assets";
 import { SettingsView } from "./views/settings";
 import { StickersView } from "@/stickers/components/assets-view";
 import { EffectsView } from "@/effects/components/assets-view";
+import { AiChatView } from "@/jeo/components/ai-chat";
 import {
 	AudioView,
 	CaptionsView,
@@ -25,6 +26,7 @@ export function AssetsPanel() {
 	useExposeJeoActions();
 
 	const viewMap: Record<Tab, React.ReactNode> = {
+		ai: <AiChatView />,
 		media: <MediaView />,
 		sounds: <AudioView />,
 		text: <CaptionsView />,

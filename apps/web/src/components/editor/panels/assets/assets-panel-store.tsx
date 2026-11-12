@@ -2,6 +2,7 @@ import type { ElementType } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
+	BubbleChatIcon,
 	Tag01Icon,
 	PauseIcon,
 	FavouriteIcon,
@@ -17,6 +18,7 @@ import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
 // JEO: categories shown in the top toolbar, in this order.
 export const TAB_KEYS = [
+	"ai",
 	"media",
 	"sounds",
 	"text",
@@ -38,6 +40,10 @@ const createHugeiconsIcon =
 	);
 
 export const tabs = {
+	ai: {
+		icon: createHugeiconsIcon({ icon: BubbleChatIcon }),
+		label: "AI",
+	},
 	media: {
 		icon: createHugeiconsIcon({ icon: Folder03Icon }),
 		label: "Media",

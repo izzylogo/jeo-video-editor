@@ -28,6 +28,7 @@ import { MasksTab } from "@/masks/components/masks-tab";
 import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { OcShapesIcon } from "@/components/icons";
+import { TextQuickActions } from "@/jeo/components/text-quick";
 
 const TRANSFORM_PARAM_KEYS = [
 	"transform.positionX",
@@ -186,12 +187,15 @@ function buildTextTab({ element }: { element: TextElement }): PropertiesTabDef {
 		label: "Text",
 		icon: <HugeiconsIcon icon={TextFontIcon} size={16} />,
 		content: ({ trackId }) => (
-			<ElementParamsTab
-				element={element}
-				trackId={trackId}
-				paramKeys={TEXT_PARAM_KEYS}
-				sectionKey="text"
-			/>
+			<>
+				<TextQuickActions element={element} />
+				<ElementParamsTab
+					element={element}
+					trackId={trackId}
+					paramKeys={TEXT_PARAM_KEYS}
+					sectionKey="text"
+				/>
+			</>
 		),
 	};
 }

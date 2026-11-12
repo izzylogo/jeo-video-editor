@@ -28,6 +28,8 @@ make the edit on their timeline with the `jeo-editor` tools, and they watch it h
 7. Only edit what was asked. For a small request ("freeze at 0:01 with HUSBAND") do just that,
    in the user's style, without rebuilding the rest.
 8. Do not export unless the user asks.
+9. Keep the clip's own sound. Mute it only when the user asks, or when they add music and want
+   the original sound gone.
 
 ## When the user gives you a script, the script is the boss
 A script is any list of the texts they want (with or without times, places, or notes such as

@@ -1001,3 +1001,170 @@ export function endOn29({ direction }: { direction: "trim" | "extend" }): Action
 	editor().timeline.updateElements({ updates });
 	return ok(`Now ends on ${timecodeOf({ frames: targetFrames })}.`);
 }
+
+// ---------- quick options for one selected text ----------
+
+function findText({ elementId }: { elementId: string }) {
+	const sceneTracks = tracks();
+	if (!sceneTracks) return null;
+	for (const track of sceneTracks.overlay) {
+		const element = track.elements.find((item) => item.id === elementId);
+		if (element && element.type === "text") return { track, element };
+	}
+	return null;
+}
+
+export type TextPlace = "centre" | "head" | "speaker";
+
+/** Move a text to one of your three usual places. */
+export function placeText({
+	elementId,
+	place,
+}: {
+	elementId: string;
+	place: TextPlace;
+}): ActionResult {
+	const found = findText({ elementId });
+	if (!found) return fail("Select a text first.");
+	const spot = {
+		centre: { x: 0, y: 0 },
+		head: { x: 0, y: -300 },
+		speaker: { x: -160, y: 60 },
+	}[place];
+	editor().timeline.updateElements({
+		updates: [
+			{
+				trackId: found.track.id,
+				elementId,
+				patch: {
+					params: {
+						...found.element.params,
+						"transform.positionX": spot.x,
+						"transform.positionY": spot.y,
+					},
+				},
+			},
+		],
+	});
+	return ok(
+		place === "centre"
+			? "Moved to the centre."
+			: place === "head"
+				? "Moved up. Drag it onto the head."
+				: "Moved beside the middle. Drag it next to the speaker.",
+	);
+}
+
+/** Turn the ▼ under a label on or off. */
+export function toggleTriangle({ elementId }: { elementId: string }): ActionResult {
+	const found = findText({ elementId });
+	if (!found) return fail("Select a text first.");
+	const next = found.element.params["tag.triangle"] !== true;
+	editor().timeline.updateElements({
+		updates: [
+			{
+				trackId: found.track.id,
+				elementId,
+				patch: { params: { ...found.element.params, "tag.triangle": next } },
+			},
+		],
+	});
+	return ok(next ? "▼ added under the text." : "▼ removed.");
+}
+
+/**
+ * Your timing rule in one click: the text starts exactly on its scene's cut
+ * and stays until the next cut.
+ */
+export function fitTextToScene({ elementId }: { elementId: string }): ActionResult {
+	const found = findText({ elementId });
+	const sceneTracks = tracks();
+	if (!found || !sceneTracks) return fail("Select a text first.");
+	const scene = sceneTracks.main.elements.find(
+		(clip) =>
+			found.element.startTime + frameTicks() / 2 >= clip.startTime &&
+			found.element.startTime + frameTicks() / 2 < clip.startTime + clip.duration,
+	);
+	if (!scene) return fail("There is no clip under this text.");
+	editor().timeline.updateElements({
+		updates: [
+			{
+				trackId: found.track.id,
+				elementId,
+				patch: { startTime: scene.startTime, duration: scene.duration },
+			},
+		],
+	});
+	return ok("The text now starts on its cut and stays until the next one.");
+}
+
+/** A colour flash exactly where this text starts. */
+export function addFlashAtText({ elementId }: { elementId: string }): ActionResult {
+	const found = findText({ elementId });
+	if (!found) return fail("Select a text first.");
+	insertAll({
+		items: [
+			effectItem({
+				effectType: JEO_FLASH,
+				name: "Colour flash",
+				start: found.element.startTime,
+				duration: seconds(0.2),
+			}),
+		],
+	});
+	return ok("Colour flash added where this text starts.");
+}
+
+/** Remove the pop-up (scale keyframes) from a text. */
+export function removePopUp({ elementId }: { elementId: string }): ActionResult {
+	const found = findText({ elementId });
+	if (!found) return fail("Select a text first.");
+	const keyframes = (["transform.scaleX", "transform.scaleY"] as const).flatMap(
+		(propertyPath) => {
+			const channel = found.element.animations?.[propertyPath] as
+				| { keys?: Array<{ id: string }> }
+				| undefined;
+			return (channel?.keys ?? []).map((key) => ({
+				trackId: found.track.id,
+				elementId,
+				propertyPath,
+				keyframeId: key.id,
+			}));
+		},
+	);
+	if (keyframes.length === 0) return ok("This text has no pop-up.");
+	editor().timeline.removeKeyframes({ keyframes });
+	return ok("Pop-up removed.");
+}
+// ---------- one-time repair ----------
+
+/**
+ * Projects cut before 12 Nov 2026 (late) had every clip's own sound muted by
+ * the old default. If a project has all its clips muted and no music or sound
+ * effects at all, that silence was not chosen: unmute the clips, once.
+ */
+export function repairSilentProject(): boolean {
+	const sceneTracks = tracks();
+	const project = editor().project.getActiveOrNull();
+	if (!sceneTracks || !project) return false;
+	const key = `jeo-sound-repair:${project.metadata.id}`;
+	try {
+		if (window.localStorage.getItem(key)) return false;
+		window.localStorage.setItem(key, "1");
+	} catch {
+		return false;
+	}
+	const clips = sceneTracks.main.elements.filter(isVideo);
+	const hasOtherSound = sceneTracks.audio.some((track) => track.elements.length > 0);
+	if (clips.length === 0 || hasOtherSound) return false;
+	if (!clips.every((clip) => clip.params.muted === true)) return false;
+	editor().timeline.updateElements({
+		updates: clips.map((clip) => ({
+			trackId: sceneTracks.main.id,
+			elementId: clip.id,
+			patch: { params: { ...clip.params, muted: false } },
+		})),
+		pushHistory: false,
+	});
+	return true;
+}

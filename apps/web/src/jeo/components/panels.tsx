@@ -49,6 +49,20 @@ export function useExposeJeoActions(): void {
 		target.__jeoActions = jeoActions;
 		target.__jeoControl = { listTools, callTool };
 	}, []);
+
+	// one-time repair for projects whose clips were muted by the old default
+	const projectId = useEditor(
+		(editor) => editor.project.getActiveOrNull()?.metadata.id ?? null,
+	);
+	useEffect(() => {
+		if (!projectId) return;
+		const timer = window.setTimeout(() => {
+			if (jeoActions.repairSilentProject()) {
+				toast.success("The clips' own sound is back on (it was muted by mistake).");
+			}
+		}, 2500);
+		return () => window.clearTimeout(timer);
+	}, [projectId]);
 }
 
 function report(result: ActionResult): void {
