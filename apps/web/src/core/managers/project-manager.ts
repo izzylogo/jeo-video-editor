@@ -508,6 +508,10 @@ export class ProjectManager {
 	}): import("opencut-wasm").FrameRate | null {
 		if (!this.active) return null;
 
+		// JEO: projects always stay at their own frame rate (30 fps).
+		const keepProjectFps = true;
+		if (keepProjectFps) return null;
+
 		const nextFps = getRaisedProjectFpsForImportedMedia({
 			currentFps: this.active.settings.fps,
 			importedAssets,

@@ -2,7 +2,9 @@ import type { ElementType } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
-	ArrowRightDoubleIcon,
+	Tag01Icon,
+	PauseIcon,
+	FavouriteIcon,
 	ClosedCaptionIcon,
 	Folder03Icon,
 	Happy01Icon,
@@ -10,20 +12,20 @@ import {
 	MagicWand05Icon,
 	TextIcon,
 	Settings01Icon,
-	SlidersHorizontalIcon,
-	ColorsIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
+// JEO: categories shown in the top toolbar, in this order.
 export const TAB_KEYS = [
 	"media",
 	"sounds",
 	"text",
-	"stickers",
+	"tags",
+	"freeze",
 	"effects",
-	"transitions",
+	"endings",
+	"stickers",
 	"captions",
-	"adjustment",
 	"settings",
 ] as const;
 
@@ -42,11 +44,23 @@ export const tabs = {
 	},
 	sounds: {
 		icon: createHugeiconsIcon({ icon: HeadphonesIcon }),
-		label: "Sounds",
+		label: "Audio",
 	},
 	text: {
 		icon: createHugeiconsIcon({ icon: TextIcon }),
-		label: "Text",
+		label: "Captions",
+	},
+	tags: {
+		icon: createHugeiconsIcon({ icon: Tag01Icon }),
+		label: "Tags",
+	},
+	freeze: {
+		icon: createHugeiconsIcon({ icon: PauseIcon }),
+		label: "Freeze",
+	},
+	endings: {
+		icon: createHugeiconsIcon({ icon: FavouriteIcon }),
+		label: "Endings",
 	},
 	stickers: {
 		icon: createHugeiconsIcon({ icon: Happy01Icon }),
@@ -56,17 +70,9 @@ export const tabs = {
 		icon: createHugeiconsIcon({ icon: MagicWand05Icon }),
 		label: "Effects",
 	},
-	transitions: {
-		icon: createHugeiconsIcon({ icon: ArrowRightDoubleIcon }),
-		label: "Transitions",
-	},
 	captions: {
 		icon: createHugeiconsIcon({ icon: ClosedCaptionIcon }),
-		label: "Captions",
-	},
-	adjustment: {
-		icon: createHugeiconsIcon({ icon: SlidersHorizontalIcon }),
-		label: "Adjustment",
+		label: "Subtitles",
 	},
 	settings: {
 		icon: createHugeiconsIcon({ icon: Settings01Icon }),

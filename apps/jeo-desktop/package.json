@@ -1,0 +1,13 @@
+{
+  "name": "@jeo/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "JEO Editor desktop window (Electron)",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^39.0.0"
+  }
+}

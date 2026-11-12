@@ -23,6 +23,7 @@ import {
 } from "@/services/storage/migrations";
 import type { Bookmark, SceneTracks, TScene } from "@/timeline";
 import { roundMediaTime } from "@/wasm";
+import { getDesktopBridge } from "@/services/desktop/bridge";
 
 function normalizeBookmarks({ raw }: { raw: unknown }): Bookmark[] {
 	if (!Array.isArray(raw)) return [];
@@ -165,7 +166,57 @@ class StorageService {
 			key: project.metadata.id,
 			value: serializedProject,
 		});
+
+		// JEO desktop: also keep the project as a real file on disk.
+		const desktop = getDesktopBridge();
+		if (desktop) {
+			try {
+				await desktop.writeProject({
+					id: project.metadata.id,
+					name: project.metadata.name,
+					json: JSON.stringify(serializedProject),
+				});
+			} catch (error) {
+				console.error("[jeo] Failed to write project to disk:", error);
+			}
+		}
 	}
+
+	/**
+	 * JEO desktop: copy projects that exist as folders on disk but are missing
+	 * from the app's internal storage back in. Runs once per session.
+	 */
+	private async restoreProjectsFromDisk(): Promise<void> {
+		const desktop = getDesktopBridge();
+		if (!desktop) return;
+		if (!this.diskRestorePromise) {
+			this.diskRestorePromise = (async () => {
+				try {
+					const [onDisk, storedIds] = await Promise.all([
+						desktop.listProjects(),
+						this.projectsAdapter.list(),
+					]);
+					const known = new Set(storedIds);
+					for (const { json } of onDisk) {
+						try {
+							const parsed = JSON.parse(json) as SerializedProject;
+							const id = parsed?.metadata?.id;
+							if (typeof id === "string" && !known.has(id)) {
+								await this.projectsAdapter.set({ key: id, value: parsed });
+							}
+						} catch {
+							// unreadable project.json; leave it alone
+						}
+					}
+				} catch (error) {
+					console.error("[jeo] Failed to restore projects from disk:", error);
+				}
+			})();
+		}
+		await this.diskRestorePromise;
+	}
+
+	private diskRestorePromise: Promise<void> | null = null;
 
 	async loadProject({
 		id,
@@ -173,6 +224,7 @@ class StorageService {
 		id: string;
 	}): Promise<{ project: TProject } | null> {
 		await this.ensureMigrations();
+		await this.restoreProjectsFromDisk();
 		const serializedProject = await this.projectsAdapter.get(id);
 
 		if (!serializedProject) return null;
@@ -225,6 +277,7 @@ class StorageService {
 	}
 
 	async loadAllProjects(): Promise<TProject[]> {
+		await this.restoreProjectsFromDisk();
 		const projectIds = await this.projectsAdapter.list();
 		const projects: TProject[] = [];
 
@@ -242,6 +295,7 @@ class StorageService {
 
 	async loadAllProjectsMetadata(): Promise<TProjectMetadata[]> {
 		await this.ensureMigrations();
+		await this.restoreProjectsFromDisk();
 		const serializedProjects = await this.projectsAdapter.getAll();
 
 		const metadata: TProjectMetadata[] = [];
@@ -282,6 +336,16 @@ class StorageService {
 
 	async deleteProject({ id }: { id: string }): Promise<void> {
 		await this.projectsAdapter.remove(id);
+
+		// JEO desktop: the folder is moved to projects\_trash, not erased.
+		const desktop = getDesktopBridge();
+		if (desktop) {
+			try {
+				await desktop.trashProject({ id });
+			} catch (error) {
+				console.error("[jeo] Failed to move project folder to trash:", error);
+			}
+		}
 	}
 
 	async saveMediaAsset({
@@ -330,6 +394,66 @@ class StorageService {
 			}
 
 			throw error;
+		}
+
+		// JEO desktop: keep a copy of the clip in the project folder on disk.
+		const desktop = getDesktopBridge();
+		if (desktop) {
+			try {
+				await desktop.writeMedia({
+					projectId,
+					mediaId: mediaAsset.id,
+					fileName: mediaAsset.name,
+					metaJson: JSON.stringify({
+						...metadata,
+						mimeType: mediaAsset.file.type,
+					}),
+					data: await mediaAsset.file.arrayBuffer(),
+				});
+			} catch (error) {
+				console.error("[jeo] Failed to write media to disk:", error);
+			}
+		}
+	}
+
+	/**
+	 * JEO desktop: bring back clips that are in the project folder on disk but
+	 * missing from the app's internal storage.
+	 */
+	private async restoreProjectMediaFromDisk({
+		projectId,
+	}: {
+		projectId: string;
+	}): Promise<void> {
+		const desktop = getDesktopBridge();
+		if (!desktop) return;
+
+		try {
+			const { mediaMetadataAdapter, mediaAssetsAdapter } =
+				this.getProjectMediaAdapters({ projectId });
+			const [onDisk, storedFileIds] = await Promise.all([
+				desktop.listMedia({ projectId }),
+				mediaAssetsAdapter.list(),
+			]);
+			const storedFiles = new Set(storedFileIds);
+
+			for (const { mediaId, metaJson } of onDisk) {
+				if (storedFiles.has(mediaId)) continue;
+				const meta = JSON.parse(metaJson) as MediaAssetData & {
+					mimeType?: string;
+				};
+				const result = await desktop.readMedia({ projectId, mediaId });
+				if (!result) continue;
+				const { mimeType, ...metadata } = meta;
+				const file = new File([result.data], meta.name, {
+					type: mimeType ?? "",
+					lastModified: meta.lastModified,
+				});
+				await mediaAssetsAdapter.set({ key: mediaId, value: file });
+				await mediaMetadataAdapter.set({ key: mediaId, value: metadata });
+			}
+		} catch (error) {
+			console.error("[jeo] Failed to restore media from disk:", error);
 		}
 	}
 
@@ -386,6 +510,8 @@ class StorageService {
 	}: {
 		projectId: string;
 	}): Promise<MediaAsset[]> {
+		await this.restoreProjectMediaFromDisk({ projectId });
+
 		const { mediaMetadataAdapter } = this.getProjectMediaAdapters({
 			projectId,
 		});
@@ -417,6 +543,15 @@ class StorageService {
 			mediaAssetsAdapter.remove(id),
 			mediaMetadataAdapter.remove(id),
 		]);
+
+		const desktop = getDesktopBridge();
+		if (desktop) {
+			try {
+				await desktop.deleteMedia({ projectId, mediaId: id });
+			} catch (error) {
+				console.error("[jeo] Failed to remove media from disk:", error);
+			}
+		}
 	}
 
 	async deleteProjectMedia({

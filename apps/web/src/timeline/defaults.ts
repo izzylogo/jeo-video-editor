@@ -28,6 +28,17 @@ const defaultTextBackground = {
 	offsetY: 0,
 };
 
+// JEO: every text has a dark outline. Width is a percentage of the font size.
+const defaultTextStroke = {
+	enabled: true,
+	color: "#000000",
+	width: 14,
+};
+
+// JEO: 4.2 is about 67 px tall text on a 1080x1440 canvas.
+const defaultTextFontSize = 4.2;
+const defaultTextFontFamily = "LEMON MILK";
+
 const defaultTextElement: Omit<TextElement, "id"> = {
 	type: "text",
 	name: "Text",
@@ -36,12 +47,15 @@ const defaultTextElement: Omit<TextElement, "id"> = {
 	trimStart: ZERO_MEDIA_TIME,
 	trimEnd: ZERO_MEDIA_TIME,
 	params: {
-		content: "Default text",
-		fontSize: 15,
-		fontFamily: "Arial",
+		content: "YOUR TEXT",
+		fontSize: defaultTextFontSize,
+		fontFamily: defaultTextFontFamily,
 		color: "#ffffff",
 		textAlign: "center",
-		fontWeight: "normal",
+		fontWeight: "bold",
+		"stroke.enabled": defaultTextStroke.enabled,
+		"stroke.color": defaultTextStroke.color,
+		"stroke.width": defaultTextStroke.width,
 		fontStyle: "normal",
 		textDecoration: "none",
 		letterSpacing: defaultTextLetterSpacing,
@@ -80,6 +94,9 @@ export const DEFAULTS = {
 		letterSpacing: defaultTextLetterSpacing,
 		lineHeight: defaultTextLineHeight,
 		background: defaultTextBackground,
+		stroke: defaultTextStroke,
+		fontSize: defaultTextFontSize,
+		fontFamily: defaultTextFontFamily,
 		element: defaultTextElement,
 	},
 	timeline: {

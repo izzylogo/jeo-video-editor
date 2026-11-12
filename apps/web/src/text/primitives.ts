@@ -145,6 +145,7 @@ export function drawMeasuredTextLayout({
 	background,
 	backgroundColor,
 	textBaseline = "middle",
+	stroke,
 }: {
 	ctx: TextCanvasContext;
 	layout: MeasuredTextLayout;
@@ -152,6 +153,8 @@ export function drawMeasuredTextLayout({
 	background?: ResolvedTextBackgroundLike | null;
 	backgroundColor?: string;
 	textBaseline?: CanvasTextBaseline;
+	/** JEO: outline drawn behind the fill. widthPx is the full line width. */
+	stroke?: { color: string; widthPx: number } | null;
 }): void {
 	ctx.font = layout.fontString;
 	ctx.textAlign = layout.textAlign;
@@ -199,6 +202,13 @@ export function drawMeasuredTextLayout({
 
 	for (let index = 0; index < layout.lines.length; index++) {
 		const lineY = index * layout.lineHeightPx - layout.block.visualCenterOffset;
+		if (stroke && stroke.widthPx > 0) {
+			ctx.strokeStyle = stroke.color;
+			ctx.lineWidth = stroke.widthPx;
+			ctx.lineJoin = "round";
+			ctx.lineCap = "round";
+			ctx.strokeText(layout.lines[index], 0, lineY);
+		}
 		ctx.fillText(layout.lines[index], 0, lineY);
 		drawTextDecoration({
 			ctx,

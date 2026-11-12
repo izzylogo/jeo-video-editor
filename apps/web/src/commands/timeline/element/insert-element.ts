@@ -10,7 +10,6 @@ import { generateUUID } from "@/utils/id";
 import { requiresMediaId } from "@/timeline/element-utils";
 import type { MediaAsset } from "@/media/types";
 import { DEFAULT_NEW_ELEMENT_DURATION } from "@/timeline/creation";
-import { floatToFrameRate } from "@/fps/utils";
 import { graphicsRegistry, registerDefaultGraphics } from "@/graphics";
 import {
 	applyPlacement,
@@ -77,40 +76,50 @@ export class InsertElementCommand extends Command {
 		const { updatedTracks, targetTrackId } = updateResult;
 		this.targetTrackId = targetTrackId;
 
-		const isVisualMedia =
-			newElement.type === "video" || newElement.type === "image";
-
-		if (isFirstElement && isVisualMedia) {
-			const mediaAssets = editor.media.getAssets();
-			const activeProject = editor.project.getActive();
-			const asset = mediaAssets.find(
-				(item: MediaAsset) => item.id === newElement.mediaId,
-			);
-
-			if (asset?.width && asset?.height) {
-				const nextCanvasSize = { width: asset.width, height: asset.height };
-				const shouldSetOriginalCanvasSize =
-					!activeProject?.settings.originalCanvasSize;
-				editor.project.updateSettings({
-					settings: {
-						canvasSize: nextCanvasSize,
-						...(shouldSetOriginalCanvasSize
-							? { originalCanvasSize: nextCanvasSize }
-							: {}),
-					},
-					pushHistory: false,
-				});
-			}
-
-			if (asset?.type === "video" && asset?.fps) {
-				editor.project.updateSettings({
-					settings: { fps: floatToFrameRate(asset.fps) },
-					pushHistory: false,
-				});
+		// JEO: the project keeps its own size and frame rate (1080x1440, 30 fps).
+		// Instead of resizing the canvas to the clip, zoom a new main-track clip
+		// so it fills the frame (about 1.34x for a 9:16 clip).
+		let tracksToApply = updatedTracks;
+		if (
+			newElement.type === "video" &&
+			targetTrackId === updatedTracks.main.id &&
+			newElement.params["transform.scaleX"] === 1 &&
+			newElement.params["transform.scaleY"] === 1
+		) {
+			const asset = editor.media
+				.getAssets()
+				.find((item: MediaAsset) => item.id === newElement.mediaId);
+			const canvasSize = editor.project.getActive()?.settings.canvasSize;
+			if (asset?.width && asset?.height && canvasSize) {
+				const widthRatio = canvasSize.width / asset.width;
+				const heightRatio = canvasSize.height / asset.height;
+				const fillScale =
+					Math.max(widthRatio, heightRatio) / Math.min(widthRatio, heightRatio);
+				const roundedFillScale = Math.round(fillScale * 1000) / 1000;
+				if (roundedFillScale > 1) {
+					tracksToApply = {
+						...updatedTracks,
+						main: {
+							...updatedTracks.main,
+							elements: updatedTracks.main.elements.map((item) =>
+								item.id === this.elementId && item.type === "video"
+									? {
+											...item,
+											params: {
+												...item.params,
+												"transform.scaleX": roundedFillScale,
+												"transform.scaleY": roundedFillScale,
+											},
+										}
+									: item,
+							),
+						},
+					};
+				}
 			}
 		}
 
-		editor.timeline.updateTracks(updatedTracks);
+		editor.timeline.updateTracks(tracksToApply);
 
 		return {
 			selection: {

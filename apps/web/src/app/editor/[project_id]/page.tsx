@@ -12,7 +12,6 @@ import { Timeline } from "@/timeline/components";
 import { PreviewPanel } from "@/preview/components";
 import { EditorHeader } from "@/components/editor/editor-header";
 import { EditorProvider } from "@/components/providers/editor-provider";
-import { Onboarding } from "@/components/editor/onboarding";
 import { MigrationDialog } from "@/project/components/migration-dialog";
 import { usePanelStore } from "@/editor/panel-store";
 import { usePasteMedia } from "@/media/use-paste-media";
@@ -22,7 +21,6 @@ import { useEditor } from "@/editor/use-editor";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
-import { ChangelogNotification } from "@/changelog/components/changelog-notification";
 import {
 	createPreviewOverlayControl,
 	isPreviewOverlayVisible,
@@ -48,9 +46,7 @@ export default function Editor() {
 					<div className="min-h-0 min-w-0 flex-1">
 						<EditorLayout />
 					</div>
-					<Onboarding />
 					<MigrationDialog />
-					<ChangelogNotification />
 				</div>
 			</EditorProvider>
 		</MobileGate>
@@ -64,7 +60,7 @@ function DegradedRendererBanner() {
 
 	return (
 		<div className="bg-accent border-b h-9 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-			<span>For the best experience, open OpenCut in Chrome.</span>
+			<span>Graphics are running in slow fallback mode on this computer.</span>
 			<Button
 				variant="text"
 				size="icon"
@@ -150,12 +146,13 @@ function EditorLayout() {
 					direction="horizontal"
 					className="size-full gap-[0.19rem] px-3"
 					onLayout={(sizes) => {
+						// JEO layout: options (left) · properties (middle) · preview (right)
 						setPanel({ panel: "tools", size: sizes[0] ?? panels.tools });
-						setPanel({ panel: "preview", size: sizes[1] ?? panels.preview });
 						setPanel({
 							panel: "properties",
-							size: sizes[2] ?? panels.properties,
+							size: sizes[1] ?? panels.properties,
 						});
+						setPanel({ panel: "preview", size: sizes[2] ?? panels.preview });
 					}}
 				>
 					<ResizablePanel
@@ -170,8 +167,19 @@ function EditorLayout() {
 					<ResizableHandle withHandle />
 
 					<ResizablePanel
+						defaultSize={panels.properties}
+						minSize={15}
+						maxSize={45}
+						className="min-w-0"
+					>
+						<PropertiesPanel />
+					</ResizablePanel>
+
+					<ResizableHandle withHandle />
+
+					<ResizablePanel
 						defaultSize={panels.preview}
-						minSize={30}
+						minSize={25}
 						className="min-h-0 min-w-0 flex-1"
 					>
 						<PreviewPanel
@@ -179,17 +187,6 @@ function EditorLayout() {
 							overlayInstances={overlaySource.instances}
 							onOverlayVisibilityChange={setOverlayVisibility}
 						/>
-					</ResizablePanel>
-
-					<ResizableHandle withHandle />
-
-					<ResizablePanel
-						defaultSize={panels.properties}
-						minSize={15}
-						maxSize={40}
-						className="min-w-0"
-					>
-						<PropertiesPanel />
 					</ResizablePanel>
 				</ResizablePanelGroup>
 			</ResizablePanel>

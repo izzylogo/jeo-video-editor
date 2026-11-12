@@ -1,21 +1,40 @@
-import { Hero } from "@/components/landing/hero";
-import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
-import type { Metadata } from "next";
-import { SITE_URL } from "@/site/brand";
+"use client";
 
-export const metadata: Metadata = {
-	alternates: {
-		canonical: SITE_URL,
-	},
-};
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useEditor } from "@/editor/use-editor";
 
-export default async function Home() {
+// JEO: no landing page. Open the most recent project, or start a new one.
+export default function Home() {
+	const router = useRouter();
+	const editor = useEditor();
+	const started = useRef(false);
+
+	useEffect(() => {
+		if (started.current) return;
+		started.current = true;
+
+		(async () => {
+			try {
+				await editor.project.loadAllProjects();
+				const projects = editor.project.getFilteredAndSortedProjects({
+					searchQuery: "",
+					sortOption: "updatedAt-desc",
+				});
+				const id =
+					projects[0]?.id ??
+					(await editor.project.createNewProject({ name: "New project" }));
+				router.replace(`/editor/${id}`);
+			} catch (error) {
+				console.error("Failed to open a project:", error);
+				router.replace("/projects");
+			}
+		})();
+	}, [editor, router]);
+
 	return (
-		<div>
-			<Header />
-			<Hero />
-			<Footer />
+		<div className="bg-background text-muted-foreground flex h-screen w-screen items-center justify-center text-sm">
+			Opening JEO Editor…
 		</div>
 	);
 }
