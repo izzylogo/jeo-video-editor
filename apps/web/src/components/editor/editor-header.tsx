@@ -16,6 +16,7 @@ import { ThemeToggle } from "../theme-toggle";
 import { AccentPicker } from "../accent-picker";
 import { JeoLogo } from "../jeo-logo";
 import { CategoryBar } from "./category-bar";
+import { OpenInCapCutButton } from "@/jeo/components/capcut-button";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
 import {
@@ -37,6 +38,7 @@ export function EditorHeader() {
 			</div>
 			<nav className="flex shrink-0 items-center gap-2">
 				<EditableProjectName />
+				<OpenInCapCutButton />
 				<ExportButton />
 				<AccentPicker />
 				<ThemeToggle />

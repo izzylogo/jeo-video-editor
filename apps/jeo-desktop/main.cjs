@@ -360,6 +360,58 @@ function registerIpc() {
 		},
 	);
 
+	// ---- "Open in CapCut": write the timeline as a NEW CapCut draft ----
+	ipcMain.handle("jeo:exportToCapCut", async (_event, { projectId, data }) => {
+		const dir = await findProjectDir({ id: projectId });
+		if (!dir) return { ok: false, error: "The project folder was not found." };
+		const mediaDir = path.join(dir, "media");
+		const names = await fsp.readdir(mediaDir).catch(() => []);
+		const pathFor = (mediaId) => {
+			const fileName = names.find(
+				(name) =>
+					!name.endsWith(".json") &&
+					!name.endsWith(".tmp") &&
+					path.parse(name).name === mediaId,
+			);
+			return fileName ? path.join(mediaDir, fileName) : "";
+		};
+		const payload = {
+			...data,
+			clips: (data.clips || []).map((clip) => ({ ...clip, path: pathFor(clip.mediaId) })),
+			audio: (data.audio || []).map((item) => ({ ...item, path: pathFor(item.mediaId) })),
+		};
+
+		const capcutWasRunning = await new Promise((resolve) => {
+			execFile("tasklist", ["/FI", "IMAGENAME eq CapCut.exe", "/NH"], { windowsHide: true }, (_error, stdout) =>
+				resolve(/CapCut\.exe/i.test(String(stdout))),
+			);
+		});
+
+		const result = await new Promise((resolve) => {
+			const child = execFile(
+				"py",
+				[path.join(__dirname, "tools", "capcut_export.py")],
+				{ windowsHide: true, timeout: 60000, maxBuffer: 8 * 1024 * 1024, env: { ...process.env, PYTHONIOENCODING: "utf-8" } },
+				(error, stdout) => {
+					try {
+						resolve(JSON.parse(String(stdout).trim().split(/\r?\n/).pop()));
+					} catch {
+						resolve({ ok: false, error: error ? `The CapCut export could not run: ${error.message}` : "The CapCut export gave no result." });
+					}
+				},
+			);
+			child.stdin.end(JSON.stringify(payload));
+		});
+
+		if (result.ok && !capcutWasRunning && !process.env.JEO_NO_CAPCUT_LAUNCH) {
+			const exe = path.join(process.env.LOCALAPPDATA || "", "CapCut", "Apps", "CapCut.exe");
+			if (fs.existsSync(exe)) {
+				spawn(exe, [], { detached: true, stdio: "ignore" }).unref();
+			}
+		}
+		return { ...result, capcutWasRunning };
+	});
+
 	// ---- AI chat history, kept in the project folder ----
 	ipcMain.handle("jeo:readChat", async (_event, { projectId }) => {
 		const dir = await findProjectDir({ id: projectId });

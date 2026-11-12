@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld("jeoDesktop", {
 		ipcRenderer.on("jeo:chatEvent", handler);
 		return () => ipcRenderer.removeListener("jeo:chatEvent", handler);
 	},
+	exportToCapCut: (args) => ipcRenderer.invoke("jeo:exportToCapCut", args),
 	readChat: (args) => ipcRenderer.invoke("jeo:readChat", args),
 	writeChat: (args) => ipcRenderer.invoke("jeo:writeChat", args),
 	showProjectFolder: (args) => ipcRenderer.invoke("jeo:showProjectFolder", args),

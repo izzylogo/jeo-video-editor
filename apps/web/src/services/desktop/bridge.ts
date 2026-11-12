@@ -50,6 +50,17 @@ export interface JeoDesktopBridge {
 	}): Promise<{ ok: boolean; error?: string }>;
 	chatStop(): Promise<void>;
 	onChatEvent(listener: (event: JeoChatEvent) => void): () => void;
+	/** Writes the timeline as a new CapCut draft and starts CapCut. */
+	exportToCapCut(args: {
+		projectId: string;
+		data: Record<string, unknown>;
+	}): Promise<{
+		ok: boolean;
+		error?: string;
+		draftName?: string;
+		warnings?: string[];
+		capcutWasRunning?: boolean;
+	}>;
 	readChat(args: { projectId: string }): Promise<string | null>;
 	writeChat(args: { projectId: string; json: string }): Promise<void>;
 }

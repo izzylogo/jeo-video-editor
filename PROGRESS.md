@@ -6,7 +6,8 @@ Written in simple words. Updated after every working step.
 - **Phase 0 (test OpenCut Classic on this laptop): done.**
 - **Phase 1 (make it mine): done.**
 - **Phase 2 (my style tools): done.**
-- **Phase 3 (Claude inside): built and tested, waiting for your OK.**
+- **Phase 3 (Claude inside): done.**
+- **Phase 4 (extras + polish): "Open in CapCut" built; needs your check in CapCut.**
 
 ## How to start the editor
 Double-click **JEO Editor** on your Desktop (there is a copy of the shortcut in
@@ -90,6 +91,36 @@ Differences from your edit:
 - No music (the music folder is empty).
 - Fair warning: your style file already describes HIDING MONEY in detail, so this test was easier than a brand-new clip will be.
 
+## Phase 4: extras (12 Nov 2026)
+
+**Restart JEO Editor to see this.**
+
+### "Open in CapCut" (button at the top right, next to Export)
+Writes the current timeline as a **new** CapCut project called `JEO <project name>` and tells you
+what to do next. Your existing CapCut projects are only read (one is used as the pattern for
+CapCut's format); none is changed, and CapCut's own index file is not touched.
+
+| Carried over | Not carried over (the button lists these each time) |
+|---|---|
+| Cuts, clip speed, zoom and position per shot | Pop-up animation on texts |
+| Freeze frames (as still pictures) | Tags that follow a person (placed where they start) |
+| Every text: words, time, position, size, LEMON MILK, outline | Colour flash, blur shake, colour split |
+| ▼ identity tags (as the label with a ▼ line under it) | The growing/fading of the ending emoji (placed as a still) |
+| The ending emoji (as a see-through still on top) | Arrows and spotlights |
+| Music and sound effects, with speed and volume | |
+
+**Status: written and checked on paper, NOT yet opened in CapCut.** In the test it wrote
+`JEO New project` (9 clips, 16 texts, emoji overlay; all internal links valid) into CapCut's
+project folder. CapCut was open with one of your projects at the time, so it was not restarted.
+**To check:** close CapCut, open it again, and open `JEO New project` from its home screen.
+If it does not appear or looks wrong, tell Claude what you see.
+
+**Warning:** CapCut can change its project format in any update (tested with 9.7). If the button
+stops working after a CapCut update, that is why.
+
+### FilmCraft export path
+Not built. It was only meant as a fallback if exporting in the app was too slow, and it is not:
+a 22–34 s video exports in about 30 seconds here (FilmCraft needed about 2 minutes for 18 s).
 ## Known problems / gaps
 - **Only tested on one storyline.** A new clip whose story is not in the style file is the real test.
 - **Head-follow tracks the picture under the tag, not faces as such.** If the tag is not on the head when you click, it follows whatever is there. It stops at the end of the clip.
@@ -114,13 +145,14 @@ Differences from your edit:
 - After changing web code, run `bun run build` again or the desktop app shows the old version.
 - Control hook: `window.__jeoEditor` (EditorCore). Style actions: `window.__jeoActions` (source: `apps/web/src/jeo/actions.ts`). Post effects: `apps/web/src/jeo/post-fx.ts`.
 - Control tools for Claude: `apps/web/src/jeo/control.ts` (`window.__jeoControl`). Desktop: local control channel + `mcp-server.cjs` + chat runner in `main.cjs`; tracker `tools/track_point.py`.
+- CapCut export: `apps/web/src/jeo/capcut.ts` → `apps/jeo-desktop/tools/capcut_export.py`. Set `JEO_NO_CAPCUT_LAUNCH=1` in tests.
 - Tests must use `JEO_PORT=3299` (or any free port) so they don't attach to the user's running app on 3210. Disk bridge: `window.jeoDesktop`.
 - Test mode: `runtime\electron.exe . --capture=<png> --eval-file=<js> [--capture-delay=ms] [--visible] --user-data-dir=<dir>`, with `JEO_PROJECTS_DIR` / `JEO_OUTPUT_DIR` to keep tests away from real data.
 - Time unit in the timeline: 120000 ticks per second.
 
-## Next: Phase 4 (extras + polish), after your OK
-"Open in CapCut" (writes the timeline as a new CapCut draft, never touching your real projects),
-optional FilmCraft export path, bug fixing and speed tuning.
+## Next
+- You: check "Open in CapCut" as described above; click through each category once; try the AI chat on a brand-new clip.
+- Then: fixes from what you find, and speed tuning where it feels slow.
 
 ## Credit
 Based on OpenCut Classic (MIT licence). The `LICENSE` file stays in this folder.
