@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
+	DialogBody,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -58,6 +59,7 @@ export function OpenInCapCutButton() {
 								: "CapCut is starting. On its home screen, open this project:"}
 						</DialogDescription>
 					</DialogHeader>
+					<DialogBody className="space-y-3">
 					<p className="bg-accent rounded px-3 py-2 font-mono text-sm">
 						{result?.draftName}
 					</p>
@@ -75,6 +77,7 @@ export function OpenInCapCutButton() {
 						Your existing CapCut projects were not changed. A CapCut update could
 						change its project format and break this button.
 					</p>
+					</DialogBody>
 					<DialogFooter>
 						<Button onClick={() => setResult(null)}>OK</Button>
 					</DialogFooter>
