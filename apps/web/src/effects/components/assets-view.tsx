@@ -8,12 +8,18 @@ import { effectPreviewService } from "@/services/renderer/effect-preview";
 import { useEditor } from "@/editor/use-editor";
 import { buildEffectElement } from "@/timeline/element-utils";
 import type { EffectDefinition } from "@/effects/types";
+import { isJeoPostEffect } from "@/jeo/post-fx";
+import { JeoEffectsSection } from "@/jeo/components/panels";
 
 export function EffectsView() {
-	const effects = effectsRegistry.getAll();
+	// JEO effects get their own buttons; the grid keeps the engine effects.
+	const effects = effectsRegistry
+		.getAll()
+		.filter((effect) => !isJeoPostEffect({ effectType: effect.type }));
 
 	return (
 		<PanelView title="Effects">
+			<JeoEffectsSection />
 			<EffectsGrid effects={effects} />
 		</PanelView>
 	);

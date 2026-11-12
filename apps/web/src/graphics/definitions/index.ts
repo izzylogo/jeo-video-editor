@@ -3,12 +3,14 @@ import { ellipseGraphicDefinition } from "./ellipse";
 import { polygonGraphicDefinition } from "./polygon";
 import { rectangleGraphicDefinition } from "./rectangle";
 import { starGraphicDefinition } from "./star";
+import { jeoGraphicDefinitions } from "@/jeo/graphics";
 
 const defaultGraphicDefinitions = [
 	rectangleGraphicDefinition,
 	ellipseGraphicDefinition,
 	polygonGraphicDefinition,
 	starGraphicDefinition,
+	...jeoGraphicDefinitions,
 ];
 
 export function registerDefaultGraphics(): void {

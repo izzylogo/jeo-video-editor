@@ -24,6 +24,19 @@ export interface JeoDesktopBridge {
 	}): Promise<{ data: ArrayBuffer } | null>;
 	deleteMedia(args: { projectId: string; mediaId: string }): Promise<void>;
 	showProjectFolder(args: { id: string }): Promise<void>;
+	/** Files in `JEO Video Editor\assets\{music,sound-effects,emoji}`. */
+	listAssets(): Promise<JeoAssetFile[]>;
+	readAsset(args: { relPath: string }): Promise<{ data: ArrayBuffer }>;
+	showAssetsFolder(args: { kind?: JeoAssetKind }): Promise<void>;
+}
+
+export type JeoAssetKind = "music" | "sound-effects" | "emoji";
+
+export interface JeoAssetFile {
+	kind: JeoAssetKind;
+	name: string;
+	relPath: string;
+	size: number;
 }
 
 export function getDesktopBridge(): JeoDesktopBridge | null {

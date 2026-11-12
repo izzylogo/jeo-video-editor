@@ -13,6 +13,7 @@ import {
 	QUALITY_VERY_HIGH,
 } from "mediabunny";
 import type { FrameRate } from "opencut-wasm";
+import { hasPostFx } from "@/jeo/post-fx";
 import { mediaTimeToSeconds } from "opencut-wasm";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { frameRateToFloat } from "@/fps/utils";
@@ -99,7 +100,15 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 			target: new BufferTarget(),
 		});
 
-		const videoSource = new CanvasSource(this.renderer.getOutputCanvas(), {
+		// JEO: when the timeline uses flash / shake / colour split, encode the
+		// post-effects canvas instead of the raw compositor canvas.
+		const usesPostFx = hasPostFx({ node: rootNode });
+		this.renderer.alwaysCopyToPost = usesPostFx;
+		const exportCanvas = usesPostFx
+			? this.renderer.getPostCanvas()
+			: this.renderer.getOutputCanvas();
+
+		const videoSource = new CanvasSource(exportCanvas, {
 			codec: this.format === "webm" ? "vp9" : "avc",
 			bitrate: qualityMap[this.quality],
 		});

@@ -175,9 +175,23 @@ function PreviewCanvas({
 		outputCanvas.style.width = "100%";
 		outputCanvas.style.height = "100%";
 		mount.appendChild(outputCanvas);
+
+		// JEO: a second canvas on top shows frames that have a post effect
+		// (flash, blur-shake, colour split). It is hidden on all other frames.
+		const postCanvas = renderer.getPostCanvas();
+		postCanvas.style.position = "absolute";
+		postCanvas.style.inset = "0";
+		postCanvas.style.width = "100%";
+		postCanvas.style.height = "100%";
+		postCanvas.style.display = "none";
+		postCanvas.style.pointerEvents = "none";
+		mount.appendChild(postCanvas);
 		return () => {
 			if (outputCanvas.parentElement === mount) {
 				mount.removeChild(outputCanvas);
+			}
+			if (postCanvas.parentElement === mount) {
+				mount.removeChild(postCanvas);
 			}
 		};
 	}, [renderer]);
@@ -208,6 +222,9 @@ function PreviewCanvas({
 			.render({ node: renderTree, time: renderTime })
 			.then(() => {
 				renderingRef.current = false;
+				renderer.getPostCanvas().style.display = renderer.isPostActive
+					? "block"
+					: "none";
 			});
 	}, [renderer, renderTree, editor.playback, editor.timeline]);
 

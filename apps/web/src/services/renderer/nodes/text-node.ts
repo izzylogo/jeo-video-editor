@@ -44,7 +44,18 @@ export function renderTextToContext({
 
 	ctx.save();
 	ctx.translate(x, y);
-	ctx.scale(resolved.transform.scaleX, resolved.transform.scaleY);
+	// JEO: a line that is too long is shrunk so it never runs off the screen.
+	const layoutForFit = resolved.measuredText;
+	const canvasWidth = node.params.canvasCenter.x * 2;
+	const widestLine = layoutForFit.lineMetrics.reduce(
+		(widest, metrics) => Math.max(widest, metrics.width),
+		0,
+	);
+	const allowedWidth = canvasWidth * (1040 / 1080);
+	const shownWidth = widestLine * Math.abs(resolved.transform.scaleX);
+	const fit = shownWidth > allowedWidth ? allowedWidth / shownWidth : 1;
+
+	ctx.scale(resolved.transform.scaleX * fit, resolved.transform.scaleY * fit);
 	if (resolved.transform.rotate) {
 		ctx.rotate((resolved.transform.rotate * Math.PI) / 180);
 	}
@@ -79,6 +90,32 @@ export function renderTextToContext({
 		backgroundColor: resolved.backgroundColor,
 		textBaseline: baseline,
 	});
+
+	// JEO: identity tag. A small see-through ▼ under the label, pointing at
+	// the person's head. It belongs to the text, so it moves with it.
+	if (elementParams["tag.triangle"] === true) {
+		const layout = resolved.measuredText;
+		const unit = node.params.canvasHeight / 1440;
+		const halfWidth = 35 * unit;
+		const height = 46 * unit;
+		const blockBottom =
+			(layout.lines.length - 0.5) * layout.lineHeightPx -
+			layout.block.visualCenterOffset;
+		const top = blockBottom + 2 * unit;
+		const radius = 5 * unit;
+		ctx.beginPath();
+		ctx.moveTo(-halfWidth, top);
+		ctx.lineTo(halfWidth, top);
+		ctx.lineTo(0, top + height);
+		ctx.closePath();
+		ctx.lineJoin = "round";
+		ctx.lineWidth = radius * 2;
+		ctx.globalAlpha = 0.85;
+		ctx.fillStyle = "#ffffff";
+		ctx.strokeStyle = "#ffffff";
+		ctx.fill();
+		ctx.globalAlpha = 1;
+	}
 
 	ctx.restore();
 }

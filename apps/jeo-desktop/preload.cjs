@@ -10,5 +10,8 @@ contextBridge.exposeInMainWorld("jeoDesktop", {
 	listMedia: (args) => ipcRenderer.invoke("jeo:listMedia", args),
 	readMedia: (args) => ipcRenderer.invoke("jeo:readMedia", args),
 	deleteMedia: (args) => ipcRenderer.invoke("jeo:deleteMedia", args),
+	listAssets: () => ipcRenderer.invoke("jeo:listAssets"),
+	readAsset: (args) => ipcRenderer.invoke("jeo:readAsset", args),
+	showAssetsFolder: (args) => ipcRenderer.invoke("jeo:showAssetsFolder", args),
 	showProjectFolder: (args) => ipcRenderer.invoke("jeo:showProjectFolder", args),
 });

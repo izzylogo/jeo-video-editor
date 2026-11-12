@@ -47,6 +47,7 @@ const TEXT_PARAM_KEYS = [
 	"stroke.enabled",
 	"stroke.color",
 	"stroke.width",
+	"tag.triangle",
 	"textAlign",
 	"fontWeight",
 	"fontStyle",

@@ -16,7 +16,9 @@ const PROJECTS_DIR =
 	process.env.JEO_PROJECTS_DIR || path.resolve(__dirname, "../../../projects");
 const OUTPUT_DIR =
 	process.env.JEO_OUTPUT_DIR || path.resolve(__dirname, "../../../output");
-const ICON_PATH =path.join(__dirname, "icon.ico");
+const ASSETS_DIR =
+	process.env.JEO_ASSETS_DIR || path.resolve(__dirname, "../../../assets");
+const ICON_PATH = path.join(__dirname, "icon.ico");
 
 // Test helpers: --capture=<png path> [--eval-file=<js path>] [--capture-delay=<ms>]
 const argValue = (name) => {
@@ -271,6 +273,52 @@ function registerIpc() {
 				await fsp.rm(path.join(mediaDir, name), { force: true });
 			}
 		}
+	});
+
+	// ---- my assets folder: music, sound-effects, emoji ----
+	const ASSET_KINDS = ["music", "sound-effects", "emoji"];
+	const ASSET_EXTENSIONS = new Set([
+		".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac",
+		".png", ".jpg", ".jpeg", ".webp",
+	]);
+
+	ipcMain.handle("jeo:listAssets", async () => {
+		const assets = [];
+		for (const kind of ASSET_KINDS) {
+			const dir = path.join(ASSETS_DIR, kind);
+			await fsp.mkdir(dir, { recursive: true }).catch(() => {});
+			const names = await fsp.readdir(dir).catch(() => []);
+			for (const name of names.sort()) {
+				if (!ASSET_EXTENSIONS.has(path.extname(name).toLowerCase())) continue;
+				const stat = await fsp.stat(path.join(dir, name)).catch(() => null);
+				if (!stat || !stat.isFile()) continue;
+				assets.push({ kind, name, relPath: `${kind}/${name}`, size: stat.size });
+			}
+		}
+		return assets;
+	});
+
+	ipcMain.handle("jeo:readAsset", async (_event, { relPath }) => {
+		const full = path.resolve(ASSETS_DIR, String(relPath));
+		const inside = full.startsWith(path.resolve(ASSETS_DIR) + path.sep);
+		if (!inside || !ASSET_EXTENSIONS.has(path.extname(full).toLowerCase())) {
+			throw new Error("Not an asset file");
+		}
+		const buffer = await fsp.readFile(full);
+		return {
+			data: buffer.buffer.slice(
+				buffer.byteOffset,
+				buffer.byteOffset + buffer.byteLength,
+			),
+		};
+	});
+
+	ipcMain.handle("jeo:showAssetsFolder", async (_event, { kind }) => {
+		const dir = ASSET_KINDS.includes(kind)
+			? path.join(ASSETS_DIR, kind)
+			: ASSETS_DIR;
+		await fsp.mkdir(dir, { recursive: true }).catch(() => {});
+		await shell.openPath(dir);
 	});
 
 	ipcMain.handle("jeo:showProjectFolder", async (_event, { id }) => {

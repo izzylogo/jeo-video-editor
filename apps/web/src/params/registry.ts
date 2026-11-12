@@ -229,6 +229,13 @@ const textElementParams: ElementParamDefinition[] = [
 		default: "#ffffff",
 	},
 	{
+		key: "tag.triangle",
+		label: "▼ Triangle Under Text",
+		type: "boolean",
+		default: false,
+		keyframable: false,
+	},
+	{
 		key: "textAlign",
 		label: "Text Align",
 		type: "select",

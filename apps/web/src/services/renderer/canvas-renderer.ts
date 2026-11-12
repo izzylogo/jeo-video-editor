@@ -4,6 +4,8 @@ import { createCanvasSurface } from "./canvas-utils";
 import { buildFrameDescriptor } from "./compositor/frame-descriptor";
 import { wasmCompositor } from "./compositor/wasm-compositor";
 import { resolveRenderTree } from "./resolve";
+import { applyPostFx, collectActivePostFx } from "@/jeo/post-fx";
+import { TICKS_PER_SECOND } from "@/wasm";
 import {
 	measureSpanAsync,
 	measureSpanSync,
@@ -71,6 +73,55 @@ export class CanvasRenderer {
 			name: "renderFrame",
 			fn: () => wasmCompositor.render(frame),
 		});
+		this.runPostFx({ node, time });
+	}
+
+	// ---- JEO post effects (flash, blur-shake, colour split) ----
+	private postCanvas: HTMLCanvasElement | null = null;
+	/** true when the last rendered frame had a post effect on it */
+	isPostActive = false;
+	/** export sets this so every frame lands on the post canvas */
+	alwaysCopyToPost = false;
+
+	getPostCanvas(): HTMLCanvasElement {
+		if (!this.postCanvas) {
+			this.postCanvas = document.createElement("canvas");
+		}
+		if (
+			this.postCanvas.width !== this.width ||
+			this.postCanvas.height !== this.height
+		) {
+			this.postCanvas.width = this.width;
+			this.postCanvas.height = this.height;
+		}
+		return this.postCanvas;
+	}
+
+	private runPostFx({ node, time }: { node: AnyBaseNode; time: number }): void {
+		const effects = collectActivePostFx({ node, time });
+		this.isPostActive = effects.length > 0;
+		if (!this.isPostActive && !this.alwaysCopyToPost) return;
+
+		const target = this.getPostCanvas();
+		const ctx = target.getContext("2d");
+		if (!ctx) return;
+		const ticksPerFrame =
+			(TICKS_PER_SECOND * this.fps.denominator) / this.fps.numerator;
+		applyPostFx({
+			source: wasmCompositor.getCanvas(),
+			ctx,
+			width: this.width,
+			height: this.height,
+			effects,
+			frameIndex: Math.floor(time / ticksPerFrame),
+		});
+	}
+
+	/** The canvas holding the finished frame (with post effects when active). */
+	getFinalCanvas(): HTMLCanvasElement {
+		return this.isPostActive || this.alwaysCopyToPost
+			? this.getPostCanvas()
+			: wasmCompositor.getCanvas();
 	}
 
 	async renderToCanvas({
@@ -93,7 +144,7 @@ export class CanvasRenderer {
 			name: "drawImage",
 			fn: () =>
 				ctx.drawImage(
-					wasmCompositor.getCanvas(),
+					this.getFinalCanvas(),
 					0,
 					0,
 					targetCanvas.width,
