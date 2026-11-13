@@ -198,3 +198,14 @@ A few entries are fragments of longer names that the reader cut short.
 - KFTypeVolume
 - KFTypeWhite
 - KFTypeZoom
+
+## What REA with Ghidra found (13 Nov 2026)
+
+File: `lyra_cli_client.dll` from CapCut 9.7.1 (sha256 `91f08ac5131b48b9...`), analysed by Ghidra 12.1.4 through REA (Evidence `ev_0bc3217eb0fb2ddb...`). The pass took 18.5 minutes on this laptop.
+
+- Ghidra's string inventory holds 180 entries containing `KFType`.
+- Observed: five names sit next to each other in the file, in this order: `KFTypePositionX`, `KFTypePositionY`, `KFTypeScale`, `KFTypeRotation`, `KFTypeAlpha`. That is the basic set for a clip: position, size, turn, opacity.
+- Observed: the message `' cannot be emitted: common keyframes only expose KFTypeEffectAdjustParam1/2/3` — an effect's own settings can only be keyframed through those three slots.
+- Observed: `property=keyframe;type=KFTypeCommonMaskSize` — keyframes are described as `property=keyframe;type=<name>`.
+- Inferred, not observed: `KFTypeScale` looks like the single uniform-scale keyframe and `KFTypeScaleX` / `KFTypeScaleY` (stored elsewhere in the file) the separate width and height ones. Your own CapCut projects use `KFTypeScaleX` for uniform scale, and the export does the same; that was checked by opening it in CapCut.
+- Not done: following where each name is used in the code. Each further question means another full Ghidra pass (about 18 minutes) when REA is run from the command line.
