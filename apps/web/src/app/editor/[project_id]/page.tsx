@@ -80,7 +80,8 @@ function DegradedRendererBanner() {
 function EditorLayout() {
 	usePasteMedia();
 	const { panels, setPanel, layout, layoutNonce } = usePanelStore();
-	const order = getLayoutPreset(layout).order;
+	const preset = getLayoutPreset(layout);
+	const order = preset.order;
 	const activeScene = useEditor((editor) =>
 		editor.scenes.getActiveSceneOrNull(),
 	);
@@ -141,6 +142,96 @@ function EditorLayout() {
 		preview: { min: 25 },
 	};
 
+	const topRow = (
+		<ResizablePanelGroup
+			direction="horizontal"
+			className={
+				preset.shape === "tall-preview"
+					? "size-full gap-[0.19rem] pl-3"
+					: "size-full gap-[0.19rem] px-3"
+			}
+			onLayout={(sizes) => {
+				order.forEach((id, index) => {
+					setPanel({ panel: id, size: sizes[index] ?? panels[id] });
+				});
+			}}
+		>
+			{order.map((id, index) => (
+				<Fragment key={id}>
+					{index > 0 && <ResizableHandle withHandle />}
+					<ResizablePanel
+						defaultSize={panels[id]}
+						minSize={limits[id].min}
+						maxSize={preset.shape === "tall-preview" ? 85 : limits[id].max}
+						className="min-h-0 min-w-0"
+					>
+						{topPanel(id)}
+					</ResizablePanel>
+				</Fragment>
+			))}
+		</ResizablePanelGroup>
+	);
+
+	// JEO: CapCut's upright-video layout, with the preview as a tall column
+	if (preset.shape === "tall-preview") {
+		return (
+			<ResizablePanelGroup
+				key={`${layout}:${layoutNonce}`}
+				direction="horizontal"
+				className="size-full gap-[0.19rem] pr-3"
+				data-jeo-shape="tall-preview"
+				onLayout={(sizes) => {
+					setPanel({ panel: "preview", size: sizes[1] ?? panels.preview });
+				}}
+			>
+				<ResizablePanel
+					defaultSize={100 - panels.preview}
+					minSize={40}
+					className="min-h-0 min-w-0"
+				>
+					<ResizablePanelGroup
+						direction="vertical"
+						className="size-full gap-[0.18rem]"
+						onLayout={(sizes) => {
+							setPanel({
+								panel: "mainContent",
+								size: sizes[0] ?? panels.mainContent,
+							});
+							setPanel({ panel: "timeline", size: sizes[1] ?? panels.timeline });
+						}}
+					>
+						<ResizablePanel
+							defaultSize={panels.mainContent}
+							minSize={25}
+							maxSize={80}
+							className="min-h-0"
+						>
+							{topRow}
+						</ResizablePanel>
+						<ResizableHandle withHandle />
+						<ResizablePanel
+							defaultSize={panels.timeline}
+							minSize={15}
+							maxSize={75}
+							className="min-h-0 pb-3 pl-3"
+						>
+							<Timeline />
+						</ResizablePanel>
+					</ResizablePanelGroup>
+				</ResizablePanel>
+				<ResizableHandle withHandle />
+				<ResizablePanel
+					defaultSize={panels.preview}
+					minSize={20}
+					maxSize={60}
+					className="min-h-0 min-w-0 pb-3"
+				>
+					<PreviewPanel {...overlayProps} />
+				</ResizablePanel>
+			</ResizablePanelGroup>
+		);
+	}
+
 	return (
 		<ResizablePanelGroup
 			// JEO: choosing a layout re-lays the panels from the preset's sizes
@@ -164,29 +255,7 @@ function EditorLayout() {
 				maxSize={85}
 				className="min-h-0"
 			>
-				<ResizablePanelGroup
-					direction="horizontal"
-					className="size-full gap-[0.19rem] px-3"
-					onLayout={(sizes) => {
-						order.forEach((id, index) => {
-							setPanel({ panel: id, size: sizes[index] ?? panels[id] });
-						});
-					}}
-				>
-					{order.map((id, index) => (
-						<Fragment key={id}>
-							{index > 0 && <ResizableHandle withHandle />}
-							<ResizablePanel
-								defaultSize={panels[id]}
-								minSize={limits[id].min}
-								maxSize={limits[id].max}
-								className="min-h-0 min-w-0"
-							>
-								{topPanel(id)}
-							</ResizablePanel>
-						</Fragment>
-					))}
-				</ResizablePanelGroup>
+				{topRow}
 			</ResizablePanel>
 
 			<ResizableHandle withHandle />

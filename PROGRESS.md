@@ -217,3 +217,11 @@ Based on OpenCut Classic (MIT licence). The `LICENSE` file stays in this folder.
 
 Dev notes: text numbers are display-only conversions (see `apps/web/src/jeo/text-units.ts`); layouts are in `apps/web/src/panels/layout.ts`.
 - **Older projects**: when you open one, its texts are resized once to the new standard (each grows by the same amount, about 30%). Ctrl+Z puts them back. Copies of the project files from before are in `output\_backup-before-text-resize\`.
+
+## Round 4 of your feedback
+
+- **Video clips on the timeline** have CapCut's three bands: a coloured band on top with the speed, name and length; the pictures; and a coloured sound band at the bottom showing the clip's sound wave. Drag the line in the sound band up or down to change the volume in dB.
+- **Timeline toolbar** in CapCut's order: undo, redo, split, delete left, delete right, delete, marker, freeze (2 s), mirror, then snapping, main track magnet, fit, and the zoom bar. Freeze and mirror are new and working.
+- **New layout "CapCut tall preview"**: the preview runs down the whole right side, with options, settings and the timeline to its left.
+- **Preview zoom bar**: minus, slider, plus, next to the Fit menu.
+- Not done: CapCut's own program was not taken apart with REA. The toolbar was built from your picture and CapCut's visible buttons. CapCut's record-voice, crop, linkage and preview-axis buttons have no equivalent here yet.

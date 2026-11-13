@@ -43,7 +43,13 @@ import {
 	Layers01Icon,
 	Chart03Icon,
 	Unlink02Icon,
+	UndoIcon,
+	RedoIcon,
+	FlipHorizontalIcon,
+	FitToScreenIcon,
 } from "@hugeicons/core-free-icons";
+import { toast } from "sonner";
+import { addFreeze } from "@/jeo/actions";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { OcRippleIcon } from "@/components/icons";
 import { GraphEditorPopover } from "./graph-editor/popover";
@@ -69,10 +75,8 @@ export function TimelineToolbar({
 
 	return (
 		<ScrollArea className="scrollbar-hidden">
-			<div className="flex h-10 items-center justify-between border-b px-2 py-1">
+			<div className="flex h-10 items-center justify-between gap-2 border-b px-2 py-1">
 				<ToolbarLeftSection />
-
-				<SceneSelector />
 
 				<ToolbarRightSection
 					zoomLevel={zoomLevel}
@@ -143,23 +147,106 @@ function ToolbarLeftSection() {
 		<div className="flex items-center gap-1">
 			<TooltipProvider delayDuration={500}>
 				<ToolbarButton
+					icon={<HugeiconsIcon icon={UndoIcon} />}
+					tooltip="Undo (Ctrl+Z)"
+					jeoId="undo"
+					onClick={({ event }) => handleAction({ action: "undo", event })}
+				/>
+
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={RedoIcon} />}
+					tooltip="Redo (Ctrl+Shift+Z)"
+					jeoId="redo"
+					onClick={({ event }) => handleAction({ action: "redo", event })}
+				/>
+
+				<div className="bg-border mx-1 h-6 w-px" />
+
+				<ToolbarButton
 					icon={<HugeiconsIcon icon={ScissorIcon} />}
-					tooltip="Split element"
+					tooltip="Split at the playhead (S)"
+					jeoId="split"
 					onClick={({ event }) => handleAction({ action: "split", event })}
 				/>
 
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={AlignLeftIcon} />}
-					tooltip="Split left"
+					tooltip="Delete left: cut away everything before the playhead (Q)"
+					jeoId="delete-left"
 					onClick={({ event }) => handleAction({ action: "split-left", event })}
 				/>
 
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={AlignRightIcon} />}
-					tooltip="Split right"
+					tooltip="Delete right: cut away everything after the playhead (W)"
+					jeoId="delete-right"
 					onClick={({ event }) =>
 						handleAction({ action: "split-right", event })
 					}
+				/>
+
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Delete02Icon} />}
+					tooltip="Delete the selected clip or text"
+					jeoId="delete"
+					onClick={({ event }) =>
+						handleAction({ action: "delete-selected", event })
+					}
+				/>
+
+				<div className="bg-border mx-1 h-6 w-px" />
+
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Bookmark02Icon} />}
+					isActive={isCurrentlyBookmarked}
+					tooltip={isCurrentlyBookmarked ? "Remove marker" : "Add a marker here"}
+					jeoId="marker"
+					onClick={({ event }) =>
+						handleAction({ action: "toggle-bookmark", event })
+					}
+				/>
+
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={SnowIcon} />}
+					tooltip="Freeze frame at the playhead (2 s)"
+					jeoId="freeze"
+					onClick={() => {
+						void addFreeze({ holdSeconds: 2 }).then((result) => {
+							if (result.ok) toast.success(result.message ?? "Freeze added.");
+							else toast.error(result.message);
+						});
+					}}
+				/>
+
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={FlipHorizontalIcon} />}
+					tooltip="Mirror the selected clip left-to-right"
+					jeoId="mirror"
+					disabled={
+						!selectedElement ||
+						(selectedElement.element.type !== "video" &&
+							selectedElement.element.type !== "image")
+					}
+					onClick={() => {
+						if (!selectedElement || !("params" in selectedElement.element)) return;
+						const { element, track } = selectedElement;
+						const current = element.params["transform.scaleX"];
+						editor.timeline.updateElements({
+							updates: [
+								{
+									trackId: track.id,
+									elementId: element.id,
+									patch: {
+										params: {
+											...element.params,
+											"transform.scaleX":
+												-(typeof current === "number" ? current : 1),
+										},
+									},
+								},
+							],
+						});
+					}}
 				/>
 
 				<ToolbarButton
@@ -183,33 +270,6 @@ function ToolbarLeftSection() {
 					}
 				/>
 
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={SnowIcon} />}
-					tooltip="Freeze frame (coming soon)"
-					disabled={true}
-					onClick={({ event: _event }) => {}}
-				/>
-
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={Delete02Icon} />}
-					tooltip="Delete element"
-					onClick={({ event }) =>
-						handleAction({ action: "delete-selected", event })
-					}
-				/>
-
-				<div className="bg-border mx-1 h-6 w-px" />
-
-				<Tooltip>
-					<ToolbarButton
-						icon={<HugeiconsIcon icon={Bookmark02Icon} />}
-						isActive={isCurrentlyBookmarked}
-						tooltip={isCurrentlyBookmarked ? "Remove bookmark" : "Add bookmark"}
-						onClick={({ event }) =>
-							handleAction({ action: "toggle-bookmark", event })
-						}
-					/>
-				</Tooltip>
 
 				<GraphEditorPopover
 					open={graphEditor.open}
@@ -252,7 +312,7 @@ function SceneSelector() {
 	return (
 		<div>
 			<SplitButton className="border-foreground/10 border">
-				<SplitButtonLeft>{currentScene?.name || "No Scene"}</SplitButtonLeft>
+				<SplitButtonLeft className="hidden 2xl:flex">{currentScene?.name || "No Scene"}</SplitButtonLeft>
 				<SplitButtonSeparator />
 				<ScenesView>
 					<SplitButtonRight onClick={() => {}}>
@@ -282,19 +342,30 @@ function ToolbarRightSection({
 
 	return (
 		<div className="flex items-center gap-1">
+			<SceneSelector />
+			<div className="bg-border mx-1 h-6 w-px" />
 			<TooltipProvider delayDuration={500}>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={MagnetIcon} />}
 					isActive={snappingEnabled}
-					tooltip="Auto snapping"
+					tooltip="Auto snapping: clips and texts stick to cuts and the playhead"
+					jeoId="snapping"
 					onClick={() => toggleSnapping()}
 				/>
 
 				<ToolbarButton
 					icon={<OcRippleIcon size={24} className="scale-110" />}
 					isActive={rippleEditingEnabled}
-					tooltip="Ripple editing"
+					tooltip="Main track magnet: deleting a clip closes the gap"
+					jeoId="magnet"
 					onClick={() => toggleRippleEditing()}
+				/>
+
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={FitToScreenIcon} />}
+					tooltip="Fit the whole video in the timeline"
+					jeoId="fit"
+					onClick={() => onZoomChange(minZoom)}
 				/>
 			</TooltipProvider>
 
@@ -309,7 +380,7 @@ function ToolbarRightSection({
 					<HugeiconsIcon icon={SearchMinusIcon} />
 				</Button>
 				<Slider
-					className="w-28"
+					className="w-20"
 					value={[zoomToSlider({ zoomLevel, minZoom })]}
 					onValueChange={(values) =>
 						onZoomChange(sliderToZoom({ sliderPosition: values[0], minZoom }))
@@ -337,7 +408,9 @@ function ToolbarButton({
 	disabled,
 	isActive,
 	buttonWrapper,
+	jeoId,
 }: {
+	jeoId?: string;
 	icon: React.ReactNode;
 	tooltip: string;
 	onClick?: ({ event }: { event: React.MouseEvent }) => void;
@@ -350,6 +423,8 @@ function ToolbarButton({
 			variant={isActive ? "secondary" : "text"}
 			size="icon"
 			disabled={disabled}
+			data-jeo-tool={jeoId}
+			aria-label={tooltip}
 			onClick={onClick ? (event) => onClick({ event }) : undefined}
 			className={cn(
 				"rounded-sm",

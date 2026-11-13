@@ -19,6 +19,27 @@ const TONE = {
 
 /** A tiny drawing of the layout: three panels on top, the timeline below. */
 function LayoutSketch({ preset }: { preset: LayoutPreset }) {
+	if (preset.shape === "tall-preview") {
+		return (
+			<div
+				className="flex h-8 w-12 shrink-0 gap-px overflow-hidden rounded-[3px] border"
+				aria-hidden="true"
+			>
+				<div
+					className="flex flex-col gap-px"
+					style={{ flex: 100 - preset.sizes.preview }}
+				>
+					<div className="flex gap-px" style={{ flex: preset.sizes.mainContent }}>
+						{preset.order.map((id) => (
+							<div key={id} className={TONE[id]} style={{ flex: preset.sizes[id] }} />
+						))}
+					</div>
+					<div className="bg-foreground/15" style={{ flex: preset.sizes.timeline }} />
+				</div>
+				<div className={TONE.preview} style={{ flex: preset.sizes.preview }} />
+			</div>
+		);
+	}
 	return (
 		<div
 			className="flex h-8 w-12 shrink-0 flex-col gap-px overflow-hidden rounded-[3px] border"

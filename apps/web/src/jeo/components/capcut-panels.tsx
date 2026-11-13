@@ -66,7 +66,7 @@ function Row({
 }) {
 	return (
 		<div className="flex min-h-8 items-center gap-3">
-			<span className="text-muted-foreground w-[4.6rem] shrink-0 text-xs">
+			<span className="text-muted-foreground w-[5.6rem] shrink-0 text-xs whitespace-nowrap">
 				{label}
 			</span>
 			<div className="flex min-w-0 flex-1 items-center gap-2">{children}</div>
@@ -290,7 +290,10 @@ function TransformBlock({
 }) {
 	const editor = useEditor();
 	const write = useParamWriter({ element, trackId });
-	const scaleX = num(element.params["transform.scaleX"], 1);
+	// a mirrored clip has a negative width scale: show the size, keep the flip
+	const signedScaleX = num(element.params["transform.scaleX"], 1);
+	const flip = signedScaleX < 0 ? -1 : 1;
+	const scaleX = Math.abs(signedScaleX);
 	const scaleY = num(element.params["transform.scaleY"], 1);
 	const [isUniform, setIsUniform] = useState(Math.abs(scaleX - scaleY) < 0.0005);
 	const hasScaleKeys = Object.keys(element.animations ?? {}).some((path) =>
@@ -300,8 +303,8 @@ function TransformBlock({
 	const scaleParams = (shown: number): Params => {
 		const next = shown / scaleDisplay;
 		return isUniform
-			? { "transform.scaleX": next, "transform.scaleY": next }
-			: { "transform.scaleX": next };
+			? { "transform.scaleX": next * flip, "transform.scaleY": next }
+			: { "transform.scaleX": next * flip };
 	};
 
 	const align = (id: (typeof ALIGNS)[number]["id"]) => {

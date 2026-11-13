@@ -10,7 +10,10 @@ import {
 	FullScreenIcon,
 	PauseIcon,
 	PlayIcon,
+	SearchAddIcon,
+	SearchMinusIcon,
 } from "@hugeicons/core-free-icons";
+import { Slider } from "@/components/ui/slider";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -36,6 +39,7 @@ export function PreviewToolbar({
 			<TimecodeDisplay />
 			<PlayPauseButton />
 			<div className="justify-self-end flex items-center gap-2.5">
+				<ZoomSlider />
 				<ZoomSelect />
 				<Separator orientation="vertical" className="h-4" />
 				{/* v0.4.0 */}
@@ -94,6 +98,61 @@ function TimecodeDisplay() {
 					rate: fps,
 				})}
 			</span>
+		</div>
+	);
+}
+
+/**
+ * JEO: CapCut's preview zoom bar: minus, a slider, plus. The slider runs on
+ * a curve so the small sizes are not squeezed into the first few pixels.
+ */
+const ZOOM_SLIDER_MIN_PERCENT = 5;
+const ZOOM_SLIDER_MAX_PERCENT = 400;
+function ZoomSlider() {
+	const { zoomPercent, setViewportPercent, zoomIn, zoomOut } =
+		usePreviewViewport();
+	const span = Math.log(ZOOM_SLIDER_MAX_PERCENT / ZOOM_SLIDER_MIN_PERCENT);
+	const position =
+		Math.log(
+			Math.min(
+				ZOOM_SLIDER_MAX_PERCENT,
+				Math.max(ZOOM_SLIDER_MIN_PERCENT, zoomPercent),
+			) / ZOOM_SLIDER_MIN_PERCENT,
+		) / span;
+
+	return (
+		<div className="flex items-center gap-1" data-jeo="preview-zoom">
+			<Button
+				variant="text"
+				size="icon"
+				onClick={zoomOut}
+				title="Zoom the preview out"
+				aria-label="Zoom the preview out"
+			>
+				<HugeiconsIcon icon={SearchMinusIcon} />
+			</Button>
+			<Slider
+				aria-label="Preview zoom"
+				className="w-24"
+				min={0}
+				max={1}
+				step={0.005}
+				value={[position]}
+				onValueChange={([next]) =>
+					setViewportPercent({
+						percent: Math.round(ZOOM_SLIDER_MIN_PERCENT * Math.exp(next * span)),
+					})
+				}
+			/>
+			<Button
+				variant="text"
+				size="icon"
+				onClick={zoomIn}
+				title="Zoom the preview in"
+				aria-label="Zoom the preview in"
+			>
+				<HugeiconsIcon icon={SearchAddIcon} />
+			</Button>
 		</div>
 	);
 }

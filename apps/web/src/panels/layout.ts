@@ -16,6 +16,13 @@ export interface LayoutPreset {
 	name: string;
 	hint: string;
 	order: readonly TopPanelId[];
+	/**
+	 * "rows": three panels on top, the timeline across the bottom.
+	 * "tall-preview": the preview is a full-height column on the right, with
+	 * the other two panels and the timeline stacked to its left (CapCut's
+	 * layout for upright videos). `order` then lists the two left panels.
+	 */
+	shape?: "rows" | "tall-preview";
 	sizes: {
 		tools: number;
 		preview: number;
@@ -39,6 +46,14 @@ export const LAYOUT_PRESETS: readonly LayoutPreset[] = [
 		hint: "Options · preview · settings",
 		order: ["tools", "preview", "properties"],
 		sizes: { tools: 26, preview: 46, properties: 28, mainContent: 58, timeline: 42 },
+	},
+	{
+		id: "capcut-tall",
+		name: "CapCut tall preview",
+		hint: "Preview down the whole right side",
+		shape: "tall-preview",
+		order: ["tools", "properties"],
+		sizes: { tools: 51, preview: 39, properties: 49, mainContent: 47, timeline: 53 },
 	},
 	{
 		id: "big-preview",

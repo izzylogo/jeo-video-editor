@@ -97,6 +97,11 @@ const ELEMENT_RING_WIDTH_PX = 1.5;
 
 const PixelsPerSecondContext = createContext<number | null>(null);
 const THUMBNAIL_ASPECT_RATIO = 16 / 9;
+// JEO: a video clip is three bands, like CapCut: details, pictures, sound
+const CLIP_TOP_BAND_PX = 20;
+const CLIP_SOUND_BAND_PX = 20;
+const CLIP_BAND_TOP_COLOR = "#1b6a73";
+const CLIP_BAND_SOUND_COLOR = "#14535b";
 
 interface KeyframeIndicator {
 	time: MediaTime;
@@ -1116,8 +1121,20 @@ function TiledMediaContent({
 		observer.observe(strip);
 		return () => observer.disconnect();
 	}, []);
-	const tileWidthForStrip =
-		getTrackHeight({ type: track.type }) * THUMBNAIL_ASPECT_RATIO;
+	const pixelsPerSecond = useContext(PixelsPerSecondContext) ?? 0;
+	const hasSound =
+		element.type === "video" && mediaAsset?.hasAudio !== false;
+	const soundBandPx = element.type === "video" ? CLIP_SOUND_BAND_PX : 0;
+	const stripHeight =
+		getTrackHeight({ type: track.type }) - CLIP_TOP_BAND_PX - soundBandPx;
+	const tileWidthForStrip = stripHeight * THUMBNAIL_ASPECT_RATIO;
+	const gainSamples = useMemo(
+		() =>
+			element.type === "video"
+				? buildWaveformGainSamples({ element, count: WAVEFORM_GAIN_SAMPLE_COUNT })
+				: [],
+		[element],
+	);
 	const tileCount =
 		element.type === "video" && stripWidth > 0
 			? Math.min(40, Math.max(1, Math.ceil(stripWidth / tileWidthForStrip)))
@@ -1147,15 +1164,18 @@ function TiledMediaContent({
 		);
 	}
 
-	const trackHeight = getTrackHeight({ type: track.type });
+	const trackHeight = stripHeight;
 	const tileWidth = trackHeight * THUMBNAIL_ASPECT_RATIO;
+	const isMuted = element.type === "video" && element.params.muted === true;
 
 	return (
 		<>
 			<div
 				ref={stripRef}
-				className="absolute inset-0"
+				className="absolute inset-x-0"
 				style={{
+					top: `${CLIP_TOP_BAND_PX}px`,
+					bottom: `${soundBandPx}px`,
 					backgroundColor: "var(--muted)",
 					backgroundImage: `url(${imageUrl})`,
 					backgroundRepeat: "repeat-x",
@@ -1192,16 +1212,41 @@ function TiledMediaContent({
 				hasFade={true}
 				speed={element.type === "video" ? clipRate : undefined}
 				duration={element.duration}
-				isMuted={element.type === "video" && element.params.muted === true}
+				isMuted={isMuted}
+				bandColor={CLIP_BAND_TOP_COLOR}
 			/>
-			{/* JEO: drag the line up or down to change this clip's own volume */}
-			{element.type === "video" &&
-				mediaAsset?.hasAudio !== false &&
-				element.params.muted !== true && (
-					<div className="group/audio absolute inset-x-0 top-5 bottom-0">
+			{/* JEO: the sound band. Its wave shows the clip's sound; drag the
+			    line up or down to change this clip's volume in dB. */}
+			{element.type === "video" && (
+				<div
+					data-jeo="clip-sound-band"
+					className="group/audio absolute inset-x-0 bottom-0 overflow-hidden"
+					style={{
+						height: `${CLIP_SOUND_BAND_PX}px`,
+						backgroundColor: CLIP_BAND_SOUND_COLOR,
+					}}
+				>
+					{hasSound && !isMuted && mediaAsset?.file && pixelsPerSecond > 0 && (
+						<AudioWaveform
+							sourceKey={buildWaveformSourceKey({
+								kind: "media",
+								id: element.mediaId,
+							})}
+							sourceFile={mediaAsset.file}
+							audioUrl={mediaAsset.url}
+							gainSamples={gainSamples}
+							pixelsPerSecond={pixelsPerSecond}
+							clipDurationSec={element.duration / TICKS_PER_SECOND}
+							retime={element.retime}
+							sourceStartSec={element.trimStart / TICKS_PER_SECOND}
+							color="rgba(140, 235, 240, 0.75)"
+						/>
+					)}
+					{hasSound && !isMuted && (
 						<AudioVolumeLine element={element} trackId={track.id} />
-					</div>
-				)}
+					)}
+				</div>
+			)}
 		</>
 	);
 }
@@ -1222,6 +1267,7 @@ function MediaElementHeader({
 	speed,
 	duration,
 	isMuted,
+	bandColor,
 }: {
 	name?: string | null;
 	leading?: ReactNode;
@@ -1231,6 +1277,8 @@ function MediaElementHeader({
 	/** JEO: clip length on the timeline, in ticks */
 	duration?: number;
 	isMuted?: boolean;
+	/** JEO: solid colour for the band behind the clip's details */
+	bandColor?: string;
 }) {
 	const fps = useEditor((e) => {
 		const rate = e.project.getActiveOrNull()?.settings.fps;
@@ -1246,8 +1294,9 @@ function MediaElementHeader({
 			data-jeo="clip-header"
 			className={cn(
 				"absolute top-0 left-0 flex h-5 w-full items-start gap-2 pt-1 whitespace-nowrap",
-				hasFade && "bg-black/45",
+				hasFade && !bandColor && "bg-black/45",
 			)}
+			style={bandColor ? { backgroundColor: bandColor } : undefined}
 		>
 			{leading && <div className="pl-1">{leading}</div>}
 			{hasSpeed && (
