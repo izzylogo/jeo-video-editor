@@ -1,5 +1,10 @@
 {
   "items": [
+    "Follow the speaker: a line of dialogue can now stay under a moving speaker's mouth (Options tab or right-click), using position keyframes",
+    "Live link: when you ask Claude in a chat to change a video, it changes in this open window straight away, no reload",
+    "A project moved to the trash folder now leaves the Projects list",
+    "Loading feedback: Open in CapCut shows each step and tells you when CapCut is really open; asking Claude for options shows a spinner, a seconds count and placeholders",
+    "Slow actions (freeze, ending, follow the head) say what they are doing; buttons dip when pressed; menus grow out of their button",
     "The other wordings Claude offers for a text are now saved inside the project",
     "Hover preview: move the mouse over the timeline to see that moment, with a faint line (the eye button turns it off)",
     "Colours work like My Animator: pick an accent and a base; the colour you pick is used exactly",

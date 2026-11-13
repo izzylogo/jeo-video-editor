@@ -1,5 +1,6 @@
 "use client";
 
+import { withWorkingNotice } from "./feedback";
 import { useCallback, useEffect, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -83,9 +84,13 @@ function report(result: ActionResult): void {
 	}
 }
 
-async function run(action: () => ActionResult | Promise<ActionResult>): Promise<void> {
+async function run(
+	action: () => ActionResult | Promise<ActionResult>,
+	/** shown only if the action is still going after a moment */
+	label = "Working…",
+): Promise<void> {
 	try {
-		report(await action());
+		report(await withWorkingNotice({ label, work: async () => action() }));
 	} catch (error) {
 		console.error("[jeo] action failed:", error);
 		toast.error("That didn't work. Nothing was changed.");
@@ -304,6 +309,7 @@ export function FreezeView() {
 				holdSeconds,
 				sound: sounds.find((file) => file.relPath === soundPath) ?? null,
 			}),
+			"Grabbing the frame for the freeze…",
 		);
 		setIsBusy(false);
 	};
@@ -491,7 +497,7 @@ export function EndingsView() {
 
 	const handleEnding = async (kind: "funny" | "sweet") => {
 		setIsBusy(true);
-		await run(() => addEnding({ kind }));
+		await run(() => addEnding({ kind }), "Building the ending…");
 		setIsBusy(false);
 	};
 

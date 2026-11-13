@@ -245,3 +245,14 @@ Dev notes: text numbers are display-only conversions (see `apps/web/src/jeo/text
 - **REA with Ghidra ran on CapCut** (Ghidra was already on this laptop, installed by Craft Anything). It confirmed the keyframe names the export uses, including the opacity one. Notes are in `apps/jeo-desktop/tools/capcut-keyframe-names.md`.
 - **Other wordings travel with the project**: the options Claude offers for a text are now saved on the text itself, so they show on any computer profile that opens the project.
 - **First real edit made with the editor**: BLIND MAN PRANK (project in `projects\`, export `output\BLIND MAN PRANK_v4.mp4`, 23:29).
+
+## Round 6 of your feedback
+
+- **Loading feedback**: "Open in CapCut" shows a spinner and the step it is on (saving, cover picture, writing), then tells you when CapCut's window is really open, with a seconds count. "Ask Claude for options" shows a spinner, a seconds count and placeholder rows where the options will land, then "4 options are ready". Freeze, ending and follow say what they are doing if they take more than a moment.
+- **Small motion that means something**: buttons dip when pressed, menus grow out of their button, new options rise in, a finished action gives one soft pulse. Numbers keep their width so counters don't jiggle. All of it is switched off for people who turn motion off in Windows.
+- **Live link**: when you ask Claude in a chat to change a video, it changes in your open JEO Editor straight away. The open editor writes where it can be reached into `live\control.json`; Claude sends commands with `app\apps\jeo-desktop\tools\jeo-live.cjs`. Claude can also list, open and create projects and bring a media file in.
+- **Follow the speaker**: a line of dialogue can stay under a moving speaker's mouth (Options tab, or right-click the text). It writes position keyframes you can still drag by hand.
+- **Options travel with the project**, and **a project moved to `projects\_trash` leaves the Projects list**.
+- Removed at your request (moved, not destroyed): the JEO project "HIDING MONEY - Claude edit" (now in `projects\_trash`) and the two older JEO HIDING MONEY drafts in CapCut (now in `output\_capcut-removed-drafts`).
+
+Dev notes: the live token in `live\control.json` is a local secret; never print it. Use `node apps/jeo-desktop/tools/jeo-live.cjs --status`, `--list`, or `<tool> @args.json`.

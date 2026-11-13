@@ -134,6 +134,17 @@ export function TextMenuItems({
 			>
 				Follow the head
 			</ContextMenuItem>
+			<ContextMenuItem
+				onClick={run(() => {
+					toast.message("Following the speaker. About 10 to 20 seconds.");
+					void followHead({ id, offsetBelow: -110 }).then((outcome) => {
+						if (outcome.ok) toast.success("The text now follows the speaker.");
+						else toast.error(outcome.error ?? "Could not follow.");
+					});
+				})}
+			>
+				Follow the speaker (dialogue)
+			</ContextMenuItem>
 			<ContextMenuItem onClick={run(() => report(fitTextToScene({ elementId: id })))}>
 				Fit to its scene
 			</ContextMenuItem>

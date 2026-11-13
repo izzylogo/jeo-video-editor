@@ -1,5 +1,6 @@
 "use client";
 
+import { Spinner, useElapsedSeconds } from "./feedback";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { useEditor } from "@/editor/use-editor";
@@ -167,6 +168,7 @@ export async function sendChatText({ text }: { text: string }): Promise<boolean>
 /** The chat itself. Lives in the left panel as the "AI" tab. */
 export function AiChatView() {
 	const { isBusy, messages } = useChatStore();
+	const workingFor = useElapsedSeconds(isBusy);
 	const [draft, setDraft] = useState("");
 	const listRef = useRef<HTMLDivElement>(null);
 	const desktop = getDesktopBridge();
@@ -258,9 +260,13 @@ export function AiChatView() {
 					</div>
 				))}
 				{isBusy && (
-					<div className="text-muted-foreground flex items-center gap-2 text-xs">
-						<span className="bg-primary size-2 animate-pulse rounded-full" />
-						Claude is working…
+					<div
+						className="jeo-rise text-muted-foreground flex items-center gap-2 text-xs"
+						role="status"
+						data-jeo="chat-working"
+					>
+						<Spinner className="text-primary size-3.5" />
+						Claude is working… <span className="tabular-nums">{workingFor} s</span>
 					</div>
 				)}
 			</div>

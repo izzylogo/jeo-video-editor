@@ -329,3 +329,74 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ---------- JEO: feedback and motion ----------
+   Small, quick and only where it tells you something:
+   a press dips, a menu grows out of its button, a wait spins or shimmers,
+   and a finished action gives one soft pulse. No bounce. */
+@keyframes jeo-spin {
+	to { transform: rotate(360deg); }
+}
+.jeo-spin {
+	animation: jeo-spin 0.8s linear infinite;
+}
+@keyframes jeo-shimmer {
+	from { background-position: 180% 0; }
+	to { background-position: -80% 0; }
+}
+.jeo-shimmer {
+	background-image: linear-gradient(
+		100deg,
+		color-mix(in srgb, var(--foreground) 7%, transparent) 30%,
+		color-mix(in srgb, var(--foreground) 16%, transparent) 50%,
+		color-mix(in srgb, var(--foreground) 7%, transparent) 70%
+	);
+	background-size: 220% 100%;
+	animation: jeo-shimmer 1.3s linear infinite;
+}
+@keyframes jeo-pop-in {
+	from { opacity: 0; transform: scale(0.95); }
+	to { opacity: 1; transform: scale(1); }
+}
+/* things that arrive: ease-out, starting a little small */
+.jeo-pop {
+	animation: jeo-pop-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes jeo-rise-in {
+	from { opacity: 0; transform: translateY(4px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+.jeo-rise {
+	animation: jeo-rise-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+/* one soft pulse to confirm something worked */
+@keyframes jeo-confirm {
+	0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 55%, transparent); }
+	100% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+.jeo-confirm {
+	animation: jeo-confirm 520ms ease-out 1;
+}
+/* menus and popovers grow out of the button that opened them */
+[role="menu"][data-state="open"],
+[data-radix-popper-content-wrapper] > [data-state="open"] {
+	animation: jeo-pop-in 150ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+	transform-origin: var(--radix-popper-transform-origin, center);
+}
+/* numbers keep their width, so counters and timecodes don't jiggle */
+input,
+.tabular-nums,
+[class*="font-mono"] {
+	font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+	.jeo-pop,
+	.jeo-rise,
+	.jeo-confirm,
+	[role="menu"][data-state="open"],
+	[data-radix-popper-content-wrapper] > [data-state="open"] {
+		animation: none;
+	}
+	.jeo-spin { animation-duration: 1.6s; }
+	.jeo-shimmer { animation: none; }
+}

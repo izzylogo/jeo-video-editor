@@ -79,3 +79,9 @@ Call `offer_text_options` with the text's id and 3 to 5 options. They appear as 
 that text. Each option must fit the storyline at that moment, stay in the JEO style (short, upper
 case, the same kind of line as the original: caption, tag, dialogue...), and be really different
 from the others, not the same line reworded. Then say in one line what each option is going for.
+
+## Texts on moving people
+
+When a person moves while their tag or their line of dialogue is on screen, make the text follow them:
+`follow_head` with the text's id. For a tag (above the head) use the default. For dialogue (under the
+mouth) pass `offsetBelow: -110`. Put the text in the right place at its first frame before calling it.

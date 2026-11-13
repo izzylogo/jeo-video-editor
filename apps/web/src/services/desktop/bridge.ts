@@ -65,6 +65,12 @@ export interface JeoDesktopBridge {
 		warnings?: string[];
 		capcutWasRunning?: boolean;
 	}>;
+	/** Ids of projects whose folder is in projects\\_trash. */
+	listTrashedProjectIds(): Promise<string[]>;
+	/** Live link: read a media file a control call asked to bring in. */
+	readLiveMedia(args: { filePath: string }): Promise<{ data: ArrayBuffer }>;
+	/** True once CapCut has a window on screen. */
+	capcutWindowOpen(): Promise<boolean>;
 	/** CapCut projects on this computer (read-only), newest first. */
 	capcutList(): Promise<{
 		ok: boolean;

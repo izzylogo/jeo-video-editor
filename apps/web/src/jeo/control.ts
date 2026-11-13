@@ -523,6 +523,36 @@ function addText(args: Args): ToolResult {
 	return { ok: true, result: added ? describeElement(added as TimelineElement) : { added: true } };
 }
 
+const LIVE_MIME: Record<string, string> = {
+	mp4: "video/mp4", m4v: "video/mp4", mov: "video/quicktime", webm: "video/webm", mkv: "video/x-matroska",
+	mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg", flac: "audio/flac",
+	png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif",
+};
+
+/** Live link: copy a file the desktop app was asked to bring in into this project. */
+async function importMediaFile(args: Args): Promise<ToolResult> {
+	const desktop = getDesktopBridge();
+	if (!desktop) return { ok: false, error: "This works in the JEO Editor desktop app." };
+	const filePath = str(args.path);
+	const name = str(args.name) || filePath.split(/[\\/]/).pop() || "file";
+	const existing = editor()
+		.media.getAssets()
+		.find((asset) => asset.name === name);
+	if (existing) {
+		return { ok: true, result: { media: existing.name, alreadyThere: true, seconds: existing.duration ?? null } };
+	}
+	const { data } = await desktop.readLiveMedia({ filePath });
+	const extension = name.split(".").pop()?.toLowerCase() ?? "";
+	const asset = await actions.importFile({
+		file: new File([data], name, { type: LIVE_MIME[extension] ?? "" }),
+	});
+	if (!asset) return { ok: false, error: `Could not read ${name}.` };
+	return {
+		ok: true,
+		result: { media: asset.name, kind: asset.type, seconds: asset.duration ?? null, width: asset.width, height: asset.height },
+	};
+}
+
 function offerTextOptions(args: Args): ToolResult {
 	const { element } = findElement({ id: str(args.id) });
 	if (element.type !== "text") return { ok: false, error: "That id is not a text." };
@@ -1024,6 +1054,12 @@ const TOOLS: ToolDefinition[] = [
 		handler: updateElement,
 	},
 	{
+		name: "import_media_file",
+		description: "Internal: used by import_media.",
+		inputSchema: schema({ path: string, name: string }, ["path"]),
+		handler: importMediaFile,
+	},
+	{
 		name: "offer_text_options",
 		description:
 			"Offer the user other wordings for ONE existing text, without changing the edit. They appear as one-click choices on that text (right-click menu and its settings). Use it when the user asks for options/alternatives for a part. Give 3 to 5 options that fit the storyline and the JEO style (short, upper-case, same kind of line as the original).",
@@ -1096,7 +1132,7 @@ const TOOLS: ToolDefinition[] = [
 	{
 		name: "follow_head",
 		description:
-			"Make a tag (by id) follow the person under it: tracks the picture just below the tag through its clip and writes position keyframes. Place the tag on the head at its first frame first. Only works on moving video, not on a freeze.",
+			"Make a text, tag or arrow follow a moving person through its clip, with position keyframes (optical-flow tracking). A TAG sits above a head, so it follows the point below it (default offsetBelow 110). A line of DIALOGUE sits under the speaker's mouth, so pass offsetBelow -110 to follow the face above it. Place the element correctly at its first frame first. Use it whenever the person moves noticeably while the text is on screen.",
 		inputSchema: schema({ id: string, offsetBelow: number }, ["id"]),
 		handler: followHead,
 	},

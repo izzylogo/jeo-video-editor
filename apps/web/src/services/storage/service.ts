@@ -197,6 +197,28 @@ class StorageService {
 						this.projectsAdapter.list(),
 					]);
 					const known = new Set(storedIds);
+					// the trash wins: a project whose folder was moved to
+					// projects\_trash (and is not also live on disk) leaves the app
+					try {
+						const trashed = await desktop.listTrashedProjectIds();
+						const live = new Set<string>();
+						for (const { json } of onDisk) {
+							try {
+								const liveId = (JSON.parse(json) as SerializedProject)?.metadata?.id;
+								if (typeof liveId === "string") live.add(liveId);
+							} catch {
+								// unreadable; ignore
+							}
+						}
+						for (const id of trashed) {
+							if (known.has(id) && !live.has(id)) {
+								await this.projectsAdapter.remove(id);
+								known.delete(id);
+							}
+						}
+					} catch (error) {
+						console.error("[jeo] Failed to read the projects trash:", error);
+					}
 					for (const { json } of onDisk) {
 						try {
 							const parsed = JSON.parse(json) as SerializedProject;

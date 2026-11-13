@@ -193,6 +193,26 @@ function registerIpc() {
 		return projects;
 	});
 
+	// Ids of projects whose folder sits in projects\_trash. The trash wins: a
+	// project moved there (in the app, or by hand in Explorer) leaves the list.
+	ipcMain.handle("jeo:listTrashedProjectIds", async () => {
+		const trashDir = path.join(PROJECTS_DIR, "_trash");
+		const entries = await fsp.readdir(trashDir, { withFileTypes: true }).catch(() => []);
+		const ids = [];
+		for (const entry of entries) {
+			if (!entry.isDirectory()) continue;
+			try {
+				const parsed = JSON.parse(
+					await fsp.readFile(path.join(trashDir, entry.name, "project.json"), "utf8"),
+				);
+				if (typeof parsed?.metadata?.id === "string") ids.push(parsed.metadata.id);
+			} catch {
+				// not a project folder
+			}
+		}
+		return ids;
+	});
+
 	// Deleting a project in the app moves its folder to projects\_trash.
 	ipcMain.handle("jeo:trashProject", async (_event, { id }) => {
 		const dir = await findProjectDir({ id });
@@ -428,6 +448,30 @@ function registerIpc() {
 		return { ...result, capcutWasRunning };
 	});
 
+	// ---- live link: read a media file a control call asked to bring in ----
+	ipcMain.handle("jeo:readLiveMedia", async (_event, { filePath }) => {
+		const full = path.resolve(String(filePath));
+		if (!liveMediaAllowed.has(full)) throw new Error("That file was not asked for through the live link");
+		const buffer = await fsp.readFile(full);
+		return { data: buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) };
+	});
+
+	// ---- is CapCut's window up? (so the editor can say "CapCut is open") ----
+	ipcMain.handle("jeo:capcutWindowOpen", async () =>
+		new Promise((resolve) => {
+			execFile(
+				"tasklist",
+				["/V", "/FO", "CSV", "/NH", "/FI", "IMAGENAME eq CapCut.exe"],
+				{ windowsHide: true, timeout: 8000 },
+				(_error, stdout) => {
+					// the last column is the window title; background helpers show "N/A"
+					const rows = String(stdout || "").split(/\r?\n/).filter((row) => /CapCut\.exe/i.test(row));
+					resolve(rows.some((row) => !/"N\/A"\s*$/.test(row.trim())));
+				},
+			);
+		}),
+	);
+
 	// ---- bring a CapCut project in (CapCut's own files are only read) ----
 	const runCapCutReader = (args) =>
 		new Promise((resolve) => {
@@ -508,9 +552,143 @@ const crypto = require("node:crypto");
 const CONTROL_TOKEN = crypto.randomBytes(24).toString("hex");
 let controlPort = 0;
 
+// ---------- live link: Claude (in a chat outside the app) drives THIS window ----------
+// The running editor writes where it can be reached into live\control.json.
+// tools\jeo-live.cjs reads that and sends tool calls, so edits asked for in a
+// Claude chat happen in the open window straight away, with no reload.
+const LIVE_FILE =
+	process.env.JEO_LIVE_FILE || path.resolve(__dirname, "../../../live/control.json");
+const MEDIA_EXTENSIONS = new Set([
+	".mp4", ".mov", ".m4v", ".webm", ".mkv", ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac",
+	".png", ".jpg", ".jpeg", ".webp", ".gif",
+]);
+// files a control call has asked to bring in; only these can be read
+const liveMediaAllowed = new Set();
+
+async function projectsOnDisk() {
+	const entries = await fsp.readdir(PROJECTS_DIR, { withFileTypes: true }).catch(() => []);
+	const projects = [];
+	for (const entry of entries) {
+		if (!entry.isDirectory() || entry.name.startsWith("_")) continue;
+		try {
+			const parsed = JSON.parse(
+				await fsp.readFile(path.join(PROJECTS_DIR, entry.name, "project.json"), "utf8"),
+			);
+			if (parsed?.metadata?.id) {
+				projects.push({ id: parsed.metadata.id, name: parsed.metadata.name || entry.name });
+			}
+		} catch {
+			// not a project folder
+		}
+	}
+	return projects;
+}
+
+const APP_TOOLS = [
+	{
+		name: "list_projects",
+		description: "List the user's JEO Editor projects (id and name), and which one is open in the window.",
+		inputSchema: { type: "object", properties: {} },
+	},
+	{
+		name: "open_project",
+		description: "Open a project in the JEO Editor window by id or by name. The open project is saved first.",
+		inputSchema: { type: "object", properties: { id: { type: "string" }, name: { type: "string" } } },
+	},
+	{
+		name: "new_project",
+		description: "Create a new empty project and open it in the window.",
+		inputSchema: { type: "object", properties: { name: { type: "string" } }, required: ["name"] },
+	},
+	{
+		name: "import_media",
+		description: "Bring a video, picture or sound file from this computer into the open project's media (by full path). It is copied in; the original is not changed.",
+		inputSchema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
+	},
+];
+
+function waitForEditor({ id, timeoutMs = 45000 }) {
+	// a project is ready when the editor says it is the active one
+	const script = `(async () => {
+		const until = Date.now() + ${timeoutMs};
+		while (Date.now() < until) {
+			const active = window.__jeoEditor?.project?.getActiveOrNull?.();
+			if (active && active.metadata.id === ${JSON.stringify(id)} && window.__jeoControl) return true;
+			await new Promise((r) => setTimeout(r, 300));
+		}
+		return false;
+	})()`;
+	return mainWindow.webContents.executeJavaScript(script, true).catch(() => false);
+}
+
+async function callAppTool(tool, args) {
+	const run = (script) => mainWindow.webContents.executeJavaScript(script, true);
+	const activeId = await run(`window.__jeoEditor?.project?.getActiveOrNull?.()?.metadata.id ?? null`).catch(() => null);
+	if (tool === "list_projects") {
+		const projects = await projectsOnDisk();
+		return { ok: true, result: { open: activeId, projects } };
+	}
+	if (tool === "open_project") {
+		const projects = await projectsOnDisk();
+		const wanted = String(args.id || args.name || "").toLowerCase();
+		const match =
+			projects.find((p) => p.id === args.id) ||
+			projects.find((p) => p.name.toLowerCase() === wanted) ||
+			projects.find((p) => wanted && p.name.toLowerCase().includes(wanted));
+		if (!match) return { ok: false, error: `No project matches. Projects: ${projects.map((p) => p.name).join(", ")}` };
+		if (match.id === activeId) return { ok: true, result: { opened: match.name, id: match.id, alreadyOpen: true } };
+		await run(`(async () => { try { await window.__jeoEditor?.project?.saveCurrentProject?.(); } catch {} })()`).catch(() => {});
+		// the page may redirect itself while loading; what counts is the check below
+		await mainWindow.loadURL(`http://localhost:${PORT}/editor/${match.id}`).catch(() => {});
+		const ready = await waitForEditor({ id: match.id });
+		return ready
+			? { ok: true, result: { opened: match.name, id: match.id } }
+			: { ok: false, error: "The project did not finish opening in time." };
+	}
+	if (tool === "new_project") {
+		const name = String(args.name || "New project").slice(0, 120);
+		await run(`(async () => { try { await window.__jeoEditor?.project?.saveCurrentProject?.(); } catch {} })()`).catch(() => {});
+		const id = await run(`(async () => window.__jeoEditor ? await window.__jeoEditor.project.createNewProject({ name: ${JSON.stringify(name)} }) : null)()`).catch(() => null);
+		if (!id) return { ok: false, error: "The editor could not create a project. Is its window showing the editor or the projects page?" };
+		await mainWindow.loadURL(`http://localhost:${PORT}/editor/${id}`).catch(() => {});
+		const ready = await waitForEditor({ id });
+		return ready ? { ok: true, result: { created: name, id } } : { ok: false, error: "The new project did not finish opening in time." };
+	}
+	if (tool === "import_media") {
+		const full = path.resolve(String(args.path || ""));
+		if (!MEDIA_EXTENSIONS.has(path.extname(full).toLowerCase())) {
+			return { ok: false, error: "That is not a video, picture or sound file I can bring in." };
+		}
+		const stat = await fsp.stat(full).catch(() => null);
+		if (!stat || !stat.isFile()) return { ok: false, error: `File not found: ${full}` };
+		if (stat.size > 1024 * 1024 * 1024) return { ok: false, error: "That file is over 1 GB; bring it in with the Import button instead." };
+		liveMediaAllowed.add(full);
+		return await callEditor({ tool: "import_media_file", args: { path: full, name: path.basename(full) } });
+	}
+	return null;
+}
+
 async function callEditor(payload) {
 	if (!mainWindow || mainWindow.isDestroyed()) {
 		return { ok: false, error: "The JEO Editor window is closed." };
+	}
+	if (!payload.list && APP_TOOLS.some((tool) => tool.name === payload.tool)) {
+		try {
+			return await callAppTool(payload.tool, payload.args || {});
+		} catch (error) {
+			return { ok: false, error: String(error && error.message ? error.message : error) };
+		}
+	}
+	if (payload.list) {
+		try {
+			const listed = await mainWindow.webContents.executeJavaScript(
+				`(() => ({ tools: window.__jeoControl ? window.__jeoControl.listTools() : [] }))()`,
+				true,
+			);
+			return { tools: [...APP_TOOLS, ...(listed.tools || []).filter((tool) => tool.name !== "import_media_file")] };
+		} catch {
+			return { tools: APP_TOOLS };
+		}
 	}
 	const script = payload.list
 		? `(() => ({ tools: window.__jeoControl ? window.__jeoControl.listTools() : [] }))()`
@@ -559,6 +737,26 @@ function startControlServer() {
 		// local machine only
 		server.listen(0, "127.0.0.1", () => {
 			controlPort = server.address().port;
+			// tell tools\jeo-live.cjs where this window can be reached (the real
+			// app always; a test window only when it is given its own file)
+			if (!CAPTURE_PATH || process.env.JEO_LIVE_FILE) {
+				fsp.mkdir(path.dirname(LIVE_FILE), { recursive: true })
+					.then(() =>
+						fsp.writeFile(
+							LIVE_FILE,
+							JSON.stringify({ port: controlPort, token: CONTROL_TOKEN, pid: process.pid, started: new Date().toISOString() }),
+						),
+					)
+					.catch(() => {});
+				app.on("will-quit", () => {
+					try {
+						const current = JSON.parse(fs.readFileSync(LIVE_FILE, "utf8"));
+						if (current.pid === process.pid) fs.rmSync(LIVE_FILE, { force: true });
+					} catch {
+						// already gone
+					}
+				});
+			}
 			resolve();
 		});
 	});

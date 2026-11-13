@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
 import type { TextElement } from "@/timeline";
@@ -19,6 +19,7 @@ import {
 import { followHead } from "../control";
 import { optionsOnElement, useTextOptions } from "../text-options";
 import { sendChatText, useChatStore } from "./ai-chat";
+import { SkeletonLines, Spinner, useElapsedSeconds, withWorkingNotice } from "./feedback";
 
 /** Ask Claude for other wordings for one text; they come back as choices. */
 export async function askForTextOptions({
@@ -32,9 +33,7 @@ export async function askForTextOptions({
 	const sent = await sendChatText({
 		text: `Give me other options for this part: the text "${words}" (id ${element.id}, at ${at} s). Follow my storyline and my style, and look at what is on screen there. Do NOT change the edit. Call offer_text_options with 4 options so I can pick one, then tell me in one line what each option is going for.`,
 	});
-	if (sent) {
-		toast.success("Asked Claude. The options will appear here in a moment.");
-	} else {
+	if (!sent) {
 		useTextOptions.getState().setAsking({ elementId: element.id, isAsking: false });
 		toast.error(
 			useChatStore.getState().isBusy
@@ -111,7 +110,27 @@ export function TextQuickActions({ element }: { element: TextElement }) {
 	const wasAsked = useTextOptions((state) => state.asking[id] === true);
 	const isChatBusy = useChatStore((state) => state.isBusy);
 	const isAsking = wasAsked && isChatBusy;
+	const askedFor = useElapsedSeconds(isAsking);
 	const current = String(element.params.content ?? "");
+
+	// say so when the wait ends: options arrived, or Claude stopped without any
+	const wasAskingRef = useRef(false);
+	const countWhenAskedRef = useRef(0);
+	const [justArrived, setJustArrived] = useState(false);
+	useEffect(() => {
+		if (isAsking && !wasAskingRef.current) countWhenAskedRef.current = offered.length;
+		if (!isAsking && wasAskingRef.current) {
+			if (offered.length > 0 && (stored?.length ?? 0) > 0) {
+				setJustArrived(true);
+				toast.success(`${offered.length} options are ready. Click one to use it.`);
+				window.setTimeout(() => setJustArrived(false), 900);
+			} else if (wasAsked) {
+				toast.message("Claude finished without new options. You can ask again.");
+			}
+			useTextOptions.getState().setAsking({ elementId: id, isAsking: false });
+		}
+		wasAskingRef.current = isAsking;
+	}, [isAsking, offered.length, stored, wasAsked, id]);
 
 	const busy = async (work: () => Promise<void>) => {
 		setIsBusy(true);
@@ -140,7 +159,8 @@ export function TextQuickActions({ element }: { element: TextElement }) {
 								report(setTextContent({ elementId: id, content: option }))
 							}
 							className={cn(
-								"cursor-pointer rounded-md px-2.5 py-1.5 text-left text-xs whitespace-pre-line transition-colors duration-150",
+								"cursor-pointer rounded-md px-2.5 py-1.5 text-left text-xs whitespace-pre-line transition-colors duration-150 active:scale-[0.98]",
+								justArrived && "jeo-rise",
 								option === current
 									? "bg-secondary text-secondary-foreground"
 									: "bg-accent hover:bg-accent/70",
@@ -149,15 +169,32 @@ export function TextQuickActions({ element }: { element: TextElement }) {
 							{option}
 						</button>
 					))}
+					{isAsking && (
+						<div data-jeo="options-loading" role="status" className="jeo-rise">
+							<div className="text-muted-foreground mb-1.5 flex items-center gap-2 text-xs">
+								<Spinner className="text-primary size-3.5" />
+								<span>
+									Claude is writing options…{" "}
+									<span className="tabular-nums">{askedFor} s</span>
+								</span>
+							</div>
+							<SkeletonLines count={3} />
+							<p className="text-muted-foreground mt-1.5 text-[0.68rem]">
+								Usually 15 to 40 seconds. You can keep editing; they will appear
+								here.
+							</p>
+						</div>
+					)}
 					<button
 						type="button"
 						data-jeo="ask-options"
 						disabled={isAsking}
+						aria-busy={isAsking}
 						onClick={() => void askForTextOptions({ element })}
-						className="border-primary/60 text-primary hover:bg-primary/10 cursor-pointer rounded-md border border-dashed px-2.5 py-1.5 text-left text-xs transition-colors duration-150 disabled:cursor-wait disabled:opacity-60"
+						className="border-primary/60 text-primary hover:bg-primary/10 cursor-pointer rounded-md border border-dashed px-2.5 py-1.5 text-left text-xs transition-[background-color,transform] duration-150 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"
 					>
 						{isAsking
-							? "Claude is thinking of options…"
+							? "Asked. Waiting for Claude…"
 							: offered.length > 0
 								? "Ask Claude for more options"
 								: "Ask Claude for options from the storyline"}
@@ -214,6 +251,24 @@ export function TextQuickActions({ element }: { element: TextElement }) {
 					}
 				>
 					{isBusy ? "Working…" : "Follow the head"}
+				</Chip>
+				<Chip
+					isOn={false}
+					disabled={isBusy}
+					title="For dialogue: the text stays under the speaker's mouth as they move (position keyframes)"
+					onClick={() =>
+						busy(async () => {
+							const outcome = await withWorkingNotice({
+								label: "Following the speaker through the clip. About 10 to 20 seconds.",
+								// the face is ABOVE a line of dialogue, so follow the point above the text
+								work: () => followHead({ id, offsetBelow: -110 }),
+							});
+							if (outcome.ok) toast.success("The text now follows the speaker. Ctrl+Z undoes it.");
+							else toast.error(outcome.error ?? "Could not follow.");
+						})
+					}
+				>
+					Follow the speaker
 				</Chip>
 			</Row>
 			<Row label="This moment">

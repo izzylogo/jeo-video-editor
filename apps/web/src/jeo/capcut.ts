@@ -92,7 +92,13 @@ export interface CapCutExportResult {
 	capcutWasRunning?: boolean;
 }
 
-export async function openInCapCut(): Promise<CapCutExportResult> {
+export async function openInCapCut({
+	onStage,
+}: {
+	/** called as each step begins, with words for the user */
+	onStage?: (stage: string) => void;
+} = {}): Promise<CapCutExportResult> {
+	onStage?.("Reading the timeline");
 	const desktop = getDesktopBridge();
 	const editor = EditorCore.getInstance();
 	const project = editor.project.getActive();
@@ -233,7 +239,9 @@ export async function openInCapCut(): Promise<CapCutExportResult> {
 		}
 	}
 
+	onStage?.("Saving the project");
 	await editor.project.saveCurrentProject();
+	onStage?.("Making the cover picture");
 
 	// a cover picture, so the project is easy to spot in CapCut's list
 	let coverBase64: string | undefined;
@@ -264,6 +272,7 @@ export async function openInCapCut(): Promise<CapCutExportResult> {
 		console.warn("[jeo] could not make a CapCut cover:", error);
 	}
 
+	onStage?.("Writing the CapCut project");
 	const outcome = await desktop.exportToCapCut({
 		projectId: project.metadata.id,
 		data: {
