@@ -7,6 +7,7 @@ import { usePropertiesStore } from "./stores/properties-store";
 import { getPropertiesConfig } from "./registry";
 import { cn } from "@/utils/ui";
 import { EmptyView } from "./empty-view";
+import { MultiSelectPanel } from "@/jeo/components/multi-panel";
 
 export function PropertiesPanel() {
 	const editor = useEditor();
@@ -23,16 +24,18 @@ export function PropertiesPanel() {
 		);
 	}
 
+	// JEO: several clips selected: show the settings they share
 	if (selectedElements.length > 1) {
 		return (
-			<div className="panel bg-background flex h-full flex-col items-center justify-center overflow-hidden rounded-sm border">
-				<p className="text-muted-foreground text-sm">
-					{selectedElements.length} elements selected.0
-				</p>
-			</div>
+			<MultiSelectPanel
+				// a new selection starts with clean boxes
+				key={selectedElements.map((item) => item.elementId).join("|")}
+				picked={editor.timeline.getElementsWithTracks({
+					elements: selectedElements,
+				})}
+			/>
 		);
 	}
-
 	const mediaAssets = editor.media.getAssets();
 
 	const elementsWithTracks = editor.timeline.getElementsWithTracks({

@@ -180,7 +180,7 @@ function Pill({
 
 // ---------- preset styles ----------
 
-interface StylePreset {
+export interface StylePreset {
 	id: string;
 	name: string;
 	fill: string;
@@ -188,7 +188,7 @@ interface StylePreset {
 	background?: string;
 }
 
-const STYLE_PRESETS: StylePreset[] = [
+export const STYLE_PRESETS: StylePreset[] = [
 	{ id: "none", name: "Plain white, no outline", fill: "#ffffff" },
 	{ id: "jeo", name: "JEO: white with a dark outline", fill: "#ffffff", stroke: "#000000" },
 	{ id: "black-white", name: "Black with a white outline", fill: "#000000", stroke: "#ffffff" },
@@ -205,7 +205,7 @@ const STYLE_PRESETS: StylePreset[] = [
 	{ id: "green-on-black", name: "Green on a black box", fill: "#22e03a", background: "#000000" },
 ];
 
-function presetParams(preset: StylePreset): Params {
+export function presetParams(preset: StylePreset): Params {
 	return {
 		color: preset.fill,
 		"stroke.enabled": Boolean(preset.stroke),

@@ -10,7 +10,7 @@ export const TIMELINE_TRACK_THEME: Record<
 	}
 > = {
 	video: { elementClassName: "transparent" },
-	text: { elementClassName: "bg-[#5DBAA0]" },
+	text: { elementClassName: "bg-[#D9642B]" },
 	audio: {
 		elementClassName: "bg-[#8F5DBA]",
 		waveformColor: TIMELINE_AUDIO_WAVEFORM_COLOR,

@@ -47,9 +47,14 @@ import {
 	RedoIcon,
 	FlipHorizontalIcon,
 	FitToScreenIcon,
+	CropIcon,
 } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { addFreeze } from "@/jeo/actions";
+import { VoiceRecordButton } from "@/jeo/components/voice-record";
+import { buildDefaultMaskInstance } from "@/masks";
+import { usePropertiesStore } from "@/components/editor/panels/properties/stores/properties-store";
+import type { MaskableElement } from "@/timeline";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { OcRippleIcon } from "@/components/icons";
 import { GraphEditorPopover } from "./graph-editor/popover";
@@ -219,6 +224,38 @@ function ToolbarLeftSection() {
 				/>
 
 				<ToolbarButton
+					icon={<HugeiconsIcon icon={CropIcon} />}
+					tooltip="Crop: puts a box on the selected clip. Drag the box in the preview; what is outside it is hidden."
+					jeoId="crop"
+					disabled={
+						!selectedElement ||
+						(selectedElement.element.type !== "video" &&
+							selectedElement.element.type !== "image")
+					}
+					onClick={() => {
+						if (!selectedElement) return;
+						const { element, track } = selectedElement;
+						if (element.type !== "video" && element.type !== "image") return;
+						if (!element.masks || element.masks.length === 0) {
+							editor.timeline.updateElements({
+								updates: [
+									{
+										trackId: track.id,
+										elementId: element.id,
+										patch: {
+											masks: [buildDefaultMaskInstance({ maskType: "rectangle" })],
+										} as Partial<MaskableElement>,
+									},
+								],
+							});
+						}
+						usePropertiesStore
+							.getState()
+							.setActiveTab({ elementType: element.type, tabId: "masks" });
+					}}
+				/>
+
+				<ToolbarButton
 					icon={<HugeiconsIcon icon={FlipHorizontalIcon} />}
 					tooltip="Mirror the selected clip left-to-right"
 					jeoId="mirror"
@@ -342,6 +379,7 @@ function ToolbarRightSection({
 
 	return (
 		<div className="flex items-center gap-1">
+			<VoiceRecordButton />
 			<SceneSelector />
 			<div className="bg-border mx-1 h-6 w-px" />
 			<TooltipProvider delayDuration={500}>

@@ -1,5 +1,8 @@
 {
   "items": [
+    "Select several clips (Ctrl+click or drag a box) and change their shared settings together: size, scale, position, style, volume",
+    "Text clips on the timeline are orange",
+    "Two more timeline buttons: Crop (a box on the clip) and Record voice (microphone)",
     "Video clips on the timeline have CapCut's three bands: details on top, pictures, and a sound band where you drag the volume line",
     "Timeline toolbar in CapCut's order: undo, redo, split, delete left, delete right, delete, marker, freeze, mirror",
     "New layout: CapCut tall preview (the preview runs down the whole right side)",

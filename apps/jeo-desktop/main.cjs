@@ -32,6 +32,11 @@ const FORCE_DEV = process.argv.includes("--dev");
 
 // A video editor should never have its preview sound blocked.
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+// tests only: a pretend microphone, so voice recording can be checked
+if (process.env.JEO_FAKE_MIC) {
+  app.commandLine.appendSwitch("use-fake-device-for-media-stream");
+  app.commandLine.appendSwitch("use-fake-ui-for-media-stream");
+}
 
 let serverProcess = null;
 let mainWindow = null;
