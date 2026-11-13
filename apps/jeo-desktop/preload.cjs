@@ -29,6 +29,19 @@ contextBridge.exposeInMainWorld("jeoDesktop", {
 	updateNow: (args) => ipcRenderer.invoke("jeo:updateNow", args),
 	exportToCapCut: (args) => ipcRenderer.invoke("jeo:exportToCapCut", args),
 	listTrashedProjectIds: () => ipcRenderer.invoke("jeo:listTrashedProjectIds"),
+	checkGitHub: () => ipcRenderer.invoke("jeo:checkGitHub"),
+	pullUpdate: () => ipcRenderer.invoke("jeo:pullUpdate"),
+	appInfo: () => ipcRenderer.invoke("jeo:appInfo"),
+	onRemoteUpdate: (listener) => {
+		const handler = (_event, info) => listener(info);
+		ipcRenderer.on("jeo:remoteUpdate", handler);
+		return () => ipcRenderer.removeListener("jeo:remoteUpdate", handler);
+	},
+	onPullProgress: (listener) => {
+		const handler = (_event, stage) => listener(stage);
+		ipcRenderer.on("jeo:pullProgress", handler);
+		return () => ipcRenderer.removeListener("jeo:pullProgress", handler);
+	},
 	capcutList: () => ipcRenderer.invoke("jeo:capcutList"),
 	capcutWindowOpen: () => ipcRenderer.invoke("jeo:capcutWindowOpen"),
 	readLiveMedia: (args) => ipcRenderer.invoke("jeo:readLiveMedia", args),

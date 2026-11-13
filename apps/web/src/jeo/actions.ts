@@ -738,6 +738,22 @@ async function visibleWidthShare({ file }: { file: File }): Promise<number> {
 
 export type EndingKind = "funny" | "sweet";
 
+/** A 512px picture of the ending emoji, drawn with the computer's emoji font. */
+async function drawEmojiFile({ kind }: { kind: EndingKind }): Promise<File> {
+	const canvas = document.createElement("canvas");
+	canvas.width = 512;
+	canvas.height = 512;
+	const ctx = canvas.getContext("2d");
+	if (!ctx) throw new Error("no canvas");
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+	ctx.font = '400px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+	ctx.fillText(kind === "funny" ? "\u{1F602}" : "\u2764\uFE0F", 256, 280);
+	const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+	if (!blob) throw new Error("could not draw the emoji");
+	return new File([blob], kind === "funny" ? "laugh_drawn.png" : "heart_drawn.png", { type: "image/png" });
+}
+
 const ENDING_EMOJI: Record<EndingKind, string> = {
 	funny: "laugh_yours.png",
 	sweet: "heart.png",
@@ -758,9 +774,12 @@ export async function addEnding({ kind }: { kind: EndingKind }): Promise<ActionR
 	}
 
 	const emojiName = ENDING_EMOJI[kind];
-	const emojiAsset = await importAssetFile({
-		file: { name: emojiName, relPath: `emoji/${emojiName}` },
-	});
+	// your own picture from assets\emoji if there is one; otherwise the emoji
+	// is drawn from Windows' own emoji font, so the ending works out of the box
+	const emojiAsset =
+		(await importAssetFile({
+			file: { name: emojiName, relPath: `emoji/${emojiName}` },
+		}).catch(() => null)) ?? (await importFile({ file: await drawEmojiFile({ kind }) }));
 	if (!emojiAsset) {
 		return fail(`Could not load assets\\emoji\\${emojiName}.`);
 	}

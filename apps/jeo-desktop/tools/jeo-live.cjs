@@ -16,8 +16,15 @@ const fs = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
 
-const LIVE_FILE =
-	process.env.JEO_LIVE_FILE || path.resolve(__dirname, "../../../../live/control.json");
+// same rule as the app: next to the code folder on the author's PC, else <code>/data
+const REPO_ROOT = path.resolve(__dirname, "../../..");
+const LEGACY_ROOT = path.resolve(__dirname, "../../../..");
+const DATA_ROOT =
+	process.env.JEO_DATA_DIR ||
+	(fs.existsSync(path.join(LEGACY_ROOT, "projects")) && fs.existsSync(path.join(LEGACY_ROOT, "CLAUDE.md"))
+		? LEGACY_ROOT
+		: path.join(REPO_ROOT, "data"));
+const LIVE_FILE = process.env.JEO_LIVE_FILE || path.join(DATA_ROOT, "live", "control.json");
 
 function fail(message) {
 	process.stdout.write(`${JSON.stringify({ ok: false, error: message })}\n`);

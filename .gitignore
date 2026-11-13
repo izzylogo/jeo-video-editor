@@ -33,3 +33,10 @@ apps/web/public/_jeotest/
 apps/jeo-desktop/runtime/
 
 graphify-out/
+
+# JEO: your own projects, exports and sounds (never uploaded)
+data/
+# JEO: the report a new installation writes
+JEO-REPORT.md
+JEO-REPORT.png
+

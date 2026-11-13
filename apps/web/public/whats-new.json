@@ -1,5 +1,7 @@
 {
   "items": [
+    "Updates from GitHub: the editor tells you when a newer version has been pushed, and Get update installs it",
+    "The 😂 and ❤️ endings work without any picture files (drawn from Windows' emoji font if assets\\emoji is empty)",
     "Media panel rebuilt like CapCut's: kinds on the left (All, Videos, Pictures, Sounds, Added, Not used), Import, Record and search on top, and an Added badge on files already in the timeline",
     "The editor now fits small laptops (icons-only category bar) and phone-width windows (one column: video, then Add or Settings, then the timeline)",
     "Typing in a text no longer hangs: the box keeps up with the keyboard and the preview catches up when you pause",

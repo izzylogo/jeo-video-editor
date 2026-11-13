@@ -65,6 +65,13 @@ export interface JeoDesktopBridge {
 		warnings?: string[];
 		capcutWasRunning?: boolean;
 	}>;
+	/** Is there a newer version on GitHub? (only when the code is a git clone) */
+	checkGitHub(): Promise<{ ok: boolean; behind?: number; items?: string[]; reason?: string }>;
+	/** Download, install and build the newer version. Restart afterwards. */
+	pullUpdate(): Promise<{ ok: boolean; error?: string }>;
+	appInfo(): Promise<{ dataFolder: string; codeFolder: string; commit: string }>;
+	onRemoteUpdate(listener: (info: { count: number; items: string[] }) => void): () => void;
+	onPullProgress(listener: (stage: string) => void): () => void;
 	/** Ids of projects whose folder is in projects\\_trash. */
 	listTrashedProjectIds(): Promise<string[]>;
 	/** Live link: read a media file a control call asked to bring in. */

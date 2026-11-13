@@ -12,12 +12,24 @@ const path = require("node:path");
 const PORT = Number(process.env.JEO_PORT || 3210);
 const APP_URL = `http://localhost:${PORT}`;
 const WEB_DIR = path.resolve(__dirname, "../web");
-const PROJECTS_DIR =
-	process.env.JEO_PROJECTS_DIR || path.resolve(__dirname, "../../../projects");
-const OUTPUT_DIR =
-	process.env.JEO_OUTPUT_DIR || path.resolve(__dirname, "../../../output");
-const ASSETS_DIR =
-	process.env.JEO_ASSETS_DIR || path.resolve(__dirname, "../../../assets");
+// Where your own things live: projects, exports, music/sounds/emoji, and the
+// live-link file.
+//  - JEO_DATA_DIR, if set, wins.
+//  - The original author's layout keeps these folders NEXT TO the code folder
+//    (recognised by a "projects" folder and a CLAUDE.md there).
+//  - Everyone else gets a "data" folder inside the code folder. It is ignored
+//    by git, so updates never touch your projects.
+const REPO_ROOT = path.resolve(__dirname, "../..");
+const LEGACY_ROOT = path.resolve(__dirname, "../../..");
+const DATA_ROOT =
+	process.env.JEO_DATA_DIR ||
+	(fs.existsSync(path.join(LEGACY_ROOT, "projects")) &&
+	fs.existsSync(path.join(LEGACY_ROOT, "CLAUDE.md"))
+		? LEGACY_ROOT
+		: path.join(REPO_ROOT, "data"));
+const PROJECTS_DIR = process.env.JEO_PROJECTS_DIR || path.join(DATA_ROOT, "projects");
+const OUTPUT_DIR = process.env.JEO_OUTPUT_DIR || path.join(DATA_ROOT, "output");
+const ASSETS_DIR = process.env.JEO_ASSETS_DIR || path.join(DATA_ROOT, "assets");
 const ICON_PATH = path.join(__dirname, "icon.ico");
 
 // Test helpers: --capture=<png path> [--eval-file=<js path>] [--capture-delay=<ms>]
@@ -537,6 +549,13 @@ function registerIpc() {
 	});
 
 	ipcMain.handle("jeo:updateNow", async (_event, args) => restartForUpdate(args || {}));
+	ipcMain.handle("jeo:checkGitHub", async () => checkGitHub().catch(() => ({ ok: false, reason: "error" })));
+	ipcMain.handle("jeo:pullUpdate", async () => pullUpdate());
+	ipcMain.handle("jeo:appInfo", async () => ({
+		dataFolder: DATA_ROOT,
+		codeFolder: REPO_ROOT,
+		commit: (await git(["log", "-1", "--format=%h %cs %s"])).out,
+	}));
 	ipcMain.handle("jeo:chatSend", async (_event, args) => chatSend(args));
 	ipcMain.handle("jeo:chatStop", async () => chatStop());
 
@@ -557,7 +576,7 @@ let controlPort = 0;
 // tools\jeo-live.cjs reads that and sends tool calls, so edits asked for in a
 // Claude chat happen in the open window straight away, with no reload.
 const LIVE_FILE =
-	process.env.JEO_LIVE_FILE || path.resolve(__dirname, "../../../live/control.json");
+	process.env.JEO_LIVE_FILE || path.join(DATA_ROOT, "live", "control.json");
 const MEDIA_EXTENSIONS = new Set([
 	".mp4", ".mov", ".m4v", ".webm", ".mkv", ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac",
 	".png", ".jpg", ".jpeg", ".webp", ".gif",
@@ -764,7 +783,7 @@ function startControlServer() {
 
 // ---------- AI chat: Claude Code, headless ----------
 
-const STYLE_FILE = path.resolve(__dirname, "../../../style/your-style.md");
+const STYLE_FILE = path.join(DATA_ROOT, "style", "your-style.md");
 let chatProcess = null;
 let chatStopped = false;
 
@@ -989,6 +1008,101 @@ function watchForUpdates() {
 	}, 3000);
 }
 
+// ---------- updates from GitHub ----------
+// When the code folder is a git clone, the app looks at GitHub every few
+// minutes. If there are new changes it says so, and "Get update" pulls them,
+// installs anything new, rebuilds and restarts. Your projects are not touched.
+function git(args, options = {}) {
+	return new Promise((resolve) => {
+		execFile(
+			"git",
+			args,
+			{ cwd: REPO_ROOT, windowsHide: true, timeout: options.timeout || 60000, maxBuffer: 4 * 1024 * 1024, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } },
+			(error, stdout, stderr) => resolve({ ok: !error, out: String(stdout || "").trim(), err: String(stderr || "").trim() }),
+		);
+	});
+}
+
+async function checkGitHub() {
+	if (!fs.existsSync(path.join(REPO_ROOT, ".git"))) return { ok: false, reason: "not-a-clone" };
+	const branch = (await git(["rev-parse", "--abbrev-ref", "HEAD"])).out || "main";
+	const remote = (await git(["config", "--get", `branch.${branch}.remote`])).out || "origin";
+	const fetched = await git(["fetch", remote, "--quiet"], { timeout: 90000 });
+	if (!fetched.ok) return { ok: false, reason: "offline" };
+	const upstream = (await git(["rev-parse", "--abbrev-ref", `${branch}@{upstream}`])).out || `${remote}/main`;
+	const behind = Number((await git(["rev-list", "--count", `HEAD..${upstream}`])).out || 0);
+	if (!behind) return { ok: true, behind: 0, items: [] };
+	const subjects = (await git(["log", `HEAD..${upstream}`, "--format=%s", "-n", "6"])).out
+		.split(/\r?\n/)
+		.filter(Boolean);
+	return { ok: true, behind, items: subjects, upstream };
+}
+
+let remoteAnnounced = "";
+function watchGitHub() {
+	const look = async () => {
+		const state = await checkGitHub().catch(() => ({ ok: false }));
+		if (!state.ok || !state.behind) return;
+		const key = `${state.behind}:${state.items[0] || ""}`;
+		if (key === remoteAnnounced) return;
+		remoteAnnounced = key;
+		if (mainWindow && !mainWindow.isDestroyed()) {
+			mainWindow.webContents.send("jeo:remoteUpdate", { count: state.behind, items: state.items });
+		}
+	};
+	setTimeout(look, 25000);
+	setInterval(look, 10 * 60 * 1000);
+}
+
+function runStep(command, args, cwd, timeoutMs) {
+	return new Promise((resolve) => {
+		const child = spawn(command, args, { cwd, windowsHide: true, shell: process.platform === "win32" });
+		let tail = "";
+		const keep = (chunk) => {
+			tail = (tail + String(chunk)).slice(-1500);
+		};
+		child.stdout.on("data", keep);
+		child.stderr.on("data", keep);
+		const timer = setTimeout(() => child.kill(), timeoutMs);
+		child.on("error", (error) => {
+			clearTimeout(timer);
+			resolve({ ok: false, tail: String(error.message || error) });
+		});
+		child.on("close", (code) => {
+			clearTimeout(timer);
+			resolve({ ok: code === 0, tail });
+		});
+	});
+}
+
+let isPulling = false;
+async function pullUpdate() {
+	if (isPulling) return { ok: false, error: "An update is already running." };
+	isPulling = true;
+	const say = (stage) => {
+		if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("jeo:pullProgress", stage);
+	};
+	try {
+		const dirty = (await git(["status", "--porcelain", "--untracked-files=no"])).out;
+		if (dirty) {
+			return { ok: false, error: "This copy of the code has been changed by hand, so it cannot be updated automatically. Ask whoever set it up, or run update.cmd." };
+		}
+		say("Downloading the changes from GitHub");
+		const pulled = await git(["pull", "--ff-only"], { timeout: 180000 });
+		if (!pulled.ok) return { ok: false, error: `GitHub could not be reached or the update did not fit: ${pulled.err.split(/\r?\n/).pop() || "unknown reason"}` };
+		say("Installing anything new (this can take a few minutes)");
+		const installed = await runStep("bun", ["install"], REPO_ROOT, 20 * 60 * 1000);
+		if (!installed.ok) return { ok: false, error: "The new parts could not be installed. Run update.cmd to see why." };
+		say("Building the new version (2 to 5 minutes)");
+		const built = await runStep("bun", ["run", "build"], WEB_DIR, 25 * 60 * 1000);
+		if (!built.ok) return { ok: false, error: "The new version did not build. Run update.cmd to see why." };
+		say("Restarting");
+		return { ok: true };
+	} finally {
+		isPulling = false;
+	}
+}
+
 function restartForUpdate({ projectId }) {
 	chatStop();
 	if (serverProcess && process.platform === "win32") {
@@ -1076,6 +1190,12 @@ async function createWindow() {
 
 	if (CAPTURE_PATH) {
 		await new Promise((resolve) => setTimeout(resolve, CAPTURE_DELAY));
+		if (process.argv.includes("--test-remote-update")) {
+			mainWindow.webContents.send("jeo:remoteUpdate", {
+				count: 3,
+				items: ["Example: a new effect", "Example: faster export", "Example: a fix"],
+			});
+		}
 		if (process.argv.includes("--test-update-notice")) {
 			mainWindow.webContents.send("jeo:updateReady", whatsNew());
 		}
@@ -1120,7 +1240,10 @@ if (!app.requestSingleInstanceLock()) {
 		try {
 			await startControlServer();
 			await startServer();
-			if (!CAPTURE_PATH) watchForUpdates();
+			if (!CAPTURE_PATH) {
+		watchForUpdates();
+		watchGitHub();
+	}
 			await createWindow();
 		} catch (error) {
 			const { dialog } = require("electron");
