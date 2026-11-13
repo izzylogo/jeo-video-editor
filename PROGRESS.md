@@ -264,4 +264,13 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **Media panel like CapCut's**: a short list on the left (All, Videos, Pictures, Sounds, Added, Not used, each with a count), then Import, Record and a search box, then the files as cards. A file already in the timeline carries an "Added" badge; the length is on the top right; upright clips are shown whole on a dark tile instead of cropped.
 - **Fits more screens**: on a small laptop the category bar shows icons only (rest the mouse on one for its name). At phone width the editor becomes one column: the video, then an Add / Settings switch, then the timeline. The old "desktop only" wall is gone and the window can be made narrow.
 - **Design review** (impeccable skill): two findings fixed, the preview's zoom controls running off the edge at phone width and category buttons too small to tap comfortably.
+## Round 8: on GitHub, installable by a friend (13 Nov 2026)
+
+- **The repo**: `https://github.com/izzylogo/jeo-video-editor` (branch `main`). On this PC the local branch is still called `jeo-editor`; it follows `origin/main`, so a plain `git push` sends your changes. OpenCut's repo is kept as the remote `upstream`.
+- **For a friend**: `git clone`, then `setup.cmd` (checks the PC, installs packages, downloads Electron, builds, makes the Desktop shortcut, writes `JEO-REPORT.md`). `start.cmd`, `update.cmd` and `report.cmd` do what their names say. The README explains every step, sizes and warnings.
+- **Updates**: the open editor looks at GitHub every 10 minutes and shows "An update is on GitHub" with a **Get update** button. `update.cmd` does the same from a window.
+- **Their data** lives in `data\` inside their folder (ignored by git). On this PC the old folders next to `app\` are still used.
+- **Tested**: a fresh copy in `C:\jt\` went through the whole setup and its report said "Everything checked out". Two problems found and fixed on the way: a very long folder path breaks the package install (setup now checks and says so), and the package list file was out of date.
+- **Not tested**: the Electron download itself (the test copied Electron from this PC), the `winget` installs of Git/Node/Bun, and a PC that is not this one.
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

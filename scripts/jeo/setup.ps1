@@ -111,6 +111,8 @@ elseif ($ElectronFrom) {
     Invoke-WebRequest "$base/$name" -OutFile $zip -UseBasicParsing
     # check the download against Electron's own published fingerprint
     $sums = (Invoke-WebRequest "$base/SHASUMS256.txt" -UseBasicParsing).Content
+    # GitHub serves this file as raw bytes, so turn it into text first
+    if ($sums -is [byte[]]) { $sums = [Text.Encoding]::UTF8.GetString($sums) }
     $line = ($sums -split "`n" | Where-Object { $_ -match [regex]::Escape($name) + "\s*$" } | Select-Object -First 1)
     $expected = if ($line) { ($line.Trim() -split "\s+")[0].ToLower() } else { "" }
     $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()

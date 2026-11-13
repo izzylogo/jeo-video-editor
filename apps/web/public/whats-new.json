@@ -1,5 +1,6 @@
 {
   "items": [
+    "Setup is safer on a new PC: it checks the folder path is short enough and installs exactly the tested packages",
     "Updates from GitHub: the editor tells you when a newer version has been pushed, and Get update installs it",
     "The 😂 and ❤️ endings work without any picture files (drawn from Windows' emoji font if assets\\emoji is empty)",
     "Media panel rebuilt like CapCut's: kinds on the left (All, Videos, Pictures, Sounds, Added, Not used), Import, Record and search on top, and an Added badge on files already in the timeline",
