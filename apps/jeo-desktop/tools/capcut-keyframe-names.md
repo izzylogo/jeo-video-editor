@@ -219,3 +219,11 @@ It also states the units: a normalised number or % for position, opacity and vol
 
 - This confirms, in CapCut's own words, that opacity keyframes are `KFTypeAlpha` and that the export's units are right.
 - Not checked: whether `lyra-cli` can be run on this laptop, and what else it can do. If it can, it would be a sturdier way to write CapCut projects than building the files by hand.
+
+### Can JEO Editor use `lyra-cli`? No (checked 13 Nov 2026)
+
+- Observed (REA export table): `lyra_cli_client.dll` is a library that CapCut itself loads. CapCut plugs its own parts into it (`RegisterProjectAdapter`, `RegisterMaterialAdapter`, `RegisterNetworkAdapter`, `RegisterHostMainThreadExecutor`). There is no stand-alone `lyra-cli` program.
+- Observed: CapCut ships a small launcher, `Resources\common_agent\bin\lyra-cli-ipc.cmd`, which talks to the running CapCut over a private local channel. It belongs to CapCut's built-in AI assistant package (`common_agent`).
+- Observed (CapCut's own guide for that assistant, `skills\timeline-draft-cli\SKILL.md`): CapCut hands the session identity and permissions to its own assistant automatically, and the guide says not to read, build or pass on those values, the channel or project paths.
+- Conclusion: this is a private door for CapCut's own assistant. Using it from JEO Editor would mean faking that assistant's identity, so JEO Editor does not use it. JEO Editor keeps writing CapCut project files directly, which is checked and works.
+- The command list is still a useful map of what a CapCut project can hold (about 190 commands: clips, texts, keyframes, effects, transitions, masks, freeze, flip, crop, export).
