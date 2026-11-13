@@ -32,7 +32,7 @@ import { cn } from "@/utils/ui";
 
 export function EditorHeader() {
 	return (
-		<header className="bg-background flex h-[3.4rem] items-center justify-between gap-3 px-3 pt-0.5">
+		<header className="bg-background flex h-[3.4rem] items-center justify-between gap-2 px-3 pt-0.5 max-[899px]:gap-1 max-[899px]:px-1.5">
 			<div className="flex min-w-0 items-center gap-2">
 				<ProjectDropdown />
 				<ProjectsButton />
@@ -40,10 +40,16 @@ export function EditorHeader() {
 				<CategoryBar />
 			</div>
 			<nav className="flex shrink-0 items-center gap-2">
-				<EditableProjectName />
-				<OpenInCapCutButton />
+				<div className="hidden min-[1180px]:block">
+					<EditableProjectName />
+				</div>
+				<div className="hidden min-[620px]:block">
+					<OpenInCapCutButton />
+				</div>
 				<ExportButton />
-				<LayoutPicker />
+				<div className="hidden min-[900px]:block">
+					<LayoutPicker />
+				</div>
 				<AccentPicker />
 				<ThemeToggle />
 			</nav>
@@ -84,7 +90,7 @@ function ProjectsButton() {
 			title="All your projects: open one, or start a new empty project"
 		>
 			<HugeiconsIcon icon={FolderOpenIcon} className="size-4" />
-			{isLeaving ? "Saving…" : "Projects"}
+			<span className="hidden min-[1100px]:inline">{isLeaving ? "Saving…" : "Projects"}</span>
 		</Button>
 	);
 }

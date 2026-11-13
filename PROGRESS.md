@@ -258,3 +258,10 @@ Dev notes: text numbers are display-only conversions (see `apps/web/src/jeo/text
 Dev notes: the live token in `live\control.json` is a local secret; never print it. Use `node apps/jeo-desktop/tools/jeo-live.cjs --status`, `--list`, or `<tool> @args.json`.
 - **Typing in a text no longer hangs.** Before, every keystroke redrew the timeline and the preview (about 180 ms each on this laptop, more on a full project). Now the box keeps up with the keyboard, the preview catches up about a fifth of a second after you pause, and the change is saved as one undo step when you click away. The same goes for typing directly on a text in the preview.
 - **Live link checked on the real editor** (13 Nov 2026): a text was added and undone in the open window from a Claude chat.
+
+## Round 7 of your feedback
+
+- **Media panel like CapCut's**: a short list on the left (All, Videos, Pictures, Sounds, Added, Not used, each with a count), then Import, Record and a search box, then the files as cards. A file already in the timeline carries an "Added" badge; the length is on the top right; upright clips are shown whole on a dark tile instead of cropped.
+- **Fits more screens**: on a small laptop the category bar shows icons only (rest the mouse on one for its name). At phone width the editor becomes one column: the video, then an Add / Settings switch, then the timeline. The old "desktop only" wall is gone and the window can be made narrow.
+- **Design review** (impeccable skill): two findings fixed, the preview's zoom controls running off the edge at phone width and category buttons too small to tap comfortably.
+- Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

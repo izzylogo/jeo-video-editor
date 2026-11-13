@@ -19,7 +19,7 @@ import { usePasteMedia } from "@/media/use-paste-media";
 import { MobileGate } from "@/components/editor/mobile-gate";
 import { AiChatRuntime } from "@/jeo/components/ai-chat";
 import { CapCutImportRunner } from "@/jeo/components/capcut-import";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useEditor } from "@/editor/use-editor";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -79,10 +79,30 @@ function DegradedRendererBanner() {
 	);
 }
 
+/** true while the window is too narrow for side-by-side panels */
+function useIsNarrow(): boolean {
+	const [isNarrow, setIsNarrow] = useState(false);
+	useEffect(() => {
+		const query = window.matchMedia("(max-width: 899px)");
+		const update = () => setIsNarrow(query.matches);
+		update();
+		query.addEventListener("change", update);
+		return () => query.removeEventListener("change", update);
+	}, []);
+	return isNarrow;
+}
+
 function EditorLayout() {
 	usePasteMedia();
 	const { panels, setPanel, layout, layoutNonce } = usePanelStore();
 	const preset = getLayoutPreset(layout);
+	const isNarrow = useIsNarrow();
+	const [narrowTab, setNarrowTab] = useState<"tools" | "properties">("tools");
+	// selecting something on the timeline is a request to see its settings
+	const selectedCount = useEditor((e) => e.selection.getSelectedElements().length);
+	useEffect(() => {
+		if (selectedCount > 0) setNarrowTab("properties");
+	}, [selectedCount]);
 	const order = preset.order;
 	const activeScene = useEditor((editor) =>
 		editor.scenes.getActiveSceneOrNull(),
@@ -173,6 +193,54 @@ function EditorLayout() {
 			))}
 		</ResizablePanelGroup>
 	);
+
+	// JEO: a narrow window (a phone, or a small side-by-side window) gets one
+	// column: the video on top, then one panel at a time, then the timeline.
+	if (isNarrow) {
+		return (
+			<div
+				className="flex size-full flex-col gap-1 px-1.5 pb-1.5"
+				data-jeo-shape="narrow"
+			>
+				<div className="min-h-0" style={{ flex: "0 0 36%" }}>
+					<PreviewPanel {...overlayProps} />
+				</div>
+				<div
+					role="tablist"
+					aria-label="Panels"
+					className="bg-accent/50 flex shrink-0 gap-1 rounded-lg p-1"
+				>
+					{(
+						[
+							["tools", "Add"],
+							["properties", "Settings"],
+						] as const
+					).map(([id, label]) => (
+						<button
+							key={id}
+							type="button"
+							role="tab"
+							aria-selected={narrowTab === id}
+							onClick={() => setNarrowTab(id)}
+							className={
+								narrowTab === id
+									? "bg-primary text-primary-foreground min-h-11 flex-1 cursor-pointer rounded-md text-sm font-medium"
+									: "hover:bg-accent min-h-11 flex-1 cursor-pointer rounded-md text-sm"
+							}
+						>
+							{label}
+						</button>
+					))}
+				</div>
+				<div className="min-h-0" style={{ flex: "0 0 26%" }}>
+					{topPanel(narrowTab)}
+				</div>
+				<div className="min-h-0 flex-1">
+					<Timeline />
+				</div>
+			</div>
+		);
+	}
 
 	// JEO: CapCut's upright-video layout, with the preview as a tall column
 	if (preset.shape === "tall-preview") {

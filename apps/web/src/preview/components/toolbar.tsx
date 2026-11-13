@@ -35,7 +35,7 @@ export function PreviewToolbar({
 	onToggleFullscreen: () => void;
 }) {
 	return (
-		<div className="grid grid-cols-[1fr_auto_1fr] items-center pb-3 pt-5 px-5">
+		<div className="@container grid grid-cols-[1fr_auto_1fr] items-center gap-1 px-5 pt-5 pb-3 max-[899px]:px-2 max-[899px]:pt-2 max-[899px]:pb-1.5">
 			<TimecodeDisplay />
 			<PlayPauseButton />
 			<div className="justify-self-end flex items-center gap-2.5">
@@ -121,7 +121,7 @@ function ZoomSlider() {
 		) / span;
 
 	return (
-		<div className="flex items-center gap-1" data-jeo="preview-zoom">
+		<div className="hidden items-center gap-1 @[34rem]:flex" data-jeo="preview-zoom">
 			<Button
 				variant="text"
 				size="icon"

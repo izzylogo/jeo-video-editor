@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
+import { VoiceRecordButton } from "@/jeo/components/voice-record";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { MediaDragOverlay } from "@/components/editor/panels/assets/drag-overlay";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
@@ -58,6 +59,32 @@ import {
 	Video01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+
+type MediaFilter = "all" | "video" | "image" | "audio" | "used" | "unused";
+const MEDIA_FILTERS: Array<{ id: MediaFilter; label: string }> = [
+	{ id: "all", label: "All" },
+	{ id: "video", label: "Videos" },
+	{ id: "image", label: "Pictures" },
+	{ id: "audio", label: "Sounds" },
+	{ id: "used", label: "Added" },
+	{ id: "unused", label: "Not used" },
+];
+
+function matchesFilter({
+	item,
+	filter,
+	usedIds,
+}: {
+	item: MediaAsset;
+	filter: MediaFilter;
+	usedIds: Set<string>;
+}): boolean {
+	if (item.ephemeral) return false;
+	if (filter === "all") return true;
+	if (filter === "used") return usedIds.has(item.id);
+	if (filter === "unused") return !usedIds.has(item.id);
+	return item.type === filter;
+}
 
 export function MediaView() {
 	const editor = useEditor();
@@ -148,8 +175,35 @@ export function MediaView() {
 		}
 	};
 
+	// JEO: which files are already on the timeline (they get an "Added" badge)
+	const sceneTracks = useEditor((e) => e.scenes.getActiveSceneOrNull()?.tracks);
+	const usedIds = useMemo(() => {
+		const ids = new Set<string>();
+		if (!sceneTracks) return ids;
+		for (const track of [sceneTracks.main, ...sceneTracks.overlay, ...sceneTracks.audio]) {
+			for (const element of track.elements) {
+				if ("mediaId" in element && typeof element.mediaId === "string") {
+					ids.add(element.mediaId);
+				}
+			}
+		}
+		return ids;
+	}, [sceneTracks]);
+	const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
+	const [query, setQuery] = useState("");
+	const allMedia = useMemo(
+		() => mediaFiles.filter((item) => !item.ephemeral),
+		[mediaFiles],
+	);
+
 	const filteredMediaItems = useMemo(() => {
-		const filtered = mediaFiles.filter((item) => !item.ephemeral);
+		const wanted = query.trim().toLowerCase();
+		const filtered = mediaFiles.filter(
+			(item) =>
+				!item.ephemeral &&
+				matchesFilter({ item, filter: mediaFilter, usedIds }) &&
+				(wanted === "" || item.name.toLowerCase().includes(wanted)),
+		);
 
 		filtered.sort((a, b) => {
 			let valueA: string | number;
@@ -182,7 +236,7 @@ export function MediaView() {
 		});
 
 		return filtered;
-	}, [mediaFiles, mediaSortBy, mediaSortOrder]);
+	}, [mediaFiles, mediaSortBy, mediaSortOrder, mediaFilter, query, usedIds]);
 	const orderedMediaIds = useMemo(() => {
 		return filteredMediaItems.map((item) => item.id);
 	}, [filteredMediaItems]);
@@ -191,46 +245,127 @@ export function MediaView() {
 		<>
 			<input {...fileInputProps} />
 
-			<PanelView
-				title="Assets"
-				actions={
-					<MediaActions
-						mediaViewMode={mediaViewMode}
-						setMediaViewMode={setMediaViewMode}
-						isProcessing={isProcessing}
-						sortBy={mediaSortBy}
-						sortOrder={mediaSortOrder}
-						onSort={handleSort}
-						onImport={openFilePicker}
-					/>
-				}
-				className={cn(isDragOver && "bg-accent/30")}
-				contentClassName="h-full"
+			{/* JEO: laid out like CapCut's media panel: a short list on the left,
+			    then Import / Record / search, then the files as cards */}
+			<div
+				className={cn(
+					"@container relative flex h-full",
+					isDragOver && "bg-accent/30",
+				)}
+				data-jeo="media-panel"
 				{...dragProps}
 			>
-				{isDragOver || filteredMediaItems.length === 0 ? (
-					<MediaDragOverlay
-						isVisible={true}
-						isProcessing={isProcessing}
-						progress={progress}
+				<nav
+					aria-label="Media kinds"
+					className="hidden w-[6.6rem] shrink-0 flex-col gap-1 border-r p-2 @[23rem]:flex"
+				>
+					<Button
+						size="sm"
+						className="bg-primary/15 text-primary hover:bg-primary/25 h-8 w-full justify-start rounded-md px-2.5 text-xs font-medium"
 						onClick={openFilePicker}
-					/>
-				) : (
-					<SelectableSurface
-						ariaLabel="Assets"
-						orderedIds={orderedMediaIds}
-						revealId={highlightMediaId}
-						onRevealComplete={clearHighlight}
+						disabled={isProcessing}
 					>
-						<MediaScopeRegistrar />
-						<MediaItemList
-							items={filteredMediaItems}
-							mode={mediaViewMode}
-							onRemove={handleRemove}
+						Import
+					</Button>
+					{MEDIA_FILTERS.map((option) => {
+						const count = allMedia.filter((item) =>
+							matchesFilter({ item, filter: option.id, usedIds }),
+						).length;
+						return (
+							<button
+								key={option.id}
+								type="button"
+								aria-pressed={mediaFilter === option.id}
+								data-jeo-media-filter={option.id}
+								onClick={() => setMediaFilter(option.id)}
+								className={cn(
+									"flex h-8 w-full cursor-pointer items-center justify-between rounded-md px-2.5 text-left text-xs transition-colors duration-150",
+									mediaFilter === option.id
+										? "bg-accent text-primary font-medium"
+										: "text-foreground/85 hover:bg-accent/60",
+								)}
+							>
+								<span className="truncate">{option.label}</span>
+								<span className="text-muted-foreground text-[0.65rem] tabular-nums">
+									{count}
+								</span>
+							</button>
+						);
+					})}
+				</nav>
+				<div className="flex min-w-0 flex-1 flex-col">
+					<div className="flex h-12 shrink-0 items-center gap-1.5 px-3">
+						<Button
+							size="sm"
+							className="bg-accent hover:bg-accent/70 text-foreground h-8 shrink-0 gap-1.5 rounded-md px-2.5 text-xs font-medium"
+							onClick={openFilePicker}
+							disabled={isProcessing}
+							data-jeo="media-import"
+							title="Bring videos, pictures or sounds into this project"
+						>
+							<span className="bg-primary text-primary-foreground flex size-4 items-center justify-center rounded-full text-[0.8rem] leading-none">
+								+
+							</span>
+							{isProcessing ? "Importing…" : "Import"}
+						</Button>
+						<VoiceRecordButton />
+						<input
+							aria-label="Search media"
+							value={query}
+							onChange={(event) => setQuery(event.currentTarget.value)}
+							onKeyDown={(event) => event.stopPropagation()}
+							placeholder="Search media"
+							className="border-input bg-accent/60 placeholder:text-muted-foreground h-8 min-w-0 flex-1 rounded-md border px-2.5 text-xs outline-none focus:border-primary"
 						/>
-					</SelectableSurface>
-				)}
-			</PanelView>
+						<MediaActions
+							mediaViewMode={mediaViewMode}
+							setMediaViewMode={setMediaViewMode}
+							isProcessing={isProcessing}
+							sortBy={mediaSortBy}
+							sortOrder={mediaSortOrder}
+							onSort={handleSort}
+						/>
+					</div>
+					<div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+						{isDragOver || allMedia.length === 0 ? (
+							<MediaDragOverlay
+								isVisible={true}
+								isProcessing={isProcessing}
+								progress={progress}
+								onClick={openFilePicker}
+							/>
+						) : (
+							<>
+								<p className="text-muted-foreground mb-2 text-xs">
+									{MEDIA_FILTERS.find((option) => option.id === mediaFilter)?.label}
+									{query.trim() ? ` matching "${query.trim()}"` : ""}
+								</p>
+								{filteredMediaItems.length === 0 ? (
+									<p className="text-muted-foreground py-6 text-center text-sm">
+										Nothing here.
+										{query.trim() ? " Try a different search." : ""}
+									</p>
+								) : (
+									<SelectableSurface
+										ariaLabel="Assets"
+										orderedIds={orderedMediaIds}
+										revealId={highlightMediaId}
+										onRevealComplete={clearHighlight}
+									>
+										<MediaScopeRegistrar />
+										<MediaItemList
+											items={filteredMediaItems}
+											mode={mediaViewMode}
+											onRemove={handleRemove}
+											usedIds={usedIds}
+										/>
+									</SelectableSurface>
+								)}
+							</>
+						)}
+					</div>
+				</div>
+			</div>
 		</>
 	);
 }
@@ -342,9 +477,11 @@ function MediaItemList({
 	items,
 	mode,
 	onRemove,
+	usedIds,
 }: {
 	items: MediaAsset[];
 	mode: MediaViewMode;
+	usedIds: Set<string>;
 	onRemove: ({
 		event,
 		ids,
@@ -357,9 +494,11 @@ function MediaItemList({
 
 	return (
 		<div
-			className={cn(isGrid ? "grid gap-4" : "flex flex-col gap-1.5")}
+			className={cn(isGrid ? "grid gap-x-2.5 gap-y-3" : "flex flex-col gap-1.5")}
 			style={
-				isGrid ? { gridTemplateColumns: "repeat(auto-fill, 7rem)" } : undefined
+				isGrid
+					? { gridTemplateColumns: "repeat(auto-fill, minmax(6.8rem, 1fr))" }
+					: undefined
 			}
 		>
 			{items.map((item) => (
@@ -371,10 +510,13 @@ function MediaItemList({
 								<MediaPreview
 									item={item}
 									variant={isGrid ? "grid" : "compact"}
+									isUsed={usedIds.has(item.id)}
 								/>
 							}
 							variant={isGrid ? "card" : "compact"}
-							isRounded={isGrid ? false : undefined}
+							isRounded={isGrid ? true : undefined}
+							containerClassName={isGrid ? "w-full" : undefined}
+							aspectRatio={16 / 10}
 						/>
 					</SelectableItem>
 				</MediaItemWithContextMenu>
@@ -393,8 +535,17 @@ function MediaDurationBadge({ duration }: { duration?: number }) {
 	if (!duration) return null;
 
 	return (
-		<div className="absolute right-1 bottom-1 rounded bg-black/70 px-1 text-xs text-white">
+		<div className="absolute top-1 right-1 rounded bg-black/65 px-1 text-[0.65rem] leading-4 text-white tabular-nums">
 			{formatDuration({ duration })}
+		</div>
+	);
+}
+
+/** JEO: shown on a file that is already somewhere on the timeline */
+function AddedBadge() {
+	return (
+		<div className="absolute top-1 left-1 rounded bg-black/65 px-1 text-[0.65rem] leading-4 text-white">
+			Added
 		</div>
 	);
 }
@@ -411,23 +562,15 @@ function MediaTypePlaceholder({
 	icon,
 	label,
 	duration,
-	variant,
 }: {
 	icon: IconSvgElement;
 	label: string;
 	duration?: number;
-	variant: "muted" | "bordered";
+	variant?: "muted" | "bordered";
 }) {
-	const iconClassName = cn("size-6", variant === "bordered" && "mb-1");
-
 	return (
-		<div
-			className={cn(
-				"text-muted-foreground flex size-full flex-col items-center justify-center rounded",
-				variant === "muted" ? "bg-muted/30" : "border",
-			)}
-		>
-			<HugeiconsIcon icon={icon} className={iconClassName} />
+		<div className="text-muted-foreground flex size-full flex-col items-center justify-center gap-0.5 bg-black/35">
+			<HugeiconsIcon icon={icon} className="size-6" />
 			<span className="text-xs">{label}</span>
 			<MediaDurationLabel duration={duration} />
 		</div>
@@ -437,74 +580,61 @@ function MediaTypePlaceholder({
 function MediaPreview({
 	item,
 	variant = "grid",
+	isUsed = false,
 }: {
 	item: MediaAsset;
 	variant?: "grid" | "compact";
+	isUsed?: boolean;
 }) {
-	const shouldShowDurationBadge = variant === "grid";
+	const isGrid = variant === "grid";
+	const picture =
+		item.type === "image"
+			? (item.url ?? "")
+			: item.type === "video"
+				? item.thumbnailUrl
+				: undefined;
 
-	if (item.type === "image") {
+	// the whole picture on a dark tile, so an upright clip is not cropped
+	if (picture) {
 		return (
-			<div className="relative flex size-full items-center justify-center bg-muted">
+			<div className="relative size-full bg-black/45">
 				<Image
-					src={item.url ?? ""}
+					src={picture}
 					alt={item.name}
 					fill
 					sizes="100vw"
-					className="object-cover"
+					className={isGrid ? "object-contain" : "rounded object-cover"}
 					loading="lazy"
 					unoptimized
 				/>
+				{isGrid && isUsed ? <AddedBadge /> : null}
+				{isGrid && item.type === "video" ? (
+					<MediaDurationBadge duration={item.duration} />
+				) : null}
 			</div>
 		);
 	}
 
-	if (item.type === "video") {
-		if (item.thumbnailUrl) {
-			return (
-				<div className="relative size-full">
-					<Image
-						src={item.thumbnailUrl}
-						alt={item.name}
-						fill
-						sizes="100vw"
-						className="rounded object-cover"
-						loading="lazy"
-						unoptimized
-					/>
-					{shouldShowDurationBadge ? (
-						<MediaDurationBadge duration={item.duration} />
-					) : null}
-				</div>
-			);
-		}
-
-		return (
-			<MediaTypePlaceholder
-				icon={Video01Icon}
-				label="Video"
-				duration={item.duration}
-				variant="muted"
-			/>
-		);
-	}
-
-	if (item.type === "audio") {
-		return (
-			<MediaTypePlaceholder
-				icon={MusicNote03Icon}
-				label="Audio"
-				duration={item.duration}
-				variant="bordered"
-			/>
-		);
-	}
-
 	return (
-		<MediaTypePlaceholder icon={Image02Icon} label="Unknown" variant="muted" />
+		<div className="relative size-full">
+			<MediaTypePlaceholder
+				icon={
+					item.type === "audio"
+						? MusicNote03Icon
+						: item.type === "video"
+							? Video01Icon
+							: Image02Icon
+				}
+				label={
+					item.type === "audio" ? "Sound" : item.type === "video" ? "Video" : "File"
+				}
+				duration={isGrid ? undefined : item.duration}
+			/>
+			{isGrid && isUsed ? <AddedBadge /> : null}
+			{isGrid ? <MediaDurationBadge duration={item.duration} /> : null}
+		</div>
 	);
 }
-
 function MediaActions({
 	mediaViewMode,
 	setMediaViewMode,
@@ -512,7 +642,6 @@ function MediaActions({
 	sortBy,
 	sortOrder,
 	onSort,
-	onImport,
 }: {
 	mediaViewMode: MediaViewMode;
 	setMediaViewMode: (mode: MediaViewMode) => void;
@@ -520,10 +649,9 @@ function MediaActions({
 	sortBy: MediaSortKey;
 	sortOrder: MediaSortOrder;
 	onSort: ({ key }: { key: MediaSortKey }) => void;
-	onImport: () => void;
 }) {
 	return (
-		<div className="flex gap-1.5">
+		<div className="flex shrink-0 gap-0.5">
 			<TooltipProvider>
 				<Tooltip>
 					<TooltipTrigger asChild>
@@ -604,16 +732,7 @@ function MediaActions({
 					</TooltipContent>
 				</Tooltip>
 			</TooltipProvider>
-			<Button
-				variant="outline"
-				onClick={onImport}
-				disabled={isProcessing}
-				size="sm"
-				className="items-center justify-center gap-1.5"
-			>
-				<HugeiconsIcon icon={CloudUploadIcon} />
-				Import
-			</Button>
+
 		</div>
 	);
 }

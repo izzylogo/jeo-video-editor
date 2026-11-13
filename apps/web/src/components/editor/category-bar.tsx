@@ -43,10 +43,12 @@ export function CategoryBar() {
 							key={tabKey}
 							type="button"
 							aria-pressed={isActive}
-							title={TAB_TIPS[tabKey]}
+							title={`${tab.label}: ${TAB_TIPS[tabKey]}`}
+							aria-label={tab.label}
+							data-jeo-category={tabKey}
 							onClick={() => setActiveTab(tabKey)}
 							className={cn(
-								"flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150",
+								"flex h-9 min-w-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150 max-[899px]:h-11 max-[899px]:min-w-11",
 								isActive
 									? "bg-secondary text-secondary-foreground"
 									: tabKey === "ai"
@@ -55,7 +57,8 @@ export function CategoryBar() {
 							)}
 						>
 							<tab.icon className="size-4" />
-							{tab.label}
+							{/* JEO: on a small laptop the words go and the icons stay */}
+							<span className="hidden min-[1560px]:inline">{tab.label}</span>
 							{/* a dot on the AI tab while Claude is still working */}
 							{tabKey === "ai" && isClaudeBusy && !isActive && (
 								<span className="bg-primary size-1.5 animate-pulse rounded-full" />

@@ -23,8 +23,8 @@ export function MobileGate({ children }: MobileGateProps) {
 		setShow(isMobile && !acknowledged);
 	}, []);
 
-	if (show === null) return null;
-	if (!show) return <>{children}</>;
+	// JEO: the editor has its own narrow layout now, so nothing is blocked
+	if (show !== undefined) return <>{children}</>;
 
 	const handleContinue = () => {
 		localStorage.setItem(STORAGE_KEY, "true");

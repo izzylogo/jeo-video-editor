@@ -1,5 +1,7 @@
 {
   "items": [
+    "Media panel rebuilt like CapCut's: kinds on the left (All, Videos, Pictures, Sounds, Added, Not used), Import, Record and search on top, and an Added badge on files already in the timeline",
+    "The editor now fits small laptops (icons-only category bar) and phone-width windows (one column: video, then Add or Settings, then the timeline)",
     "Typing in a text no longer hangs: the box keeps up with the keyboard and the preview catches up when you pause",
     "Follow the speaker: a line of dialogue can now stay under a moving speaker's mouth (Options tab or right-click), using position keyframes",
     "Live link: when you ask Claude in a chat to change a video, it changes in this open window straight away, no reload",

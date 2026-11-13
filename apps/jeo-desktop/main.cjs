@@ -1016,10 +1016,10 @@ function restartForUpdate({ projectId }) {
 
 async function createWindow() {
 	mainWindow = new BrowserWindow({
-		width: 1366,
-		height: 800,
-		minWidth: 1100,
-		minHeight: 640,
+		width: Number((argValue("window-size") || "").split("x")[0]) || 1366,
+		height: Number((argValue("window-size") || "").split("x")[1]) || 800,
+		minWidth: 380,
+		minHeight: 560,
 		title: "JEO Editor",
 		backgroundColor: "#0d0d0d",
 		autoHideMenuBar: true,
