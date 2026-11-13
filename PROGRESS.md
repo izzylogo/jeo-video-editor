@@ -256,3 +256,5 @@ Dev notes: text numbers are display-only conversions (see `apps/web/src/jeo/text
 - Removed at your request (moved, not destroyed): the JEO project "HIDING MONEY - Claude edit" (now in `projects\_trash`) and the two older JEO HIDING MONEY drafts in CapCut (now in `output\_capcut-removed-drafts`).
 
 Dev notes: the live token in `live\control.json` is a local secret; never print it. Use `node apps/jeo-desktop/tools/jeo-live.cjs --status`, `--list`, or `<tool> @args.json`.
+- **Typing in a text no longer hangs.** Before, every keystroke redrew the timeline and the preview (about 180 ms each on this laptop, more on a full project). Now the box keeps up with the keyboard, the preview catches up about a fifth of a second after you pause, and the change is saved as one undo step when you click away. The same goes for typing directly on a text in the preview.
+- **Live link checked on the real editor** (13 Nov 2026): a text was added and undone in the open window from a Claude chat.

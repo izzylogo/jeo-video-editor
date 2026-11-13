@@ -24,6 +24,7 @@ import {
 import { usePropertyDraft } from "../hooks/use-property-draft";
 import { KeyframeToggle } from "./keyframe-toggle";
 import { Textarea } from "@/components/ui/textarea";
+import { useEffect, useRef, useState } from "react";
 
 export function PropertyParamField({
 	param,
@@ -136,28 +137,99 @@ function ParamInput({
 		);
 	}
 
-	if (param.type === "text") {
+	if (param.type === "text" || param.type === "font") {
 		return (
-			<Textarea
+			<TypedTextField
+				isMultiline={param.type === "text"}
 				value={String(value)}
-				onChange={(event) => onPreview(event.currentTarget.value)}
-				onBlur={onCommit}
-			/>
-		);
-	}
-
-	if (param.type === "font") {
-		return (
-			<input
-				className="border-input bg-accent h-9 w-full rounded-md border px-3 text-sm outline-none"
-				value={String(value)}
-				onChange={(event) => onPreview(event.currentTarget.value)}
-				onBlur={onCommit}
+				onPreview={onPreview}
+				onCommit={onCommit}
 			/>
 		);
 	}
 
 	return null;
+}
+
+/** how long after the last keystroke the edit is drawn in the preview */
+const TYPING_PAUSE_MS = 220;
+
+/**
+ * JEO: a text box that never lags behind the keyboard.
+ *
+ * Every change to the edit redraws the timeline and the preview frame, which
+ * is far too heavy to do on each keystroke. So the box keeps what you type by
+ * itself, shows the result in the preview a moment after you pause, and saves
+ * it (one undo step) when you click away.
+ */
+function TypedTextField({
+	isMultiline,
+	value,
+	onPreview,
+	onCommit,
+}: {
+	isMultiline: boolean;
+	value: string;
+	onPreview: (value: string) => void;
+	onCommit: () => void;
+}) {
+	const [draft, setDraft] = useState<string | null>(null);
+	const timerRef = useRef<number | null>(null);
+	const pendingRef = useRef<string | null>(null);
+	const hasPreviewRef = useRef(false);
+	const latest = useRef({ onPreview, onCommit });
+	latest.current = { onPreview, onCommit };
+
+	const flush = () => {
+		if (timerRef.current !== null) {
+			window.clearTimeout(timerRef.current);
+			timerRef.current = null;
+		}
+		if (pendingRef.current !== null) {
+			latest.current.onPreview(pendingRef.current);
+			pendingRef.current = null;
+			hasPreviewRef.current = true;
+		}
+	};
+	const type = (next: string) => {
+		setDraft(next);
+		pendingRef.current = next;
+		if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+		timerRef.current = window.setTimeout(flush, TYPING_PAUSE_MS);
+	};
+	const finish = () => {
+		flush();
+		if (hasPreviewRef.current) latest.current.onCommit();
+		hasPreviewRef.current = false;
+		setDraft(null);
+	};
+	// clicking another clip unmounts the box: save what was typed first
+	// biome-ignore lint/correctness/useExhaustiveDependencies: run once on unmount
+	useEffect(
+		() => () => {
+			flush();
+			if (hasPreviewRef.current) latest.current.onCommit();
+		},
+		[],
+	);
+
+	const shared = {
+		value: draft ?? value,
+		onChange: (
+			event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>,
+		) => type(event.currentTarget.value),
+		onBlur: finish,
+		// keep editor shortcuts (space, S, delete...) from firing while typing
+		onKeyDown: (event: React.KeyboardEvent) => event.stopPropagation(),
+	};
+	return isMultiline ? (
+		<Textarea data-jeo="text-content" {...shared} />
+	) : (
+		<input
+			className="border-input bg-accent h-9 w-full rounded-md border px-3 text-sm outline-none"
+			{...shared}
+		/>
+	);
 }
 
 function NumberParamField({

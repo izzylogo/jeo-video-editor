@@ -80,6 +80,14 @@ function saveImages(value, folder) {
 			for (const [key, inner] of Object.entries(node)) out[key] = walk(inner);
 			return out;
 		}
+		// a bare base64 JPEG (starts "/9j/") is how view_source / view_timeline answer
+		if (typeof node === "string" && node.length > 2000 && node.startsWith("/9j/")) {
+			fs.mkdirSync(folder, { recursive: true });
+			count += 1;
+			const file = path.join(folder, `live_${Date.now()}_${count}.jpg`);
+			fs.writeFileSync(file, Buffer.from(node, "base64"));
+			return file;
+		}
 		if (typeof node === "string" && node.startsWith("data:image/")) {
 			const match = /^data:image\/(\w+);base64,(.+)$/s.exec(node);
 			if (!match) return node;

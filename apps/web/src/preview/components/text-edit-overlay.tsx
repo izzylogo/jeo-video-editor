@@ -42,25 +42,51 @@ export function TextEditOverlay({
 		selection?.addRange(range);
 	}, []);
 
-	const handleInput = useCallback(() => {
+	// JEO: the edit is drawn a moment after you pause, not on every keystroke,
+	// so typing never waits for the timeline and preview to redraw
+	const inputTimerRef = useRef<number | null>(null);
+	const pushText = useCallback(() => {
+		inputTimerRef.current = null;
 		const div = divRef.current;
 		if (!div) return;
-		const text = div.innerText;
 		editor.timeline.previewElements({
-			updates: [{ trackId, elementId, updates: { params: { content: text } } }],
+			updates: [
+				{ trackId, elementId, updates: { params: { content: div.innerText } } },
+			],
 		});
 	}, [editor.timeline, trackId, elementId]);
+	const handleInput = useCallback(() => {
+		if (inputTimerRef.current !== null) window.clearTimeout(inputTimerRef.current);
+		inputTimerRef.current = window.setTimeout(pushText, 220);
+	}, [pushText]);
+	const finishEditing = useCallback(() => {
+		if (inputTimerRef.current !== null) {
+			window.clearTimeout(inputTimerRef.current);
+			pushText();
+		}
+		onCommit();
+	}, [pushText, onCommit]);
+	// leaving the box: make sure the last letters are in before it is saved
+	useEffect(
+		() => () => {
+			if (inputTimerRef.current !== null) {
+				window.clearTimeout(inputTimerRef.current);
+				pushText();
+			}
+		},
+		[pushText],
+	);
 
 	const handleKeyDown = useCallback(
 		({ event }: { event: React.KeyboardEvent }) => {
 			const { key } = event;
 			if (key === "Escape") {
 				event.preventDefault();
-				onCommit();
+				finishEditing();
 				return;
 			}
 		},
-		[onCommit],
+		[finishEditing],
 	);
 
 	const canvasSize = editor.project.getActive().settings.canvasSize;
@@ -146,7 +172,7 @@ export function TextEditOverlay({
 					minWidth: 1,
 				}}
 				onInput={handleInput}
-				onBlur={onCommit}
+				onBlur={finishEditing}
 				onKeyDown={(event) => handleKeyDown({ event })}
 			>
 				{textParams.content}

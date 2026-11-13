@@ -1,5 +1,6 @@
 {
   "items": [
+    "Typing in a text no longer hangs: the box keeps up with the keyboard and the preview catches up when you pause",
     "Follow the speaker: a line of dialogue can now stay under a moving speaker's mouth (Options tab or right-click), using position keyframes",
     "Live link: when you ask Claude in a chat to change a video, it changes in this open window straight away, no reload",
     "A project moved to the trash folder now leaves the Projects list",
