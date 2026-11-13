@@ -35,3 +35,17 @@ export const useTextOptions = create<TextOptionsStore>()(
 		},
 	),
 );
+
+/** The options are also kept on the text itself, so they travel with the project. */
+export const OPTIONS_PARAM = "jeo.options";
+
+export function optionsOnElement(element: { params?: Record<string, unknown> }): string[] {
+	const raw = element.params?.[OPTIONS_PARAM];
+	if (typeof raw !== "string" || raw === "") return [];
+	try {
+		const parsed = JSON.parse(raw);
+		return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
+	} catch {
+		return [];
+	}
+}

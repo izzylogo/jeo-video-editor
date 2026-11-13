@@ -8,7 +8,7 @@
  * Units for Claude: seconds for time, pixels in the 1080x1440 frame for
  * positions (x right, y down, origin top-left).
  */
-import { useTextOptions } from "./text-options";
+import { OPTIONS_PARAM, useTextOptions } from "./text-options";
 import { EditorCore } from "@/core";
 import { TracksSnapshotCommand } from "@/commands/timeline";
 import type { InsertElementParams } from "@/commands/timeline/element/insert-element";
@@ -531,6 +531,18 @@ function offerTextOptions(args: Args): ToolResult {
 		.map((item) => item.trim().toUpperCase());
 	if (options.length === 0) return { ok: false, error: "Give at least one option." };
 	useTextOptions.getState().setOptions({ elementId: element.id, options });
+	// also on the text itself, so the options are saved with the project
+	const { track } = findElement({ id: element.id });
+	editor().timeline.updateElements({
+		updates: [
+			{
+				trackId: track.id,
+				elementId: element.id,
+				patch: { params: { ...element.params, [OPTIONS_PARAM]: JSON.stringify(options) } },
+			},
+		],
+		pushHistory: false,
+	});
 	return { ok: true, result: { offered: options.length, on: element.id } };
 }
 

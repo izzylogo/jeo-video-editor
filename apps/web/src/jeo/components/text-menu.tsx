@@ -27,7 +27,7 @@ import {
 	toggleTriangle,
 } from "../actions";
 import { followHead } from "../control";
-import { useTextOptions } from "../text-options";
+import { optionsOnElement, useTextOptions } from "../text-options";
 import { askForTextOptions } from "./text-quick";
 
 function report(result: ActionResult): void {
@@ -47,7 +47,8 @@ export function TextMenuItems({
 }) {
 	const editor = useEditor();
 	const id = element.id;
-	const offered = useTextOptions((state) => state.options[id]) ?? [];
+	const stored = useTextOptions((state) => state.options[id]);
+	const offered = stored && stored.length > 0 ? stored : optionsOnElement(element);
 	const animated = Object.keys(element.animations ?? {});
 	const hasPopUp = animated.some((path) => path.startsWith("transform.scale"));
 	const hasTriangle = element.params["tag.triangle"] === true;

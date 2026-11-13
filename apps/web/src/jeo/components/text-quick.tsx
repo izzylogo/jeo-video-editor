@@ -17,7 +17,7 @@ import {
 	toggleTriangle,
 } from "../actions";
 import { followHead } from "../control";
-import { useTextOptions } from "../text-options";
+import { optionsOnElement, useTextOptions } from "../text-options";
 import { sendChatText, useChatStore } from "./ai-chat";
 
 /** Ask Claude for other wordings for one text; they come back as choices. */
@@ -106,7 +106,8 @@ export function TextQuickActions({ element }: { element: TextElement }) {
 	const animated = Object.keys(element.animations ?? {});
 	const hasPopUp = animated.some((path) => path.startsWith("transform.scale"));
 	const follows = animated.some((path) => path.startsWith("transform.position"));
-	const offered = useTextOptions((state) => state.options[id]) ?? [];
+	const stored = useTextOptions((state) => state.options[id]);
+	const offered = stored && stored.length > 0 ? stored : optionsOnElement(element);
 	const wasAsked = useTextOptions((state) => state.asking[id] === true);
 	const isChatBusy = useChatStore((state) => state.isBusy);
 	const isAsking = wasAsked && isChatBusy;
