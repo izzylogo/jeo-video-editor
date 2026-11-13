@@ -1091,7 +1091,7 @@ async function pullUpdate() {
 		const pulled = await git(["pull", "--ff-only"], { timeout: 180000 });
 		if (!pulled.ok) return { ok: false, error: `GitHub could not be reached or the update did not fit: ${pulled.err.split(/\r?\n/).pop() || "unknown reason"}` };
 		say("Installing anything new (this can take a few minutes)");
-		const installed = await runStep("bun", ["install"], REPO_ROOT, 20 * 60 * 1000);
+		const installed = await runStep("bun", ["install", "--frozen-lockfile"], REPO_ROOT, 20 * 60 * 1000);
 		if (!installed.ok) return { ok: false, error: "The new parts could not be installed. Run update.cmd to see why." };
 		say("Building the new version (2 to 5 minutes)");
 		const built = await runStep("bun", ["run", "build"], WEB_DIR, 25 * 60 * 1000);

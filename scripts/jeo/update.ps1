@@ -28,7 +28,7 @@ try {
     git pull --ff-only
     if ($LASTEXITCODE -ne 0) { Bad "The download did not fit on top of your copy."; exit 1 }
     Step 3 "Installing anything new"
-    bun install
+    bun install --frozen-lockfile
     if ($LASTEXITCODE -ne 0) { Bad "The new packages could not be installed."; exit 1 }
     Step 4 "Building the new version (2 to 6 minutes)"
     Push-Location $Web; bun run build; $code = $LASTEXITCODE; Pop-Location

@@ -141,7 +141,13 @@ Close PowerShell and open it again afterwards.
 
 ### Step 2 · Download the editor
 
-Pick a folder with space in it (for example `Documents`) and run:
+Pick a folder with space in it (for example `Documents`) and run the lines
+below.
+
+> ⚠️ **Keep the folder path short.** Windows refuses very long file paths, and
+> the code packages nest deeply. `Documents\jeo-video-editor` or
+> `C:\jeo-video-editor` is fine. A folder buried many levels deep is not; setup
+> checks this and tells you.
 
 ```bash
 cd $HOME\Documents
@@ -468,6 +474,7 @@ to that folder before starting the editor.
 |---|---|
 | Setup says Git / Node.js / Bun is missing | Install it as suggested, open a **new** PowerShell window, run `.\setup.cmd` again |
 | "running scripts is disabled on this system" | Use `setup.cmd` (not the `.ps1` file); it already allows the script for that one run |
+| "File name too long" or "Failed to install N packages" | The folder path is too long. Move the whole `jeo-video-editor` folder somewhere shorter (for example `C:\jeo-video-editor`) and run `.\setup.cmd` again |
 | Package install stops or is very slow | Check the internet connection and run `.\setup.cmd` again; it continues where it stopped |
 | The Electron download "did not match its fingerprint" | The download was cut short. Run `.\setup.cmd` again |
 | A blank or white window | Wait 20 seconds on first start. If it stays blank, run `.\report.cmd` and send the report |

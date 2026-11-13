@@ -39,6 +39,15 @@ if (-not (Ask "Start the setup now?")) { Say "  Nothing was changed."; exit 0 }
 Step 1 "Checking this computer"
 if (-not [Environment]::Is64BitOperatingSystem -or $env:OS -ne "Windows_NT") { Bad "JEO Editor's setup is made for 64-bit Windows 10 or 11."; exit 1 }
 Good ("Windows " + [Environment]::OSVersion.Version.ToString())
+# Windows refuses file paths longer than 260 letters, and the code packages
+# nest deeply. A long folder path here makes the install fail half way.
+if ($Root.Length -gt 70) {
+    Bad "This folder's path is too long ($($Root.Length) letters): $Root"
+    Say "  Move the whole folder somewhere shorter, for example C:\jeo-video-editor or"
+    Say "  Documents\jeo-video-editor, then run setup.cmd again."
+    exit 1
+}
+Good "folder path is short enough ($($Root.Length) letters)"
 $drive = Get-PSDrive -Name $Root.Substring(0, 1)
 $freeGb = [Math]::Round($drive.Free / 1GB, 1)
 if ($freeGb -lt 4) { Bad "Only $freeGb GB free on drive $($drive.Name):. At least 4 GB is needed."; exit 1 }
@@ -78,7 +87,9 @@ if (-not (Test-Path $envLocal)) { Copy-Item (Join-Path $Web ".env.example") $env
 # ---------- 3. code packages ----------
 Step 3 "Installing the editor's code packages (about 1.6 GB; the slow step)"
 Push-Location $Root
-bun install
+# --frozen-lockfile: install exactly the versions the author tested, and never
+# rewrite a tracked file (that would block later updates)
+bun install --frozen-lockfile
 $code = $LASTEXITCODE
 Pop-Location
 if ($code -ne 0) { Bad "The packages could not be installed. Check your internet connection and run setup.cmd again."; exit 1 }
