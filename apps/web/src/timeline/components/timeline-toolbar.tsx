@@ -47,11 +47,13 @@ import {
 	RedoIcon,
 	FlipHorizontalIcon,
 	FitToScreenIcon,
+	ViewIcon,
 	CropIcon,
 } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { addFreeze } from "@/jeo/actions";
 import { VoiceRecordButton } from "@/jeo/components/voice-record";
+import { useHoverPreview } from "@/jeo/components/hover-scrub";
 import { buildDefaultMaskInstance } from "@/masks";
 import { usePropertiesStore } from "@/components/editor/panels/properties/stores/properties-store";
 import type { MaskableElement } from "@/timeline";
@@ -376,6 +378,8 @@ function ToolbarRightSection({
 	const rippleEditingEnabled = useTimelineStore((s) => s.rippleEditingEnabled);
 	const toggleSnapping = useTimelineStore((s) => s.toggleSnapping);
 	const toggleRippleEditing = useTimelineStore((s) => s.toggleRippleEditing);
+	const hoverPreviewOn = useHoverPreview((s) => s.isOn);
+	const toggleHoverPreview = useHoverPreview((s) => s.toggle);
 
 	return (
 		<div className="flex items-center gap-1">
@@ -397,6 +401,14 @@ function ToolbarRightSection({
 					tooltip="Main track magnet: deleting a clip closes the gap"
 					jeoId="magnet"
 					onClick={() => toggleRippleEditing()}
+				/>
+
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={ViewIcon} />}
+					isActive={hoverPreviewOn}
+					tooltip="Preview axis: move the mouse over the timeline to see that moment"
+					jeoId="hover-preview"
+					onClick={() => toggleHoverPreview()}
 				/>
 
 				<ToolbarButton

@@ -200,7 +200,7 @@ function PreviewCanvas({
 		if (!renderTree || renderingRef.current) return;
 
 		const renderTime = Math.min(
-			editor.playback.getCurrentTime(),
+			editor.playback.getPreviewTime(),
 			editor.timeline.getLastFrameTime(),
 		);
 		const ticksPerFrame = Math.round(

@@ -119,6 +119,27 @@ export class PlaybackManager {
 		return this.currentTime;
 	}
 
+	/**
+	 * JEO hover preview: the moment under the mouse on the timeline. The
+	 * preview shows it while the video is paused; the playhead stays put.
+	 */
+	private hoverTime: MediaTime | null = null;
+
+	setHoverTime({ time }: { time: MediaTime | null }): void {
+		this.hoverTime = time;
+	}
+
+	getHoverTime(): MediaTime | null {
+		return this.hoverTime;
+	}
+
+	/** what the preview should draw: the hovered moment, else the playhead */
+	getPreviewTime(): MediaTime {
+		return !this.isPlaying && this.hoverTime !== null
+			? this.hoverTime
+			: this.currentTime;
+	}
+
 	getVolume(): number {
 		return this.volume;
 	}

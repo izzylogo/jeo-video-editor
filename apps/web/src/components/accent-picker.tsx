@@ -1,101 +1,164 @@
 "use client";
 
+/**
+ * Colours, done the way My Animator does them: you pick two colours, an
+ * accent and a base, and every other interface colour is worked out from
+ * them. The accent is used exactly as picked; it is only nudged when it would
+ * be unreadable against the panels.
+ */
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/utils/ui";
 
-const STORAGE_KEY = "jeo-accent";
+const ACCENT_KEY = "jeo-accent";
+const BASE_KEY = "jeo-base";
 export const DEFAULT_ACCENT = "#8b5cf6";
+const DEFAULT_BASE = "match";
 
-const PRESETS: Array<{ name: string; color: string }> = [
-	{ name: "Violet", color: "#8b5cf6" },
-	{ name: "Pink", color: "#ec4899" },
-	{ name: "Red", color: "#ef4444" },
-	{ name: "Orange", color: "#f97316" },
-	{ name: "Yellow", color: "#facc15" },
-	{ name: "Lime", color: "#84cc16" },
-	{ name: "Teal", color: "#14b8a6" },
-	{ name: "Blue", color: "#3b82f6" },
+const ACCENTS: Array<[string, string]> = [
+	["Violet", "#8b5cf6"],
+	["White", "#f2f2f2"],
+	["Orange", "#ff7a1a"],
+	["Red", "#f0444f"],
+	["Pink", "#ff5fa2"],
+	["Yellow", "#ffd23f"],
+	["Green", "#35c46a"],
+	["Teal", "#19bfae"],
+	["Blue", "#3b8bff"],
 ];
 
-function hexToHsl({ hex }: { hex: string }): { h: number; s: number; l: number } {
-	const value = hex.replace("#", "");
-	const r = Number.parseInt(value.slice(0, 2), 16) / 255;
-	const g = Number.parseInt(value.slice(2, 4), 16) / 255;
-	const b = Number.parseInt(value.slice(4, 6), 16) / 255;
+/** panel tints; "match" follows the accent's hue */
+const BASES: Array<[string, string]> = [
+	["Match the accent", "match"],
+	["Graphite", "#333333"],
+	["Slate", "#2b3440"],
+	["Forest", "#2a3a32"],
+	["Wine", "#3b2a30"],
+	["Walnut", "#3a342c"],
+	["Midnight", "#262a45"],
+];
+
+const isHex = (value: unknown): value is string =>
+	typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
+const channels = (hex: string) =>
+	[1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+
+function mix(a: string, b: string, t: number): string {
+	const to = channels(b);
+	return `#${channels(a)
+		.map((v, i) =>
+			Math.round(v + (to[i] - v) * t)
+				.toString(16)
+				.padStart(2, "0"),
+		)
+		.join("")}`;
+}
+
+function luminance(hex: string): number {
+	const [r, g, b] = channels(hex).map((v) => {
+		const c = v / 255;
+		return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+	});
+	return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a: string, b: string): number {
+	const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+	return (hi + 0.05) / (lo + 0.05);
+}
+
+function hueAndSaturation(hex: string): { h: number; s: number } {
+	const [r, g, b] = channels(hex).map((v) => v / 255);
 	const max = Math.max(r, g, b);
 	const min = Math.min(r, g, b);
 	const l = (max + min) / 2;
 	const d = max - min;
-	let h = 0;
-	let s = 0;
-	if (d !== 0) {
-		s = d / (1 - Math.abs(2 * l - 1));
-		if (max === r) h = ((g - b) / d) % 6;
-		else if (max === g) h = (b - r) / d + 2;
-		else h = (r - g) / d + 4;
-		h *= 60;
-		if (h < 0) h += 360;
+	if (d === 0) return { h: 0, s: 0 };
+	const s = d / (1 - Math.abs(2 * l - 1));
+	let h =
+		max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+	h *= 60;
+	if (h < 0) h += 360;
+	return { h: Math.round(h), s: Math.round(s * 100) };
+}
+
+interface Colours {
+	accent: string;
+	base: string;
+}
+
+function loadColours(): Colours {
+	try {
+		const accent = window.localStorage.getItem(ACCENT_KEY);
+		const base = window.localStorage.getItem(BASE_KEY);
+		return {
+			accent: isHex(accent) ? accent : DEFAULT_ACCENT,
+			base: base === "match" || isHex(base) ? base : DEFAULT_BASE,
+		};
+	} catch {
+		return { accent: DEFAULT_ACCENT, base: DEFAULT_BASE };
 	}
-	return { h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
 
-function isHexColor({ value }: { value: string }): boolean {
-	return /^#[0-9a-fA-F]{6}$/.test(value);
-}
-
-export function applyAccent({ color }: { color: string }): void {
-	if (!isHexColor({ value: color })) return;
-	const { h, s, l } = hexToHsl({ hex: color });
+/** Works out and sets every colour that depends on the two choices. */
+export function applyColours({ accent, base }: Colours): void {
+	if (!isHex(accent)) return;
 	const root = document.documentElement;
+	const isDark = root.classList.contains("dark");
+	const panel = isDark ? "#1a1a1c" : "#fafafa";
+	const text = isDark ? "#f2f2f2" : "#1e1e1e";
+
+	// the accent as picked; nudged only if it would vanish against the panels
+	let shown = accent;
+	for (let i = 0; i < 30 && contrast(shown, panel) < 3; i++) {
+		shown = mix(shown, text, 0.1);
+	}
+	const onAccent =
+		contrast(shown, "#1e1e1e") >= contrast(shown, "#ffffff") ? "#1e1e1e" : "#ffffff";
+
+	const { h, s } = hueAndSaturation(shown);
 	root.style.setProperty("--jeo-h", String(h));
 	root.style.setProperty("--jeo-s", `${s}%`);
-	// Keep the accent readable on the dark theme.
-	root.style.setProperty("--jeo-l", `${Math.min(Math.max(l, 45), 70)}%`);
-}
-
-const TINT_KEY = "jeo-tint";
-const TINTS: Array<{ name: string; value: string }> = [
-	{ name: "Grey", value: "0%" },
-	{ name: "Soft", value: "5%" },
-	{ name: "Deep", value: "11%" },
-];
-const DEFAULT_TINT = "5%";
-
-/** How much of the accent hue the dark panels carry. */
-export function applyTint({ value }: { value: string }): void {
-	if (!TINTS.some((tint) => tint.value === value)) return;
-	document.documentElement.style.setProperty("--jeo-base-s", value);
-}
-
-function readStoredTint(): string {
-	try {
-		const stored = window.localStorage.getItem(TINT_KEY);
-		return stored && TINTS.some((tint) => tint.value === stored)
-			? stored
-			: DEFAULT_TINT;
-	} catch {
-		return DEFAULT_TINT;
+	root.style.setProperty("--primary", shown);
+	root.style.setProperty("--primary-foreground", onAccent);
+	// the soft "selected" colours, tinted with the accent itself
+	root.style.setProperty(
+		"--secondary",
+		isDark ? mix(shown, "#000000", 0.78) : mix(shown, "#ffffff", 0.88),
+	);
+	root.style.setProperty(
+		"--secondary-border",
+		isDark ? mix(shown, "#000000", 0.68) : mix(shown, "#ffffff", 0.78),
+	);
+	let soft = shown;
+	const softPanel = isDark ? mix(shown, "#000000", 0.78) : mix(shown, "#ffffff", 0.88);
+	for (let i = 0; i < 30 && contrast(soft, softPanel) < 4.5; i++) {
+		soft = mix(soft, text, 0.08);
 	}
+	root.style.setProperty("--secondary-foreground", soft);
+
+	// panels carry a little of the base colour
+	const tint = base === "match" ? { h, s: s === 0 ? 0 : 5 } : hueAndSaturation(base);
+	root.style.setProperty("--jeo-base-h", String(tint.h));
+	root.style.setProperty("--jeo-base-s", `${Math.min(tint.s, 26)}%`);
 }
 
-function readStoredAccent(): string {
-	try {
-		const stored = window.localStorage.getItem(STORAGE_KEY);
-		return stored && isHexColor({ value: stored }) ? stored : DEFAULT_ACCENT;
-	} catch {
-		return DEFAULT_ACCENT;
-	}
+/** kept for older callers */
+export function applyAccent({ color }: { color: string }): void {
+	applyColours({ ...loadColours(), accent: color });
 }
 
-/** Applies the saved accent colour as soon as the app loads. */
+/** Applies the saved colours as soon as the app loads, and on light/dark. */
 export function AccentApplier() {
 	useEffect(() => {
-		applyAccent({ color: readStoredAccent() });
-		applyTint({ value: readStoredTint() });
-
+		applyColours(loadColours());
+		const observer = new MutationObserver(() => applyColours(loadColours()));
+		observer.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ["class"],
+		});
 		// Desktop app: tell the user where an export was saved.
 		const onExportSaved = (event: Event) => {
 			const detail = (event as CustomEvent<{ ok: boolean; message: string }>)
@@ -104,38 +167,123 @@ export function AccentApplier() {
 			else toast.error(detail?.message ?? "Export could not be saved");
 		};
 		window.addEventListener("jeo:export-saved", onExportSaved);
-		return () => window.removeEventListener("jeo:export-saved", onExportSaved);
+		return () => {
+			observer.disconnect();
+			window.removeEventListener("jeo:export-saved", onExportSaved);
+		};
 	}, []);
 	return null;
 }
 
+function Swatches({
+	label,
+	options,
+	value,
+	onPick,
+	jeoId,
+}: {
+	label: string;
+	options: Array<[string, string]>;
+	value: string;
+	onPick: (value: string) => void;
+	jeoId: string;
+}) {
+	const custom = isHex(value) && !options.some(([, hex]) => hex === value.toLowerCase());
+	const [draft, setDraft] = useState<string | null>(null);
+	return (
+		<div>
+			<p className="text-muted-foreground mb-2 text-xs">{label}</p>
+			<div className="flex flex-wrap items-center gap-2">
+				{options.map(([name, hex]) => (
+					<button
+						key={hex}
+						type="button"
+						title={name}
+						aria-label={`${label}: ${name}`}
+						aria-pressed={value.toLowerCase() === hex}
+						data-jeo-swatch={`${jeoId}:${hex}`}
+						onClick={() => onPick(hex)}
+						className={cn(
+							"size-7 cursor-pointer rounded-full border border-white/20 transition-transform duration-150 hover:scale-110",
+							value.toLowerCase() === hex &&
+								"ring-foreground ring-offset-background ring-2 ring-offset-2",
+						)}
+						style={
+							hex === "match"
+								? {
+										background:
+											"conic-gradient(var(--primary), #333 40%, var(--primary))",
+									}
+								: { backgroundColor: hex }
+						}
+					/>
+				))}
+				{/* any colour: the system picker, used live while you drag in it */}
+				<label
+					title="Pick any colour"
+					className={cn(
+						"relative size-7 cursor-pointer overflow-hidden rounded-full border border-white/20",
+						custom && "ring-foreground ring-offset-background ring-2 ring-offset-2",
+					)}
+					style={{
+						background: custom
+							? value
+							: "conic-gradient(red, yellow, lime, cyan, blue, magenta, red)",
+					}}
+				>
+					<input
+						type="color"
+						aria-label={`${label}: any colour`}
+						data-jeo-colour={jeoId}
+						value={isHex(value) ? value : "#8b5cf6"}
+						onInput={(event) => onPick(event.currentTarget.value.toLowerCase())}
+						onChange={(event) => onPick(event.currentTarget.value.toLowerCase())}
+						className="absolute inset-0 size-full cursor-pointer opacity-0"
+					/>
+				</label>
+			</div>
+			<div className="mt-2 flex items-center gap-2">
+				<span className="text-muted-foreground text-xs">Code</span>
+				<input
+					aria-label={`${label}: colour code`}
+					data-jeo-hex={jeoId}
+					spellCheck={false}
+					className="border-input bg-accent h-7 w-24 rounded-md border px-2 font-mono text-xs outline-none"
+					value={draft ?? (isHex(value) ? value : "")}
+					placeholder="#rrggbb"
+					onChange={(event) => {
+						const next = event.currentTarget.value.trim();
+						setDraft(next);
+						const withHash = next.startsWith("#") ? next : `#${next}`;
+						if (isHex(withHash)) onPick(withHash.toLowerCase());
+					}}
+					onBlur={() => setDraft(null)}
+				/>
+			</div>
+		</div>
+	);
+}
+
 export function AccentPicker() {
-	const [accent, setAccent] = useState(DEFAULT_ACCENT);
-	const [tint, setTint] = useState(DEFAULT_TINT);
+	const [colours, setColours] = useState<Colours>({
+		accent: DEFAULT_ACCENT,
+		base: DEFAULT_BASE,
+	});
 
 	useEffect(() => {
-		setAccent(readStoredAccent());
-		setTint(readStoredTint());
+		setColours(loadColours());
 	}, []);
 
-	const chooseTint = ({ value }: { value: string }) => {
-		setTint(value);
-		applyTint({ value });
+	const choose = (change: Partial<Colours>) => {
+		const next = { ...colours, ...change };
+		setColours(next);
 		try {
-			window.localStorage.setItem(TINT_KEY, value);
+			window.localStorage.setItem(ACCENT_KEY, next.accent);
+			window.localStorage.setItem(BASE_KEY, next.base);
 		} catch {
-			// Tint still applies for this session.
+			// the choice still applies until the app closes
 		}
-	};
-
-	const choose = ({ color }: { color: string }) => {
-		setAccent(color);
-		applyAccent({ color });
-		try {
-			window.localStorage.setItem(STORAGE_KEY, color);
-		} catch {
-			// Colour still applies for this session.
-		}
+		applyColours(next);
 	};
 
 	return (
@@ -147,57 +295,39 @@ export function AccentPicker() {
 					className="size-8"
 					aria-label="Colours"
 					title="Accent and panel colours"
+					data-jeo="colours"
 				>
 					<span className="bg-primary size-4 rounded-full ring-1 ring-white/30" />
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent align="end" className="z-100 w-56 p-3">
-				<p className="text-muted-foreground mb-2 text-xs">Accent colour</p>
-				<div className="grid grid-cols-4 gap-2">
-					{PRESETS.map((preset) => (
-						<button
-							key={preset.color}
-							type="button"
-							title={preset.name}
-							aria-label={preset.name}
-							aria-pressed={accent.toLowerCase() === preset.color}
-							onClick={() => choose({ color: preset.color })}
-							className={cn(
-								"h-8 w-full cursor-pointer rounded-md ring-offset-2 ring-offset-background",
-								accent.toLowerCase() === preset.color && "ring-2 ring-white",
-							)}
-							style={{ backgroundColor: preset.color }}
-						/>
-					))}
-				</div>
-				<label className="mt-3 flex items-center justify-between gap-2 text-xs">
-					<span className="text-muted-foreground">Any colour</span>
-					<input
-						type="color"
-						value={accent}
-						onChange={(event) => choose({ color: event.target.value })}
-						className="h-7 w-12 cursor-pointer rounded border-0 bg-transparent p-0"
-					/>
-				</label>
-				<p className="text-muted-foreground mt-3 mb-2 text-xs">Panel colour</p>
-				<div className="grid grid-cols-3 gap-1.5">
-					{TINTS.map((option) => (
-						<button
-							key={option.value}
-							type="button"
-							aria-pressed={tint === option.value}
-							onClick={() => chooseTint({ value: option.value })}
-							className={cn(
-								"cursor-pointer rounded-md px-2 py-1.5 text-xs transition-colors duration-150",
-								tint === option.value
-									? "bg-secondary text-secondary-foreground"
-									: "bg-accent hover:bg-accent/70",
-							)}
-						>
-							{option.name}
-						</button>
-					))}
-				</div>
+			<PopoverContent
+				align="end"
+				className="z-100 w-72 space-y-4 p-4"
+				// the system colour picker is its own window: opening it must not
+				// close this box, or the colour you pick has nowhere to land
+				onFocusOutside={(event) => event.preventDefault()}
+			>
+				<Swatches
+					label="Accent"
+					jeoId="accent"
+					options={ACCENTS}
+					value={colours.accent}
+					onPick={(accent) => choose({ accent })}
+				/>
+				<Swatches
+					label="Base (panel tint)"
+					jeoId="base"
+					options={BASES}
+					value={colours.base}
+					onPick={(base) => choose({ base })}
+				/>
+				<button
+					type="button"
+					onClick={() => choose({ accent: DEFAULT_ACCENT, base: DEFAULT_BASE })}
+					className="text-muted-foreground hover:text-foreground cursor-pointer text-xs underline-offset-2 hover:underline"
+				>
+					Back to the JEO colours
+				</button>
 			</PopoverContent>
 		</Popover>
 	);

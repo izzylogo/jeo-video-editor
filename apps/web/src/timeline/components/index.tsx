@@ -34,6 +34,7 @@ import type { MediaTime } from "@/wasm";
 import type { ElementDragView, DropTarget } from "@/timeline";
 import { TimelineTrackContent } from "./timeline-track";
 import { TimelinePlayhead } from "./timeline-playhead";
+import { HoverScrub } from "@/jeo/components/hover-scrub";
 import { SelectionBox } from "@/selection/selection-box";
 import { useBoxSelect } from "@/selection/hooks/use-box-select";
 import { SnapIndicator } from "./snap-indicator";
@@ -572,6 +573,7 @@ export function Timeline() {
 						</div>
 					</ScrollArea>
 
+					<HoverScrub zoomLevel={zoomLevel} tracksScrollRef={tracksScrollRef} />
 					<TimelinePlayhead
 						zoomLevel={zoomLevel}
 						hasHorizontalScrollbar={hasHorizontalScrollbar}

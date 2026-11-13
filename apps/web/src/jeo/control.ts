@@ -651,8 +651,39 @@ function addEffect(args: Args): ToolResult {
 		blur_shake: { type: JEO_SHAKE, name: "Blur shake", seconds: 0.3 },
 		colour_split: { type: JEO_SPLIT, name: "Colour split", seconds: 1 },
 	};
+	// transitions sit across the cut nearest to `at`
+	if (kind.startsWith("transition_")) {
+		const style = kind.slice("transition_".length);
+		if (!["black", "white", "blur", "zoom", "shake", "glare"].includes(style)) {
+			return { ok: false, error: "Unknown transition. Use transition_black, _white, _blur, _zoom, _shake or _glare." };
+		}
+		const outcome = actions.addTransition({
+			style: style as actions.TransitionStyle,
+			at: actions.seconds(num(args.at, 0)),
+			lengthSeconds: num(args.seconds, 0.4),
+		});
+		return outcome.ok
+			? { ok: true, result: { added: outcome.message } }
+			: { ok: false, error: outcome.message };
+	}
+	const extraKey = kind.replace(/_/g, "-");
+	if (extraKey in actions.EXTRA_EFFECTS) {
+		const extra = actions.EXTRA_EFFECTS[extraKey as actions.ExtraEffectKind];
+		actions.insertAll({
+			items: [
+				actions.effectItem({
+					effectType: extra.type,
+					name: extra.name,
+					start: actions.seconds(num(args.at, 0)),
+					duration: actions.seconds(num(args.seconds, extra.seconds)),
+					params: "params" in extra ? { ...extra.params } : {},
+				}),
+			],
+		});
+		return { ok: true, result: { added: extra.name, at: num(args.at, 0) } };
+	}
 	const preset = map[kind];
-	if (!preset) return { ok: false, error: `Unknown kind. Use: ${Object.keys(map).join(", ")}.` };
+	if (!preset) return { ok: false, error: `Unknown kind. Use: ${Object.keys(map).join(", ")}, zoom_punch, slow_zoom, shake, glitch, blur, dark_edges, black_white, old_film, vivid, cold, darker, transition_black, transition_white, transition_blur, transition_zoom, transition_shake, transition_glare.` };
 	requireTracks();
 	actions.insertAll({
 		items: [
@@ -1005,7 +1036,7 @@ const TOOLS: ToolDefinition[] = [
 	{
 		name: "add_effect",
 		description:
-			"Add an effect at TIMELINE time `at`: flash (C.F, on a reaction), red_flash (angry moment), blur_shake, colour_split. Optional seconds.",
+			"Add an effect at TIMELINE time `at`: flash (C.F, on a reaction), red_flash (angry moment), blur_shake, colour_split; motion: zoom_punch, slow_zoom, shake, glitch, blur; looks: black_white, old_film, vivid, cold, darker, dark_edges; transitions across the cut nearest to `at`: transition_black, transition_white, transition_glare, transition_blur, transition_zoom, transition_shake. Optional seconds. Use the extra ones sparingly: the JEO style is plain cuts, flashes and the ending.",
 		inputSchema: schema({ kind: string, at: number, seconds: number }, ["kind", "at"]),
 		handler: addEffect,
 	},

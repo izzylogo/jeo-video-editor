@@ -25,6 +25,10 @@ import {
 	addColourFlash,
 	addColourSplit,
 	addEnding,
+	addExtraEffect,
+	addTransition,
+	type ExtraEffectKind,
+	type TransitionStyle,
 	addFreeze,
 	addLibraryAudio,
 	addPopUp,
@@ -402,7 +406,78 @@ export function JeoEffectsSection() {
 					onClick={() => run(addColourSplit)}
 				/>
 			</Section>
+			<Section title="Motion (at the playhead)">
+				<ChipGrid
+					items={[
+						["zoom-punch", "Zoom punch", "A fast zoom in that settles back. Good on a hit or a reveal."],
+						["slow-zoom", "Slow zoom in", "The picture creeps closer for 2 seconds."],
+						["shake", "Shake", "Camera shake without blur."],
+						["glitch", "Glitch", "Jumping bands and a red flicker."],
+						["blur", "Blur", "Soft focus for 1 second."],
+					]}
+					onPick={(kind) => run(() => addExtraEffect({ kind: kind as ExtraEffectKind }))}
+				/>
+			</Section>
+			<Section title="Looks (at the playhead)">
+				<ChipGrid
+					items={[
+						["black-white", "Black and white", "For a memory or a sad beat."],
+						["old-film", "Old film", "Warm brown, like an old photo."],
+						["vivid", "Vivid", "Stronger colours."],
+						["cold", "Cold", "Cooler, slightly washed colours."],
+						["darker", "Darker", "Dims the picture so text stands out."],
+						["dark-edges", "Dark edges", "Darkens the corners to pull the eye to the middle."],
+					]}
+					onPick={(kind) => run(() => addExtraEffect({ kind: kind as ExtraEffectKind }))}
+				/>
+			</Section>
+			<Section title="Transitions (on the cut nearest the playhead)">
+				<ChipGrid
+					items={[
+						["black", "Dip to black", "Fades to black and back across the cut."],
+						["white", "Dip to white", "A soft white flash across the cut."],
+						["glare", "Glare", "A bright band sweeps over the cut."],
+						["blur", "Blur", "Goes out of focus across the cut."],
+						["zoom", "Zoom", "Rushes in across the cut."],
+						["shake", "Shake", "A shaken cut."],
+					]}
+					onPick={(style) => run(() => addTransition({ style: style as TransitionStyle }))}
+				/>
+				<Note>
+					Effects and transitions are bars on the effects row of the timeline.
+					Drag one to move it, drag its ends to change how long it lasts.
+				</Note>
+			</Section>
 		</>
+	);
+}
+
+/** A two-column grid of small effect buttons, each with a one-line hint. */
+function ChipGrid({
+	items,
+	onPick,
+}: {
+	items: Array<[string, string, string]>;
+	onPick: (id: string) => void;
+}) {
+	return (
+		<div className="grid grid-cols-2 gap-1.5">
+			{items.map(([id, label, hint]) => (
+				<button
+					key={id}
+					type="button"
+					title={hint}
+					data-jeo-fx={id}
+					onClick={() => onPick(id)}
+					className="bg-accent/60 hover:bg-accent active:bg-accent/80 cursor-pointer rounded-md p-2 text-left transition-colors duration-150"
+				>
+					<span className="block text-sm font-medium">{label}</span>
+					<span className="text-muted-foreground block text-[0.68rem] leading-snug">
+						{hint}
+					</span>
+				</button>
+			))}
+		</div>
 	);
 }
 

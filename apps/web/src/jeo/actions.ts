@@ -1234,3 +1234,86 @@ export function setTextContent({
 	});
 	return ok("Text changed. Ctrl+Z brings the old one back.");
 }
+
+// ---------- more effects and transitions ----------
+
+export const EXTRA_EFFECTS = {
+	"zoom-punch": { type: "jeo-zoom", name: "Zoom punch", seconds: 0.4 },
+	"slow-zoom": { type: "jeo-push", name: "Slow zoom in", seconds: 2 },
+	shake: { type: "jeo-shake", name: "Shake", seconds: 0.4, params: { blur: 0, amount: 22 } },
+	glitch: { type: "jeo-glitch", name: "Glitch", seconds: 0.4 },
+	blur: { type: "jeo-blur", name: "Blur", seconds: 1 },
+	"dark-edges": { type: "jeo-vignette", name: "Dark edges", seconds: 2 },
+	"black-white": { type: "jeo-look", name: "Black and white", seconds: 2, params: { style: "bw" } },
+	"old-film": { type: "jeo-look", name: "Old film", seconds: 2, params: { style: "old" } },
+	vivid: { type: "jeo-look", name: "Vivid", seconds: 2, params: { style: "vivid" } },
+	cold: { type: "jeo-look", name: "Cold", seconds: 2, params: { style: "cold" } },
+	darker: { type: "jeo-look", name: "Darker", seconds: 2, params: { style: "dark" } },
+} as const;
+export type ExtraEffectKind = keyof typeof EXTRA_EFFECTS;
+
+/** Add one of the extra effects at the playhead. */
+export function addExtraEffect({ kind }: { kind: ExtraEffectKind }): ActionResult {
+	if (!tracks()) return fail("Open a project first.");
+	const preset = EXTRA_EFFECTS[kind];
+	insertAll({
+		items: [
+			effectItem({
+				effectType: preset.type,
+				name: preset.name,
+				start: playhead(),
+				duration: seconds(preset.seconds),
+				params: "params" in preset ? { ...preset.params } : {},
+			}),
+		],
+	});
+	return ok(`${preset.name} added at the playhead. Drag its ends to make it longer or shorter.`);
+}
+
+export type TransitionStyle = "black" | "white" | "blur" | "zoom" | "shake" | "glare";
+const TRANSITION_NAMES: Record<TransitionStyle, string> = {
+	black: "Dip to black",
+	white: "Dip to white",
+	blur: "Blur transition",
+	zoom: "Zoom transition",
+	shake: "Shake transition",
+	glare: "Glare transition",
+};
+
+/** Put a transition across the cut nearest to the playhead. */
+export function addTransition({
+	style,
+	at,
+	lengthSeconds = 0.4,
+}: {
+	style: TransitionStyle;
+	/** a cut time in ticks; default: the cut nearest to the playhead */
+	at?: number;
+	lengthSeconds?: number;
+}): ActionResult {
+	const sceneTracks = tracks();
+	if (!sceneTracks) return fail("Open a project first.");
+	const clips = [...sceneTracks.main.elements].sort((a, b) => a.startTime - b.startTime);
+	const cuts = clips.slice(1).map((clip) => clip.startTime as number);
+	if (cuts.length === 0) return fail("There is no cut yet. A transition sits between two clips.");
+	const target = at ?? playhead();
+	const cut = cuts.reduce((best, time) =>
+		Math.abs(time - target) < Math.abs(best - target) ? time : best,
+	);
+	const length = seconds(lengthSeconds);
+	const start = snapToFrame(Math.max(0, cut - length / 2));
+	insertAll({
+		items: [
+			effectItem({
+				effectType: "jeo-transition",
+				name: TRANSITION_NAMES[style],
+				start,
+				duration: length,
+				params: { style },
+			}),
+		],
+	});
+	return ok(
+		`${TRANSITION_NAMES[style]} added on the cut at ${(cut / 120000).toFixed(2)} s.`,
+	);
+}

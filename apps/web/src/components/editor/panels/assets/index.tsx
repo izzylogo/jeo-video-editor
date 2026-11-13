@@ -1,5 +1,6 @@
 "use client";
 
+import { AudioView } from "@/jeo/components/audio-view";
 import {
 	type Tab,
 	useAssetsPanelStore,
@@ -11,7 +12,6 @@ import { StickersView } from "@/stickers/components/assets-view";
 import { EffectsView } from "@/effects/components/assets-view";
 import { AiChatView } from "@/jeo/components/ai-chat";
 import {
-	AudioView,
 	CaptionsView,
 	EndingsView,
 	FreezeView,
