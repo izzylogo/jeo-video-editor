@@ -216,3 +216,4 @@ Based on OpenCut Classic (MIT licence). The `LICENSE` file stays in this folder.
 - **The app's own text is Poppins.** Your caption font is still LEMON MILK.
 
 Dev notes: text numbers are display-only conversions (see `apps/web/src/jeo/text-units.ts`); layouts are in `apps/web/src/panels/layout.ts`.
+- **Older projects**: when you open one, its texts are resized once to the new standard (each grows by the same amount, about 30%). Ctrl+Z puts them back. Copies of the project files from before are in `output\_backup-before-text-resize\`.

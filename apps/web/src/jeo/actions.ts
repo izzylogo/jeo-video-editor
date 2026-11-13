@@ -1169,6 +1169,50 @@ export function repairSilentProject(): boolean {
 	});
 	return true;
 }
+/**
+ * Projects made before 14 Nov 2026 used 4.2 as the standard text size (CapCut
+ * 12 at 92%). The standard is now 5.478 (CapCut 12 at 120%). Scale every text
+ * in such a project up by the same amount, once. Ctrl+Z undoes it.
+ */
+export function resizeOldTexts(): number {
+	const sceneTracks = tracks();
+	const project = editor().project.getActiveOrNull();
+	if (!sceneTracks || !project) return 0;
+	const key = `jeo-text-resize:${project.metadata.id}`;
+	try {
+		if (window.localStorage.getItem(key)) return 0;
+		window.localStorage.setItem(key, "1");
+	} catch {
+		return 0;
+	}
+	const created = new Date(project.metadata.createdAt as unknown as string).getTime();
+	if (!(created < Date.parse("2026-11-14T00:00:00"))) return 0;
+	const texts = sceneTracks.overlay.flatMap((track) =>
+		track.elements
+			.filter((element) => element.type === "text")
+			.map((element) => ({ track, element })),
+	);
+	const sizes = texts.map(({ element }) =>
+		typeof element.params.fontSize === "number" ? element.params.fontSize : 4.2,
+	);
+	// already has new-standard text: nothing to do
+	if (texts.length === 0 || Math.max(...sizes) >= 5.4) return 0;
+	const factor = 5.478 / 4.2;
+	editor().timeline.updateElements({
+		updates: texts.map(({ track, element }, index) => ({
+			trackId: track.id,
+			elementId: element.id,
+			patch: {
+				params: {
+					...element.params,
+					fontSize: Math.round(sizes[index] * factor * 1000) / 1000,
+				},
+			},
+		})),
+	});
+	return texts.length;
+}
+
 /** Replace the words of one text (used by "options for this part"). */
 export function setTextContent({
 	elementId,

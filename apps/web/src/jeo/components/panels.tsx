@@ -60,6 +60,12 @@ export function useExposeJeoActions(): void {
 			if (jeoActions.repairSilentProject()) {
 				toast.success("The clips' own sound is back on (it was muted by mistake).");
 			}
+			const resized = jeoActions.resizeOldTexts();
+			if (resized > 0) {
+				toast.success(
+					`${resized} texts resized to your standard (12 at 120%). Ctrl+Z puts them back.`,
+				);
+			}
 		}, 2500);
 		return () => window.clearTimeout(timer);
 	}, [projectId]);
