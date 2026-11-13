@@ -209,3 +209,13 @@ File: `lyra_cli_client.dll` from CapCut 9.7.1 (sha256 `91f08ac5131b48b9...`), an
 - Observed: `property=keyframe;type=KFTypeCommonMaskSize` — keyframes are described as `property=keyframe;type=<name>`.
 - Inferred, not observed: `KFTypeScale` looks like the single uniform-scale keyframe and `KFTypeScaleX` / `KFTypeScaleY` (stored elsewhere in the file) the separate width and height ones. Your own CapCut projects use `KFTypeScaleX` for uniform scale, and the export does the same; that was checked by opening it in CapCut.
 - Not done: following where each name is used in the code. Each further question means another full Ghidra pass (about 18 minutes) when REA is run from the command line.
+
+### CapCut has its own command-line tool for projects
+
+Observed in the same file: help text for a tool called `lyra-cli`, for example
+`lyra-cli draft keyframe add --seg-id <UUID> --animated-property opacity --points 0s:0%,1s:100% --curve ease-in-out`,
+and `For sticker opacity, add an alpha keyframe: --add "property=keyframe;type=KFTypeAlpha;points=0s:0.6,3s:0.6"`.
+It also states the units: a normalised number or % for position, opacity and volume; `x` for scale; degrees for rotation.
+
+- This confirms, in CapCut's own words, that opacity keyframes are `KFTypeAlpha` and that the export's units are right.
+- Not checked: whether `lyra-cli` can be run on this laptop, and what else it can do. If it can, it would be a sturdier way to write CapCut projects than building the files by hand.
