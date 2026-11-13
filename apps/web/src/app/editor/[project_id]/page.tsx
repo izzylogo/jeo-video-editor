@@ -18,6 +18,7 @@ import { getLayoutPreset, type TopPanelId } from "@/panels/layout";
 import { usePasteMedia } from "@/media/use-paste-media";
 import { MobileGate } from "@/components/editor/mobile-gate";
 import { AiChatRuntime } from "@/jeo/components/ai-chat";
+import { CapCutImportRunner } from "@/jeo/components/capcut-import";
 import { Fragment, useMemo, useState } from "react";
 import { useEditor } from "@/editor/use-editor";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
@@ -50,6 +51,7 @@ export default function Editor() {
 					</div>
 					<MigrationDialog />
 					<AiChatRuntime />
+					<CapCutImportRunner />
 				</div>
 			</EditorProvider>
 		</MobileGate>

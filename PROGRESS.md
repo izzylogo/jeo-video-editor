@@ -229,3 +229,14 @@ Dev notes: text numbers are display-only conversions (see `apps/web/src/jeo/text
 - **Record voice** (microphone on the timeline toolbar): click to start (the video plays), click again to stop. The recording is saved as a WAV and lands on a sound track where the playhead was.
 - **Text clips on the timeline are orange.**
 - **Several clips at once**: select more than one clip (Ctrl+click, or drag a box) and the settings panel shows what they share. Texts: font size, bold, outline, ▼, ALL CAPITALS, preset style. Anything you can see: scale, position, rotate, opacity. Video and sound clips: volume and mute. A box says "Mixed" when the clips differ. Each change is one Ctrl+Z.
+
+## Round 5 of your feedback
+
+- **Hover preview**: move the mouse over the timeline without clicking and the preview shows that moment, with a faint top-to-bottom line under the mouse. The playhead does not move. The eye button on the timeline toolbar turns it off.
+- **Colours** work the way My Animator's do: pick an **Accent** and a **Base**. The accent is used exactly as picked (it is only nudged if it would be unreadable). You can also type a colour code. The old picker closed itself when the system colour window opened, so the colour you chose was lost; that is fixed.
+- **Audio tab** rebuilt: Music / Sound effects / In this video. Search, listen before adding, "Add file" for a one-off sound, record voice. "In this video" lists every sound with its own volume, mute and remove, and one switch for all the clips' own sound.
+- **More effects**: zoom punch, slow zoom in, shake, glitch, blur, and looks (black and white, old film, vivid, cold, darker, dark edges). **Transitions** for the cut nearest the playhead: dip to black, dip to white, glare, blur, zoom, shake.
+- **Open in CapCut carries more**: pop-ups, tags that follow a person, the growing and fading emoji (as CapCut keyframes), text colour / outline / box, mirror, clip volume, colour split (as CapCut's "RGB Distort"), blur shake (as "Shake") and the Glare transition (as "Glare II"). Those three CapCut effects are copied from your own CapCut projects, because CapCut can only use effects already downloaded on this computer.
+- **Import from CapCut** (Projects page): pick a CapCut project and it becomes a new JEO project with its cuts, speed, framing, mirror, volume, texts, sounds and keyframes. CapCut's own effects, transitions, stickers and text animations stay in CapCut, and the import says which. CapCut's files are only read.
+- How CapCut keeps a project is written at the top of `apps/jeo-desktop/tools/capcut_import.py`.
+- Not done: CapCut's program was not taken apart with REA. Everything needed was in CapCut's project files.

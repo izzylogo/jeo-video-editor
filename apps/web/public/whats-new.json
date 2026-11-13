@@ -1,5 +1,11 @@
 {
   "items": [
+    "Hover preview: move the mouse over the timeline to see that moment, with a faint line (the eye button turns it off)",
+    "Colours work like My Animator: pick an accent and a base; the colour you pick is used exactly",
+    "New Audio tab: search, listen before adding, and a list of the sounds in this video with volume and mute",
+    "More effects (zoom punch, slow zoom, shake, glitch, blur, looks) and six transitions for cuts",
+    "Open in CapCut now carries pop-ups, follow tags, the growing emoji, text colours, mirror, volume, colour split, blur shake and the Glare transition",
+    "Import from CapCut (Projects page): bring a CapCut project in as a new project",
     "Select several clips (Ctrl+click or drag a box) and change their shared settings together: size, scale, position, style, volume",
     "Text clips on the timeline are orange",
     "Two more timeline buttons: Crop (a box on the clip) and Record voice (microphone)",

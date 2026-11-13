@@ -4,11 +4,13 @@
  * apps/jeo-desktop/tools/capcut_export.py). Existing CapCut projects are never
  * changed.
  *
- * What goes across: cuts, speed, framing, freeze frames, texts (words, time,
- * position, size, ▼), the ending emoji (as a still overlay) and sounds.
- * What does not: keyframe animation (pop-up, growing emoji, follow), colour
- * flash / blur shake / colour split, arrows and spotlights. Those are listed
- * back to the user so they can add them in CapCut.
+ * What goes across: cuts, speed, framing, mirror, clip volume, freeze frames,
+ * texts (words, time, position, size, colour, outline, box, ▼), keyframe
+ * animation (pop-up, growing/fading emoji, tags that follow a person), the
+ * colour split and blur shake (as CapCut's own "RGB Distort" and "Shake"),
+ * the Glare transition (as CapCut's "Glare II") and sounds.
+ * What does not: colour flash, the other JEO effects and transitions, crop
+ * boxes, arrows and spotlights. Those are listed back to the user.
  */
 import { EditorCore } from "@/core";
 import type { TimelineElement } from "@/timeline";
@@ -37,6 +39,48 @@ function settled({
 		| undefined;
 	const last = channel?.keys?.[channel.keys.length - 1]?.value;
 	if (typeof last === "number") return last;
+	return num("params" in element ? element.params[path] : undefined, fallback);
+}
+
+/** every keyframed number CapCut also understands, as [seconds, value] pairs */
+const KEYFRAME_PATHS: Record<string, string> = {
+	"transform.scaleX": "scale",
+	"transform.positionX": "x",
+	"transform.positionY": "y",
+	"transform.rotate": "rotation",
+	opacity: "opacity",
+};
+
+function keyframesOf(element: TimelineElement): Record<string, Array<[number, number]>> {
+	const out: Record<string, Array<[number, number]>> = {};
+	for (const [path, name] of Object.entries(KEYFRAME_PATHS)) {
+		const channel = element.animations?.[path] as
+			| { keys?: Array<{ time: number; value: unknown }> }
+			| undefined;
+		const points = (channel?.keys ?? [])
+			.filter((key) => typeof key.value === "number")
+			.map((key) => [key.time / S, key.value as number] as [number, number])
+			.sort((a, b) => a[0] - b[0]);
+		if (points.length >= 2) out[name] = points;
+	}
+	return out;
+}
+
+/** where an animated number starts (CapCut then follows the keyframes) */
+function starting({
+	element,
+	path,
+	fallback,
+}: {
+	element: TimelineElement;
+	path: string;
+	fallback: number;
+}): number {
+	const channel = element.animations?.[path] as
+		| { keys?: Array<{ time: number; value: unknown }> }
+		| undefined;
+	const first = [...(channel?.keys ?? [])].sort((a, b) => a.time - b.time)[0]?.value;
+	if (typeof first === "number") return first;
 	return num("params" in element ? element.params[path] : undefined, fallback);
 }
 
@@ -73,8 +117,7 @@ export async function openInCapCut(): Promise<CapCutExportResult> {
 		if (element.type !== "video" && element.type !== "image") return;
 		const asset = assets.find((item) => item.id === element.mediaId);
 		if (!asset) return;
-		const animated = Object.keys(element.animations ?? {}).length > 0;
-		if (animated) leftOut.add("the growing/fading animation of the emoji (it is placed as a still)");
+		const decibels = num(element.params.volume, 0);
 		clips.push({
 			kind: element.type,
 			mediaId: asset.id,
@@ -84,11 +127,15 @@ export async function openInCapCut(): Promise<CapCutExportResult> {
 			duration: element.duration / S,
 			sourceIn: element.trimStart / S,
 			speed: element.type === "video" ? (element.retime?.rate ?? 1) : 1,
-			scale: settled({ element, path: "transform.scaleX", fallback: 1 }),
-			x: settled({ element, path: "transform.positionX", fallback: 0 }),
-			y: settled({ element, path: "transform.positionY", fallback: 0 }),
-			opacity: settled({ element, path: "opacity", fallback: 1 }),
+			scale: starting({ element, path: "transform.scaleX", fallback: 1 }),
+			scaleY: num(element.params["transform.scaleY"], 0) || undefined,
+			x: starting({ element, path: "transform.positionX", fallback: 0 }),
+			y: starting({ element, path: "transform.positionY", fallback: 0 }),
+			rotation: starting({ element, path: "transform.rotate", fallback: 0 }),
+			opacity: starting({ element, path: "opacity", fallback: 1 }),
+			keyframes: keyframesOf(element),
 			muted: element.params.muted === true,
+			volume: 10 ** (decibels / 20),
 			mediaWidth: asset.width,
 			mediaHeight: asset.height,
 			mediaDuration: asset.duration ?? 0,
@@ -99,37 +146,62 @@ export async function openInCapCut(): Promise<CapCutExportResult> {
 	}
 
 	const texts: Array<Record<string, unknown>> = [];
+	const effects: Array<Record<string, unknown>> = [];
 	for (const track of tracks.overlay) {
 		for (const element of track.elements as TimelineElement[]) {
 			if (element.type === "text") {
-				const paths = Object.keys(element.animations ?? {});
-				if (paths.some((path) => path.startsWith("transform.scale"))) {
-					leftOut.add("pop-up animations on texts");
-				}
-				if (paths.some((path) => path.startsWith("transform.position"))) {
-					leftOut.add("tags that follow a person (they are placed where they start)");
-				}
-				const firstKey = (path: string, fallback: number) => {
-					const channel = element.animations?.[path] as
-						| { keys?: Array<{ value: unknown }> }
-						| undefined;
-					const value = channel?.keys?.[0]?.value;
-					return typeof value === "number" ? value : fallback;
-				};
 				texts.push({
 					text: String(element.params.content ?? ""),
 					start: element.startTime / S,
 					duration: element.duration / S,
-					x: firstKey("transform.positionX", num(element.params["transform.positionX"], 0)),
-					y: firstKey("transform.positionY", num(element.params["transform.positionY"], 0)),
+					x: starting({ element, path: "transform.positionX", fallback: 0 }),
+					y: starting({ element, path: "transform.positionY", fallback: 0 }),
 					size: num(element.params.fontSize, 4.2),
-					scale: num(element.params["transform.scaleX"], 1),
+					scale: starting({ element, path: "transform.scaleX", fallback: 1 }),
+					rotation: starting({ element, path: "transform.rotate", fallback: 0 }),
+					opacity: starting({ element, path: "opacity", fallback: 1 }),
+					keyframes: keyframesOf(element),
 					triangle: element.params["tag.triangle"] === true,
+					color: typeof element.params.color === "string" ? element.params.color : "#ffffff",
+					stroke: element.params["stroke.enabled"] !== false,
+					strokeColor:
+						typeof element.params["stroke.color"] === "string"
+							? element.params["stroke.color"]
+							: "#000000",
+					background:
+						element.params["background.enabled"] === true &&
+						typeof element.params["background.color"] === "string"
+							? element.params["background.color"]
+							: undefined,
+					bold: element.params.fontWeight === "bold",
+					italic: element.params.fontStyle === "italic",
+					underline: element.params.textDecoration === "underline",
+					align: element.params.textAlign ?? "center",
 				});
 			} else if (element.type === "video" || element.type === "image") {
 				addVisual({ element, overlay: true });
 			} else if (element.type === "effect") {
-				leftOut.add(`effect: ${element.name}`);
+				// CapCut has its own versions of three of these; the rest stay here
+				const kind =
+					element.effectType === "jeo-split"
+						? "split"
+						: element.effectType === "jeo-shake"
+							? "shake"
+							: element.effectType === "jeo-transition" &&
+									element.params?.style === "glare"
+								? "transition"
+								: null;
+				if (kind) {
+					effects.push({
+						kind,
+						style: element.params?.style,
+						name: element.name,
+						start: element.startTime / S,
+						duration: element.duration / S,
+					});
+				} else {
+					leftOut.add(`effect: ${element.name}`);
+				}
 			} else if (element.type === "graphic") {
 				leftOut.add(`${element.name.toLowerCase()} graphic`);
 			} else {
@@ -203,6 +275,7 @@ export async function openInCapCut(): Promise<CapCutExportResult> {
 			clips,
 			texts,
 			audio,
+			effects,
 			coverBase64,
 		},
 	});

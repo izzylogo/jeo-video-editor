@@ -62,6 +62,53 @@ def find_pattern():
     return None, None, None
 
 
+_LIBRARY = None
+
+
+def library():
+    """Effects and transitions the user has already used in CapCut, by name.
+
+    CapCut effects are downloaded packages; a draft can only use one that is
+    on this computer. So they are copied from the user's own drafts, and only
+    when the package folder is still there.
+    """
+    global _LIBRARY
+    if _LIBRARY is not None:
+        return _LIBRARY
+    found = {"video_effects": {}, "transitions": {}, "effect_segment": None, "effect_track": None}
+    for name in os.listdir(DRAFTS):
+        if name.startswith("JEO "):
+            continue
+        path = os.path.join(DRAFTS, name, "draft_content.json")
+        if not os.path.isfile(path):
+            continue
+        try:
+            content = read_json(path)
+        except (OSError, ValueError):
+            continue
+        materials = content.get("materials") or {}
+        for kind in ("video_effects", "transitions"):
+            for item in materials.get(kind) or []:
+                if item.get("name") and os.path.exists(item.get("path") or "") and item["name"] not in found[kind]:
+                    found[kind][item["name"]] = item
+        if found["effect_segment"] is None:
+            for track in content.get("tracks") or []:
+                if track.get("type") == "effect" and track.get("segments"):
+                    found["effect_track"] = {k: v for k, v in track.items() if k != "segments"}
+                    found["effect_segment"] = track["segments"][0]
+                    break
+    _LIBRARY = found
+    return found
+
+
+def rgb(hex_colour, fallback=(1, 1, 1)):
+    try:
+        value = hex_colour.lstrip("#")
+        return [int(value[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+    except (AttributeError, ValueError, IndexError):
+        return list(fallback)
+
+
 def first(materials, kind, type_name=None):
     for item in materials.get(kind) or []:
         if type_name is None or item.get("type") == type_name:
@@ -125,18 +172,56 @@ class Draft:
             refs.append(item["id"])
         return refs
 
+    def keyframes(self, item, scale_factor=1.0, speed=1.0):
+        """JEO keyframes -> CapCut common_keyframes (times from the clip start)."""
+        kinds = {
+            "scale": ("KFTypeScaleX", lambda v: abs(v) * scale_factor),
+            "x": ("KFTypePositionX", lambda v: v / (self.width / 2)),
+            "y": ("KFTypePositionY", lambda v: -v / (self.height / 2)),
+            "rotation": ("KFTypeRotation", float),
+            "opacity": ("KFTypeAlpha", float),
+        }
+        result = []
+        for name, points in (item.get("keyframes") or {}).items():
+            if name not in kinds or len(points) < 2:
+                continue
+            property_type, convert = kinds[name]
+            result.append(
+                {
+                    "id": new_id(),
+                    "material_id": "",
+                    "property_type": property_type,
+                    "keyframe_list": [
+                        {
+                            "id": new_id(),
+                            "curveType": "Line",
+                            "time_offset": us(float(at) * speed),
+                            "left_control": {"x": 0.0, "y": 0.0},
+                            "right_control": {"x": 0.0, "y": 0.0},
+                            "values": [float(convert(float(value)))],
+                            "string_value": "",
+                            "graphID": "",
+                        }
+                        for at, value in points
+                    ],
+                }
+            )
+        return result
+
     def clip_box(self, item):
-        scale = float(item.get("scale", 1))
+        signed = float(item.get("scale", 1))
+        scale = abs(signed)
         return {
-            "scale": {"x": scale, "y": scale},
-            "rotation": 0.0,
+            "scale": {"x": scale, "y": float(item.get("scaleY", scale)) if item.get("scaleY") else scale},
+            "rotation": float(item.get("rotation", 0)),
             "rotation3d": [],
             # CapCut: 0,0 is the centre; 1 = half the frame; up is positive
             "transform": {
                 "x": float(item.get("x", 0)) / (self.width / 2),
                 "y": -float(item.get("y", 0)) / (self.height / 2),
             },
-            "flip": {"vertical": False, "horizontal": False},
+            # a mirrored clip is a negative width scale in JEO
+            "flip": {"vertical": False, "horizontal": signed < 0},
             "alpha": float(item.get("opacity", 1)),
         }
 
@@ -186,7 +271,7 @@ class Draft:
         segment = copy.deepcopy(pattern)
         speed = float(item.get("speed", 1))
         duration = us(item["duration"])
-        volume = 0.0 if item.get("muted") or item["kind"] == "image" else 1.0
+        volume = 0.0 if item.get("muted") or item["kind"] == "image" else float(item.get("volume", 1.0))
         segment.update(
             {
                 "id": new_id(),
@@ -200,12 +285,58 @@ class Draft:
                 "extra_material_refs": self.clip_refs(speed, with_canvas=True),
                 "render_index": render_index,
                 "keyframe_refs": [],
-                "common_keyframes": [],
+                "common_keyframes": self.keyframes(item, speed=speed),
                 "group_id": "",
                 "visible": True,
             }
         )
         return segment
+
+    # ----- effects and transitions (only ones already on this computer) -----
+    EFFECT_NAMES = {"split": "RGB Distort", "shake": "Shake"}
+    TRANSITION_NAMES = {"glare": "Glare II"}
+
+    def effect_segment(self, item):
+        lib = library()
+        name = self.EFFECT_NAMES.get(item.get("kind"))
+        source = lib["video_effects"].get(name) if name else None
+        if source is None or lib["effect_segment"] is None:
+            self.warnings.append(f"effect: {item.get('name', item.get('kind'))} (CapCut's matching effect is not downloaded on this computer)")
+            return None
+        material = copy.deepcopy(source)
+        material["id"] = new_id()
+        self.materials.setdefault("video_effects", []).append(material)
+        segment = copy.deepcopy(lib["effect_segment"])
+        segment.update(
+            {
+                "id": new_id(),
+                "material_id": material["id"],
+                "target_timerange": {"start": us(item["start"]), "duration": us(item["duration"])},
+                "extra_material_refs": [],
+                "render_index": 11000,
+                "keyframe_refs": [],
+                "common_keyframes": [],
+                "visible": True,
+            }
+        )
+        return segment
+
+    def add_transition(self, item, main_segments):
+        """A transition belongs to the clip that ends on the cut."""
+        source = library()["transitions"].get(self.TRANSITION_NAMES.get(item.get("style")))
+        cut = us(item["start"] + item["duration"] / 2)
+        before = min(
+            main_segments[:-1],
+            key=lambda seg: abs(seg["target_timerange"]["start"] + seg["target_timerange"]["duration"] - cut),
+            default=None,
+        )
+        if source is None or before is None:
+            self.warnings.append(f"transition: {item.get('name', item.get('style'))} (no matching CapCut transition on this computer)")
+            return
+        material = copy.deepcopy(source)
+        material.update({"id": new_id(), "duration": us(item["duration"]), "is_overlap": False})
+        self.materials.setdefault("transitions", []).append(material)
+        before["extra_material_refs"].append(material["id"])
 
     # ----- texts -----
     def text_segment(self, item):
@@ -221,7 +352,23 @@ class Draft:
             }
         style["size"] = 12
         style["range"] = [0, len(words.encode("utf-16-le")) // 2]
-        style["fill"] = {"content": {"render_type": "solid", "solid": {"color": [1, 1, 1]}}}
+        fill = item.get("color") or "#ffffff"
+        style["fill"] = {"content": {"render_type": "solid", "solid": {"color": rgb(fill)}}}
+        if item.get("stroke", True):
+            style["strokes"] = [
+                {
+                    "content": {"render_type": "solid", "solid": {"color": rgb(item.get("strokeColor") or "#000000", (0, 0, 0))}},
+                    "width": 0.08,
+                    "mode": 0,
+                }
+            ]
+        else:
+            style["strokes"] = []
+        for key, flag in (("bold", "bold"), ("italic", "italic"), ("underline", "underline")):
+            if item.get(flag):
+                style[key] = True
+            else:
+                style.pop(key, None)
         if os.path.isfile(LEMON_MILK):
             style["font"] = {"path": LEMON_MILK.replace("\\", "/"), "id": ""}
         material.update(
@@ -230,10 +377,30 @@ class Draft:
                 "content": json.dumps({"text": words, "styles": [style]}, ensure_ascii=False),
                 "recognize_text": "",
                 "base_content": "",
-                "text_color": "#FFFFFF",
+                "text_color": fill.upper(),
                 "font_size": 12.0,
+                "alignment": {"left": 0, "center": 1, "right": 2}.get(item.get("align", "center"), 1),
             }
         )
+        if item.get("stroke", True):
+            material["border_color"] = (item.get("strokeColor") or "#000000").lower()
+            material["border_width"] = 0.08
+        else:
+            material["border_width"] = 0.0
+        if item.get("background"):
+            # a box behind the words (CapCut's "background" text style)
+            material.update(
+                {
+                    "background_style": 1,
+                    "background_color": item["background"].lower(),
+                    "background_alpha": 1.0,
+                    "background_round_radius": 0.2,
+                    "background_height": 0.14,
+                    "background_width": 0.14,
+                    "background_horizontal_offset": 0.0,
+                    "background_vertical_offset": 0.0,
+                }
+            )
         self.materials["texts"].append(material)
 
         refs = []
@@ -244,7 +411,8 @@ class Draft:
         segment = copy.deepcopy(pattern)
         # JEO size 4.2 (about 67 px on 1080 wide) matches CapCut size 12 at about 92 %
         # (measured by opening an exported draft in CapCut 9.7)
-        box = self.clip_box({**item, "scale": 0.92 * float(item.get("size", 4.2)) / 4.2 * float(item.get("scale", 1))})
+        text_factor = 0.92 * float(item.get("size", 4.2)) / 4.2
+        box = self.clip_box({**item, "scale": text_factor * float(item.get("scale", 1))})
         segment.update(
             {
                 "id": new_id(),
@@ -255,7 +423,7 @@ class Draft:
                 "extra_material_refs": refs,
                 "render_index": 14000,
                 "keyframe_refs": [],
-                "common_keyframes": [],
+                "common_keyframes": self.keyframes(item, scale_factor=text_factor),
                 "group_id": "",
                 "visible": True,
             }
@@ -349,11 +517,23 @@ def main():
     draft = Draft(pattern, data)
     main_clips = [clip for clip in data["clips"] if not clip.get("overlay")]
     overlay_clips = [clip for clip in data["clips"] if clip.get("overlay")]
-    draft.track("video", [draft.video_segment(clip, 0) for clip in sorted(main_clips, key=lambda c: c["start"])])
+    main_segments = [draft.video_segment(clip, 0) for clip in sorted(main_clips, key=lambda c: c["start"])]
+    effects = data.get("effects", [])
+    for item in effects:
+        if item.get("kind") == "transition":
+            draft.add_transition(item, main_segments)
+    draft.track("video", main_segments)
     for row in lay_out_rows(data.get("texts", [])):
         draft.track("text", [draft.text_segment(item) for item in row])
     for number, row in enumerate(lay_out_rows(overlay_clips)):
         draft.track("video", [draft.video_segment(clip, 1 + number) for clip in row], overlay=True)
+    for row in lay_out_rows([item for item in effects if item.get("kind") != "transition"]):
+        segments = [segment for segment in (draft.effect_segment(item) for item in row) if segment]
+        if segments:
+            lib = library()
+            draft.tracks.append({**(lib["effect_track"] or {}), "id": new_id(), "type": "effect", "segments": segments, "attribute": 0, "flag": 0, "name": "", "is_default_name": True})
+            for segment in segments:
+                segment["track_render_index"] = len(draft.tracks) - 1
     for row in lay_out_rows(data.get("audio", [])):
         segments = [segment for segment in (draft.audio_segment(item) for item in row) if segment]
         if segments:

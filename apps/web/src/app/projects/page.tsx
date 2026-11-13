@@ -1,5 +1,6 @@
 "use client";
 
+import { CapCutImportButton } from "@/jeo/components/capcut-import";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -182,6 +183,7 @@ function ProjectsHeader() {
 
 				<div className="flex items-center gap-3 md:gap-4">
 					<SearchBar className="hidden md:block" />
+					<CapCutImportButton />
 					<NewProjectButton />
 				</div>
 			</div>

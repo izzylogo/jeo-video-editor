@@ -65,8 +65,85 @@ export interface JeoDesktopBridge {
 		warnings?: string[];
 		capcutWasRunning?: boolean;
 	}>;
+	/** CapCut projects on this computer (read-only), newest first. */
+	capcutList(): Promise<{
+		ok: boolean;
+		error?: string;
+		drafts?: Array<{
+			name: string;
+			modified: number;
+			duration: number;
+			cover: string;
+			fromJeo: boolean;
+		}>;
+	}>;
+	/** One CapCut project as a plan JEO can rebuild. */
+	capcutPlan(args: { name: string }): Promise<{
+		ok: boolean;
+		error?: string;
+		plan?: CapCutPlan;
+	}>;
+	capcutReadFile(args: { filePath: string }): Promise<{ data: ArrayBuffer }>;
 	readChat(args: { projectId: string }): Promise<string | null>;
 	writeChat(args: { projectId: string; json: string }): Promise<void>;
+}
+
+type Keyframes = Record<string, Array<[number, number]>>;
+export interface CapCutPlan {
+	name: string;
+	width: number;
+	height: number;
+	fps: number;
+	duration: number;
+	clips: Array<{
+		path: string;
+		name: string;
+		kind: "video" | "image";
+		overlay: boolean;
+		start: number;
+		duration: number;
+		sourceIn: number;
+		speed: number;
+		volume: number;
+		scale: number;
+		scaleY: number;
+		x: number;
+		y: number;
+		rotation: number;
+		opacity: number;
+		mirror: boolean;
+		keyframes: Keyframes;
+	}>;
+	texts: Array<{
+		text: string;
+		start: number;
+		duration: number;
+		x: number;
+		y: number;
+		rotation: number;
+		opacity: number;
+		fontSize: number;
+		scale: number;
+		triangle: boolean;
+		color: string;
+		stroke: boolean;
+		strokeColor: string;
+		bold: boolean;
+		italic: boolean;
+		keyframes: Keyframes;
+	}>;
+	audio: Array<{
+		path: string;
+		name: string;
+		start: number;
+		duration: number;
+		sourceIn: number;
+		speed: number;
+		volume: number;
+	}>;
+	files: Array<{ path: string; size: number }>;
+	leftOut: string[];
+	missing: string[];
 }
 
 export type JeoChatEvent =

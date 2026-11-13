@@ -428,6 +428,58 @@ function registerIpc() {
 		return { ...result, capcutWasRunning };
 	});
 
+	// ---- bring a CapCut project in (CapCut's own files are only read) ----
+	const runCapCutReader = (args) =>
+		new Promise((resolve) => {
+			execFile(
+				"py",
+				[path.join(__dirname, "tools", "capcut_import.py"), ...args],
+				{ windowsHide: true, timeout: 60000, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, PYTHONIOENCODING: "utf-8" } },
+				(error, stdout) => {
+					try {
+						resolve(JSON.parse(String(stdout)));
+					} catch {
+						resolve({ ok: false, error: error ? `CapCut's projects could not be read: ${error.message}` : "CapCut's projects could not be read." });
+					}
+				},
+			);
+		});
+	// only files named by the last plan may be read through this door
+	const capcutFiles = new Set();
+
+	ipcMain.handle("jeo:capcutList", async () => {
+		const result = await runCapCutReader(["--list"]);
+		if (!result.ok) return result;
+		// small covers, so the list can show a picture for each project
+		const drafts = await Promise.all(
+			result.drafts.map(async (draft) => {
+				let cover = "";
+				if (draft.cover) {
+					const data = await fsp.readFile(draft.cover).catch(() => null);
+					if (data && data.length < 600 * 1024) cover = `data:image/jpeg;base64,${data.toString("base64")}`;
+				}
+				return { ...draft, cover };
+			}),
+		);
+		return { ok: true, drafts };
+	});
+
+	ipcMain.handle("jeo:capcutPlan", async (_event, { name }) => {
+		const result = await runCapCutReader(["--draft", String(name)]);
+		capcutFiles.clear();
+		if (result.ok) for (const file of result.plan.files) capcutFiles.add(path.normalize(file.path));
+		return result;
+	});
+
+	ipcMain.handle("jeo:capcutReadFile", async (_event, { filePath }) => {
+		const full = path.normalize(String(filePath));
+		if (!capcutFiles.has(full)) throw new Error("Not a file of the CapCut project being imported");
+		const buffer = await fsp.readFile(full);
+		return {
+			data: buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength),
+		};
+	});
+
 	// ---- AI chat history, kept in the project folder ----
 	ipcMain.handle("jeo:readChat", async (_event, { projectId }) => {
 		const dir = await findProjectDir({ id: projectId });
@@ -841,6 +893,9 @@ async function createWindow() {
 			}
 			await new Promise((resolve) => setTimeout(resolve, 2500));
 		}
+		// tests: let something the script started (a page change, an import) finish
+		const afterEval = Number(argValue("after-eval-delay") || 0);
+		if (afterEval > 0) await new Promise((resolve) => setTimeout(resolve, afterEval));
 		const image = await mainWindow.webContents.capturePage();
 		fs.writeFileSync(CAPTURE_PATH, image.toPNG());
 		if (EVAL_FILE) {
