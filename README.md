@@ -121,7 +121,7 @@ unpacked.
 | When | What | Why |
 |---|---|---|
 | During setup and updates | npm registry, GitHub | Downloading code packages, Electron and updates |
-| Every 10 minutes while the editor is open | `git fetch` to this GitHub repo | To see if a newer version was pushed |
+| Shortly after the editor opens, then every 2 hours while it is open | `git fetch` to this GitHub repo | To see if a newer version was pushed |
 | Only if you use the AI tab | Anthropic, through Claude Code | Your messages, the edit's text, and frames of your video that Claude looks at |
 | Only if you use Stickers or auto-subtitles | The sticker or speech provider built into OpenCut | Those features come from OpenCut as they are |
 
@@ -373,7 +373,7 @@ CapCut update can change its project format and break them.
 ## 🔔 Getting updates
 
 **Inside the editor.** While it is open, the editor looks at this GitHub repo
-every 10 minutes. When a newer version has been pushed you get a card:
+shortly after it opens and then every 2 hours. When a newer version has been pushed you get a card:
 
 ![The "An update is on GitHub" card](docs/images/update-from-github.png)
 
@@ -421,7 +421,7 @@ for a person, not for a machine.
 
 **The friend (who tests it)**
 
-1. Within 10 minutes of the push, the open editor shows **An update is on
+1. The next time the editor is opened (or within 2 hours if it is already open), it shows **An update is on
    GitHub**. Click **Get update**. (Or run `.\update.cmd`.)
 2. Try the new thing.
 3. Run `.\report.cmd`, answer the questions in part 6, and send

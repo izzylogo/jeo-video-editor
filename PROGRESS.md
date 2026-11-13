@@ -1,4 +1,4 @@
-﻿# JEO Editor: progress
+# JEO Editor: progress
 
 Written in simple words. Updated after every working step.
 
@@ -268,7 +268,7 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 
 - **The repo**: `https://github.com/izzylogo/jeo-video-editor` (branch `main`). On this PC the local branch is still called `jeo-editor`; it follows `origin/main`, so a plain `git push` sends your changes. OpenCut's repo is kept as the remote `upstream`.
 - **For a friend**: `git clone`, then `setup.cmd` (checks the PC, installs packages, downloads Electron, builds, makes the Desktop shortcut, writes `JEO-REPORT.md`). `start.cmd`, `update.cmd` and `report.cmd` do what their names say. The README explains every step, sizes and warnings.
-- **Updates**: the open editor looks at GitHub every 10 minutes and shows "An update is on GitHub" with a **Get update** button. `update.cmd` does the same from a window.
+- **Updates**: the open editor looks at GitHub about 25 seconds after it opens, then every 2 hours, and shows "An update is on GitHub" with a **Get update** button. `update.cmd` does the same from a window.
 - **Their data** lives in `data\` inside their folder (ignored by git). On this PC the old folders next to `app\` are still used.
 - **Tested**: a fresh copy in `C:\jt\` went through the whole setup and its report said "Everything checked out". Two problems found and fixed on the way: a very long folder path breaks the package install (setup now checks and says so), and the package list file was out of date.
 - **Not tested**: the Electron download itself (the test copied Electron from this PC), the `winget` installs of Git/Node/Bun, and a PC that is not this one.

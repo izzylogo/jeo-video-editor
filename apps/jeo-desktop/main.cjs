@@ -1051,7 +1051,7 @@ function watchGitHub() {
 		}
 	};
 	setTimeout(look, 25000);
-	setInterval(look, 10 * 60 * 1000);
+	setInterval(look, 2 * 60 * 60 * 1000); // every 2 hours
 }
 
 function runStep(command, args, cwd, timeoutMs) {
