@@ -13,9 +13,36 @@ import {
 	fitTextToScene,
 	placeText,
 	removePopUp,
+	setTextContent,
 	toggleTriangle,
 } from "../actions";
 import { followHead } from "../control";
+import { useTextOptions } from "../text-options";
+import { sendChatText, useChatStore } from "./ai-chat";
+
+/** Ask Claude for other wordings for one text; they come back as choices. */
+export async function askForTextOptions({
+	element,
+}: {
+	element: TextElement;
+}): Promise<void> {
+	const words = String(element.params.content ?? "").replace(/\n/g, " / ");
+	const at = (element.startTime / 120000).toFixed(2);
+	useTextOptions.getState().setAsking({ elementId: element.id, isAsking: true });
+	const sent = await sendChatText({
+		text: `Give me other options for this part: the text "${words}" (id ${element.id}, at ${at} s). Follow my storyline and my style, and look at what is on screen there. Do NOT change the edit. Call offer_text_options with 4 options so I can pick one, then tell me in one line what each option is going for.`,
+	});
+	if (sent) {
+		toast.success("Asked Claude. The options will appear here in a moment.");
+	} else {
+		useTextOptions.getState().setAsking({ elementId: element.id, isAsking: false });
+		toast.error(
+			useChatStore.getState().isBusy
+				? "Claude is still busy with the last request."
+				: "Claude can only be reached in the JEO Editor desktop app.",
+		);
+	}
+}
 
 function report(result: ActionResult): void {
 	if (result.ok) {
@@ -79,6 +106,11 @@ export function TextQuickActions({ element }: { element: TextElement }) {
 	const animated = Object.keys(element.animations ?? {});
 	const hasPopUp = animated.some((path) => path.startsWith("transform.scale"));
 	const follows = animated.some((path) => path.startsWith("transform.position"));
+	const offered = useTextOptions((state) => state.options[id]) ?? [];
+	const wasAsked = useTextOptions((state) => state.asking[id] === true);
+	const isChatBusy = useChatStore((state) => state.isBusy);
+	const isAsking = wasAsked && isChatBusy;
+	const current = String(element.params.content ?? "");
 
 	const busy = async (work: () => Promise<void>) => {
 		setIsBusy(true);
@@ -92,7 +124,45 @@ export function TextQuickActions({ element }: { element: TextElement }) {
 	};
 
 	return (
-		<div className="space-y-3 border-b px-3 py-3">
+		<div className="space-y-3 border-b px-3 py-3" data-jeo="text-options">
+			<div>
+				<p className="text-muted-foreground mb-1.5 text-xs">
+					Other wordings for this part
+				</p>
+				<div className="flex flex-col gap-1.5">
+					{offered.map((option) => (
+						<button
+							key={option}
+							type="button"
+							data-jeo-option
+							onClick={() =>
+								report(setTextContent({ elementId: id, content: option }))
+							}
+							className={cn(
+								"cursor-pointer rounded-md px-2.5 py-1.5 text-left text-xs whitespace-pre-line transition-colors duration-150",
+								option === current
+									? "bg-secondary text-secondary-foreground"
+									: "bg-accent hover:bg-accent/70",
+							)}
+						>
+							{option}
+						</button>
+					))}
+					<button
+						type="button"
+						data-jeo="ask-options"
+						disabled={isAsking}
+						onClick={() => void askForTextOptions({ element })}
+						className="border-primary/60 text-primary hover:bg-primary/10 cursor-pointer rounded-md border border-dashed px-2.5 py-1.5 text-left text-xs transition-colors duration-150 disabled:cursor-wait disabled:opacity-60"
+					>
+						{isAsking
+							? "Claude is thinking of options…"
+							: offered.length > 0
+								? "Ask Claude for more options"
+								: "Ask Claude for options from the storyline"}
+					</button>
+				</div>
+			</div>
 			<Row label="Place">
 				<Chip
 					title="Captions sit in the centre"

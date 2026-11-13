@@ -29,6 +29,7 @@ import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { OcShapesIcon } from "@/components/icons";
 import { TextQuickActions } from "@/jeo/components/text-quick";
+import { TextBasicTab, VideoBasicTab } from "@/jeo/components/capcut-panels";
 
 const TRANSFORM_PARAM_KEYS = [
 	"transform.positionX",
@@ -40,29 +41,6 @@ const TRANSFORM_PARAM_KEYS = [
 
 const BLENDING_PARAM_KEYS = ["opacity", "blendMode"] as const;
 const AUDIO_PARAM_KEYS = ["volume", "muted"] as const;
-const TEXT_PARAM_KEYS = [
-	"content",
-	"fontFamily",
-	"fontSize",
-	"color",
-	"stroke.enabled",
-	"stroke.color",
-	"stroke.width",
-	"tag.triangle",
-	"textAlign",
-	"fontWeight",
-	"fontStyle",
-	"textDecoration",
-	"letterSpacing",
-	"lineHeight",
-	"background.enabled",
-	"background.color",
-	"background.cornerRadius",
-	"background.paddingX",
-	"background.paddingY",
-	"background.offsetX",
-	"background.offsetY",
-] as const;
 
 export type TabContentProps = {
 	trackId: string;
@@ -187,15 +165,39 @@ function buildTextTab({ element }: { element: TextElement }): PropertiesTabDef {
 		label: "Text",
 		icon: <HugeiconsIcon icon={TextFontIcon} size={16} />,
 		content: ({ trackId }) => (
-			<>
-				<TextQuickActions element={element} />
-				<ElementParamsTab
-					element={element}
-					trackId={trackId}
-					paramKeys={TEXT_PARAM_KEYS}
-					sectionKey="text"
-				/>
-			</>
+			<TextBasicTab element={element} trackId={trackId} />
+		),
+	};
+}
+
+/** JEO: what to use on this part: place, style, moment, and Claude's wordings */
+function buildTextOptionsTab({
+	element,
+}: {
+	element: TextElement;
+}): PropertiesTabDef {
+	return {
+		id: "options",
+		label: "Options",
+		icon: <HugeiconsIcon icon={MagicWand05Icon} size={16} />,
+		content: () => <TextQuickActions element={element} />,
+	};
+}
+
+/** JEO: CapCut's "Video › Basic": transform and blend in one place */
+function buildVideoBasicTab({
+	element,
+	label,
+}: {
+	element: VideoElement | ImageElement;
+	label: string;
+}): PropertiesTabDef {
+	return {
+		id: "transform",
+		label,
+		icon: <HugeiconsIcon icon={ArrowExpandIcon} size={16} />,
+		content: ({ trackId }) => (
+			<VideoBasicTab element={element} trackId={trackId} />
 		),
 	};
 }
@@ -237,8 +239,7 @@ function getTextConfig({
 		defaultTab: "text",
 		tabs: [
 			buildTextTab({ element }),
-			buildTransformTab({ element }),
-			buildBlendingTab({ element }),
+			buildTextOptionsTab({ element }),
 		],
 	};
 }
@@ -254,10 +255,9 @@ function getVideoConfig({
 	return {
 		defaultTab: "transform",
 		tabs: [
-			buildTransformTab({ element }),
+			buildVideoBasicTab({ element, label: "Video" }),
 			...(showAudioTab ? [buildAudioTab({ element })] : []),
 			buildSpeedTab({ element }),
-			buildBlendingTab({ element }),
 			buildMasksTab({ element }),
 			buildClipEffectsTab({ element }),
 		],
@@ -272,8 +272,7 @@ function getImageConfig({
 	return {
 		defaultTab: "transform",
 		tabs: [
-			buildTransformTab({ element }),
-			buildBlendingTab({ element }),
+			buildVideoBasicTab({ element, label: "Picture" }),
 			buildMasksTab({ element }),
 			buildClipEffectsTab({ element }),
 		],

@@ -14,10 +14,11 @@ import { EditorHeader } from "@/components/editor/editor-header";
 import { EditorProvider } from "@/components/providers/editor-provider";
 import { MigrationDialog } from "@/project/components/migration-dialog";
 import { usePanelStore } from "@/editor/panel-store";
+import { getLayoutPreset, type TopPanelId } from "@/panels/layout";
 import { usePasteMedia } from "@/media/use-paste-media";
 import { MobileGate } from "@/components/editor/mobile-gate";
 import { AiChatRuntime } from "@/jeo/components/ai-chat";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useEditor } from "@/editor/use-editor";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -78,7 +79,8 @@ function DegradedRendererBanner() {
 
 function EditorLayout() {
 	usePasteMedia();
-	const { panels, setPanel } = usePanelStore();
+	const { panels, setPanel, layout, layoutNonce } = usePanelStore();
+	const order = getLayoutPreset(layout).order;
 	const activeScene = useEditor((editor) =>
 		editor.scenes.getActiveSceneOrNull(),
 	);
@@ -123,8 +125,26 @@ function EditorLayout() {
 		[overlaySource.definitions, overlays],
 	);
 
+	const overlayProps = {
+		overlayControls,
+		overlayInstances: overlaySource.instances,
+		onOverlayVisibilityChange: setOverlayVisibility,
+	};
+	const topPanel = (id: TopPanelId) => {
+		if (id === "tools") return <AssetsPanel />;
+		if (id === "properties") return <PropertiesPanel />;
+		return <PreviewPanel {...overlayProps} />;
+	};
+	const limits: Record<TopPanelId, { min: number; max?: number }> = {
+		tools: { min: 15, max: 45 },
+		properties: { min: 15, max: 45 },
+		preview: { min: 25 },
+	};
+
 	return (
 		<ResizablePanelGroup
+			// JEO: choosing a layout re-lays the panels from the preset's sizes
+			key={`${layout}:${layoutNonce}`}
 			direction="vertical"
 			className="size-full gap-[0.18rem]"
 			onLayout={(sizes) => {
@@ -148,48 +168,24 @@ function EditorLayout() {
 					direction="horizontal"
 					className="size-full gap-[0.19rem] px-3"
 					onLayout={(sizes) => {
-						// JEO layout: options (left) · properties (middle) · preview (right)
-						setPanel({ panel: "tools", size: sizes[0] ?? panels.tools });
-						setPanel({
-							panel: "properties",
-							size: sizes[1] ?? panels.properties,
+						order.forEach((id, index) => {
+							setPanel({ panel: id, size: sizes[index] ?? panels[id] });
 						});
-						setPanel({ panel: "preview", size: sizes[2] ?? panels.preview });
 					}}
 				>
-					<ResizablePanel
-						defaultSize={panels.tools}
-						minSize={15}
-						maxSize={40}
-						className="min-w-0"
-					>
-						<AssetsPanel />
-					</ResizablePanel>
-
-					<ResizableHandle withHandle />
-
-					<ResizablePanel
-						defaultSize={panels.properties}
-						minSize={15}
-						maxSize={45}
-						className="min-w-0"
-					>
-						<PropertiesPanel />
-					</ResizablePanel>
-
-					<ResizableHandle withHandle />
-
-					<ResizablePanel
-						defaultSize={panels.preview}
-						minSize={25}
-						className="min-h-0 min-w-0 flex-1"
-					>
-						<PreviewPanel
-							overlayControls={overlayControls}
-							overlayInstances={overlaySource.instances}
-							onOverlayVisibilityChange={setOverlayVisibility}
-						/>
-					</ResizablePanel>
+					{order.map((id, index) => (
+						<Fragment key={id}>
+							{index > 0 && <ResizableHandle withHandle />}
+							<ResizablePanel
+								defaultSize={panels[id]}
+								minSize={limits[id].min}
+								maxSize={limits[id].max}
+								className="min-h-0 min-w-0"
+							>
+								{topPanel(id)}
+							</ResizablePanel>
+						</Fragment>
+					))}
 				</ResizablePanelGroup>
 			</ResizablePanel>
 

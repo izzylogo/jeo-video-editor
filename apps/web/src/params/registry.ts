@@ -193,7 +193,9 @@ const textElementParams: ElementParamDefinition[] = [
 		label: "Font Size",
 		type: "number",
 		default: DEFAULTS.text.fontSize,
-		min: 0.5,
+		// JEO: shown in CapCut numbers, where your standard text is 12
+		displayMultiplier: 12 / 5.478,
+		min: 1,
 		step: 0.1,
 	},
 	{
@@ -283,7 +285,7 @@ const textElementParams: ElementParamDefinition[] = [
 	},
 	{
 		key: "letterSpacing",
-		label: "Letter Spacing",
+		label: "Character",
 		type: "number",
 		default: DEFAULTS.text.letterSpacing,
 		min: -100,
@@ -291,7 +293,7 @@ const textElementParams: ElementParamDefinition[] = [
 	},
 	{
 		key: "lineHeight",
-		label: "Line Height",
+		label: "Line",
 		type: "number",
 		default: DEFAULTS.text.lineHeight,
 		min: 0.1,

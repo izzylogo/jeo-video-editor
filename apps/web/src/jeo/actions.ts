@@ -130,8 +130,9 @@ export const CAPTION_PRESETS: Array<{
 	{ id: "twist-until", label: "Twist line", sample: "UNTIL...", hint: "The turn before the payoff. About 1.3 s." },
 ];
 
-const SMALL_TEXT_SIZE = 3.0;
-const TAG_TEXT_SIZE = 3.5;
+// sized against the standard text (5.478 = CapCut 12 at 120%)
+const SMALL_TEXT_SIZE = 3.9;
+const TAG_TEXT_SIZE = 4.6;
 
 export function textItem({
 	content,
@@ -1167,4 +1168,25 @@ export function repairSilentProject(): boolean {
 		pushHistory: false,
 	});
 	return true;
+}
+/** Replace the words of one text (used by "options for this part"). */
+export function setTextContent({
+	elementId,
+	content,
+}: {
+	elementId: string;
+	content: string;
+}): ActionResult {
+	const found = findText({ elementId });
+	if (!found) return fail("That text is no longer there.");
+	editor().timeline.updateElements({
+		updates: [
+			{
+				trackId: found.track.id,
+				elementId,
+				patch: { params: { ...found.element.params, content } },
+			},
+		],
+	});
+	return ok("Text changed. Ctrl+Z brings the old one back.");
 }

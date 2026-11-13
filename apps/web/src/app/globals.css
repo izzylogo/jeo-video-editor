@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* JEO: the app's own text is Poppins (bundled, works offline). */
+@font-face { font-family: "Poppins"; src: url("/fonts/poppins/Poppins-Regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Poppins"; src: url("/fonts/poppins/Poppins-Medium.ttf") format("truetype"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Poppins"; src: url("/fonts/poppins/Poppins-SemiBold.ttf") format("truetype"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Poppins"; src: url("/fonts/poppins/Poppins-Bold.ttf") format("truetype"); font-weight: 700 900; font-style: normal; font-display: swap; }
+
 /* JEO: caption font, bundled so it works even if it is not installed. */
 @font-face {
   font-family: "LEMON MILK";
@@ -184,7 +190,7 @@
   --breakpoint-xs: 30rem;
 
   /* Typography */
-  --font-sans: "Segoe UI", system-ui, sans-serif;
+  --font-sans: "Poppins", "Segoe UI", system-ui, sans-serif;
 
   /* Font sizes */
   --text-xs: 0.72rem;

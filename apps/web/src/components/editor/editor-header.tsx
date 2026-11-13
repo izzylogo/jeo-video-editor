@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { ExportButton } from "./export-button";
 import { ThemeToggle } from "../theme-toggle";
 import { AccentPicker } from "../accent-picker";
+import { LayoutPicker } from "./layout-picker";
 import { JeoLogo } from "../jeo-logo";
 import { CategoryBar } from "./category-bar";
 import { OpenInCapCutButton } from "@/jeo/components/capcut-button";
@@ -42,6 +43,7 @@ export function EditorHeader() {
 				<EditableProjectName />
 				<OpenInCapCutButton />
 				<ExportButton />
+				<LayoutPicker />
 				<AccentPicker />
 				<ThemeToggle />
 			</nav>

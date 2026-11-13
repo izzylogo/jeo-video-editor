@@ -144,6 +144,26 @@ const EXAMPLES = [
 	"Add a funny ending on the last shot",
 ];
 
+/** Send a message to Claude from anywhere in the editor. */
+export async function sendChatText({ text }: { text: string }): Promise<boolean> {
+	const desktop = getDesktopBridge();
+	const store = useChatStore.getState();
+	if (!text.trim() || store.isBusy || !desktop || !store.projectId) return false;
+	store.add({ role: "user", text });
+	store.setBusy(true);
+	saveChat();
+	const outcome = await desktop
+		.chatSend({ projectId: store.projectId, text, sessionId: store.sessionId })
+		.catch((error: unknown) => ({ ok: false, error: String(error) }));
+	if (!outcome.ok) {
+		store.add({ role: "error", text: outcome.error ?? "Could not reach Claude." });
+		store.setBusy(false);
+		saveChat();
+		return false;
+	}
+	return true;
+}
+
 /** The chat itself. Lives in the left panel as the "AI" tab. */
 export function AiChatView() {
 	const { isBusy, messages } = useChatStore();

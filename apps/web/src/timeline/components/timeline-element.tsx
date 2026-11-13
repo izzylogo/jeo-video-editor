@@ -6,6 +6,7 @@ import { useEditor } from "@/editor/use-editor";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import { AudioWaveform, WAVEFORM_GAIN_SAMPLE_COUNT } from "./audio-waveform";
 import { AudioVolumeLine } from "./audio-volume-line";
+import { TextMenuItems } from "@/jeo/components/text-menu";
 import { useElementPreview } from "@/timeline/hooks/use-element-preview";
 import {
 	useKeyframeDrag,
@@ -424,6 +425,9 @@ export function TimelineElement({
 					</div>
 				</ContextMenuTrigger>
 				<ContextMenuContent className="w-64">
+					{element.type === "text" && (
+						<TextMenuItems element={element} trackId={track.id} />
+					)}
 					<ActionMenuItem
 						action="split"
 						icon={<HugeiconsIcon icon={ScissorIcon} />}
@@ -1022,7 +1026,7 @@ function AudioElementContent({
 	if (audioBuffer || audioUrl || sourceFile) {
 		return (
 			<div className="group/audio relative size-full">
-				<MediaElementHeader name={mediaLabel} hasFade={false} />
+				<MediaElementHeader name={mediaLabel} hasFade={false} speed={element.retime?.rate} duration={element.duration} />
 				<div className="absolute inset-x-0 top-5 bottom-0 overflow-hidden">
 					<AudioWaveform
 						sourceKey={sourceKey}
@@ -1186,35 +1190,89 @@ function TiledMediaContent({
 					) : null
 				}
 				hasFade={true}
+				speed={element.type === "video" ? clipRate : undefined}
+				duration={element.duration}
+				isMuted={element.type === "video" && element.params.muted === true}
 			/>
+			{/* JEO: drag the line up or down to change this clip's own volume */}
+			{element.type === "video" &&
+				mediaAsset?.hasAudio !== false &&
+				element.params.muted !== true && (
+					<div className="group/audio absolute inset-x-0 top-5 bottom-0">
+						<AudioVolumeLine element={element} trackId={track.id} />
+					</div>
+				)}
 		</>
 	);
+}
+
+/** hours:minutes:seconds:frames, the way CapCut writes a clip's length */
+function formatClipLength({ ticks, fps }: { ticks: number; fps: number }): string {
+	const totalFrames = Math.round((ticks / TICKS_PER_SECOND) * fps);
+	const frames = totalFrames % fps;
+	const totalSeconds = Math.floor(totalFrames / fps);
+	const two = (value: number) => String(value).padStart(2, "0");
+	return `${two(Math.floor(totalSeconds / 3600))}:${two(Math.floor(totalSeconds / 60) % 60)}:${two(totalSeconds % 60)}:${two(frames)}`;
 }
 
 function MediaElementHeader({
 	name,
 	leading,
 	hasFade,
+	speed,
+	duration,
+	isMuted,
 }: {
 	name?: string | null;
 	leading?: ReactNode;
 	hasFade?: boolean;
+	/** JEO: clip speed (1 = normal); shown when it is not 1 */
+	speed?: number;
+	/** JEO: clip length on the timeline, in ticks */
+	duration?: number;
+	isMuted?: boolean;
 }) {
+	const fps = useEditor((e) => {
+		const rate = e.project.getActiveOrNull()?.settings.fps;
+		return rate ? Math.round(rate.numerator / rate.denominator) : 30;
+	});
 	if (!name && !leading) {
 		return null;
 	}
+	const hasSpeed = speed !== undefined && Math.abs(speed - 1) > 0.001;
 
 	return (
 		<div
+			data-jeo="clip-header"
 			className={cn(
-				"absolute top-0 left-0 flex h-5 w-full bg-linear-to-b pt-1",
-				hasFade && "from-black/30 to-transparent",
+				"absolute top-0 left-0 flex h-5 w-full items-start gap-2 pt-1 whitespace-nowrap",
+				hasFade && "bg-black/45",
 			)}
 		>
 			{leading && <div className="pl-1">{leading}</div>}
+			{hasSpeed && (
+				<span className="shrink-0 pl-1.5 text-[0.6rem] leading-tight font-medium text-white">
+					Speed {Number(speed.toFixed(2))}X
+				</span>
+			)}
 			{name && (
-				<span className="truncate px-1.5 text-[0.6rem] leading-tight text-white/75">
+				<span
+					className={cn(
+						"truncate text-[0.6rem] leading-tight text-white/80",
+						!hasSpeed && "pl-1.5",
+					)}
+				>
 					{name}
+				</span>
+			)}
+			{duration !== undefined && (
+				<span className="shrink-0 text-[0.6rem] leading-tight text-white/80 tabular-nums">
+					{formatClipLength({ ticks: duration, fps })}
+				</span>
+			)}
+			{isMuted && (
+				<span className="shrink-0 pr-1.5 text-[0.6rem] leading-tight text-white/60">
+					muted
 				</span>
 			)}
 		</div>

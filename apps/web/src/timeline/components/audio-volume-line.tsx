@@ -8,8 +8,8 @@ import {
 	getLinePosFromDb,
 } from "@/timeline/audio-display";
 import { VOLUME_DB_MAX, VOLUME_DB_MIN } from "@/timeline/audio-constants";
-import { getElementVolume, hasAnimatedVolume } from "@/timeline/audio-state";
-import type { AudioElement } from "@/timeline/types";
+import { getElementVolume, hasAnimatedVolume, type AudioCapableElement } from "@/timeline/audio-state";
+
 import {
 	clamp,
 	formatNumberForDisplay,
@@ -53,7 +53,7 @@ export function AudioVolumeLine({
 	element,
 	trackId,
 }: {
-	element: AudioElement;
+	element: AudioCapableElement;
 	trackId: string;
 }) {
 	const editor = useEditor();

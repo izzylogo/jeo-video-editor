@@ -35,8 +35,8 @@ const defaultTextStroke = {
 	width: 14,
 };
 
-// JEO: 4.2 is about 67 px tall text on a 1080x1440 canvas.
-const defaultTextFontSize = 4.2;
+// JEO: 5.478 is your CapCut "font size 12 at 120%" (see jeo/text-units.ts).
+const defaultTextFontSize = 5.478;
 const defaultTextFontFamily = "LEMON MILK";
 
 const defaultTextElement: Omit<TextElement, "id"> = {

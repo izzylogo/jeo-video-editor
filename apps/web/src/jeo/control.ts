@@ -8,6 +8,7 @@
  * Units for Claude: seconds for time, pixels in the 1080x1440 frame for
  * positions (x right, y down, origin top-left).
  */
+import { useTextOptions } from "./text-options";
 import { EditorCore } from "@/core";
 import { TracksSnapshotCommand } from "@/commands/timeline";
 import type { InsertElementParams } from "@/commands/timeline/element/insert-element";
@@ -456,10 +457,10 @@ const TEXT_KINDS: Record<
 	quoted: { y: 720 },
 	twist: { y: 720 },
 	dialogue: { y: 780, x: 380 },
-	speaker_name: { y: 668, size: 3.0 },
+	speaker_name: { y: 668, size: 3.9 },
 	speaker_action: { y: 746 },
 	identity_tag: { y: 420, triangle: true },
-	feeling_tag: { y: 390, size: 3.5 },
+	feeling_tag: { y: 390, size: 4.6 },
 	custom: { y: 720 },
 };
 
@@ -520,6 +521,17 @@ function addText(args: Args): ToolResult {
 		)
 		.pop();
 	return { ok: true, result: added ? describeElement(added as TimelineElement) : { added: true } };
+}
+
+function offerTextOptions(args: Args): ToolResult {
+	const { element } = findElement({ id: str(args.id) });
+	if (element.type !== "text") return { ok: false, error: "That id is not a text." };
+	const options = (Array.isArray(args.options) ? args.options : [])
+		.filter((item): item is string => typeof item === "string" && item.trim() !== "")
+		.map((item) => item.trim().toUpperCase());
+	if (options.length === 0) return { ok: false, error: "Give at least one option." };
+	useTextOptions.getState().setOptions({ elementId: element.id, options });
+	return { ok: true, result: { offered: options.length, on: element.id } };
 }
 
 function updateElement(args: Args): ToolResult {
@@ -967,6 +979,16 @@ const TOOLS: ToolDefinition[] = [
 			["id"],
 		),
 		handler: updateElement,
+	},
+	{
+		name: "offer_text_options",
+		description:
+			"Offer the user other wordings for ONE existing text, without changing the edit. They appear as one-click choices on that text (right-click menu and its settings). Use it when the user asks for options/alternatives for a part. Give 3 to 5 options that fit the storyline and the JEO style (short, upper-case, same kind of line as the original).",
+		inputSchema: schema(
+			{ id: string, options: { type: "array", items: { type: "string" } } },
+			["id", "options"],
+		),
+		handler: offerTextOptions,
 	},
 	{
 		name: "delete_elements",

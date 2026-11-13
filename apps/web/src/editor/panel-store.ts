@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { PANEL_CONFIG } from "@/panels/layout";
+import { PANEL_CONFIG, getLayoutPreset } from "@/panels/layout";
 
 export interface PanelSizes {
 	tools: number;
@@ -14,6 +14,10 @@ export type PanelId = keyof PanelSizes;
 
 interface PanelState {
 	panels: PanelSizes;
+	/** JEO: which ready-made layout is in use, and a counter to re-lay the panels */
+	layout: string;
+	layoutNonce: number;
+	applyLayout: (id: string) => void;
 	setPanel: (args: { panel: PanelId; size: number }) => void;
 	setPanels: (sizes: Partial<PanelSizes>) => void;
 	resetPanels: () => void;
@@ -23,6 +27,17 @@ export const usePanelStore = create<PanelState>()(
 	persist(
 		(set) => ({
 			...PANEL_CONFIG,
+			layout: "jeo",
+			layoutNonce: 0,
+			applyLayout: (id) =>
+				set((state) => {
+					const preset = getLayoutPreset(id);
+					return {
+						layout: preset.id,
+						layoutNonce: state.layoutNonce + 1,
+						panels: { ...preset.sizes },
+					};
+				}),
 			setPanel: ({ panel, size }) =>
 				set((state) => ({
 					panels: {
@@ -62,6 +77,8 @@ export const usePanelStore = create<PanelState>()(
 
 				if (state.panels && typeof state.panels === "object") {
 					return {
+						layout:
+							(persistedState as { layout?: string } | null)?.layout ?? "jeo",
 						panels: {
 							...PANEL_CONFIG.panels,
 							...state.panels,
@@ -87,6 +104,7 @@ export const usePanelStore = create<PanelState>()(
 			},
 			partialize: (state) => ({
 				panels: state.panels,
+				layout: state.layout,
 			}),
 		},
 	),

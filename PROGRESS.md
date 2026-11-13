@@ -1,4 +1,4 @@
-# JEO Editor: progress
+﻿# JEO Editor: progress
 
 Written in simple words. Updated after every working step.
 
@@ -202,3 +202,17 @@ a 22–34 s video exports in about 30 seconds here (FilmCraft needed about 2 min
 
 ## Credit
 Based on OpenCut Classic (MIT licence). The `LICENSE` file stays in this folder.
+
+## Round 3 of your feedback
+
+- **Graphify**: was not set up here. It is now: a map of the editor's code lives in `app\graphify-out\` (open `graph.html` to look at it). It was free to build.
+- **Layouts**: a **Layout** button at the top right with six ready-made layouts (JEO, CapCut style, Big preview, Tall timeline, Preview on the left, Wide AI chat). You can still drag the edges.
+- **Timeline clips** show their speed ("Speed 1.4X"), name and length (hours:minutes:seconds:frames). Drag the thin line on a video clip up or down to change its volume.
+- **Right-click a text** on the timeline: "Use on this part" gives other wordings (from Claude), place, ▼, pop-up, follow the head, fit to its scene, flash, freeze. The same choices are in the text's **Options** tab.
+- **Other wordings**: "Ask Claude for options from the storyline" sends the request to the AI chat; Claude's options come back as one-click choices on that text.
+- **Text settings** look like CapCut's: Font size slider, Pattern (B U I), Case, Alignment, 14 preset styles, then Transform (Scale, Uniform scale, Position, Rotate, align buttons) and Blend.
+- **Your standard text is now "font size 12, scale 120%"**, the same numbers CapCut shows. New texts use it. Texts in projects made before this keep their old size and show as about 9.2.
+- **Video settings** look like CapCut's: tabs Video / Audio / Speed / Masks / Effects, with Scale shown in percent.
+- **The app's own text is Poppins.** Your caption font is still LEMON MILK.
+
+Dev notes: text numbers are display-only conversions (see `apps/web/src/jeo/text-units.ts`); layouts are in `apps/web/src/panels/layout.ts`.

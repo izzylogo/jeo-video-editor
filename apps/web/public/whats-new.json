@@ -1,5 +1,11 @@
 {
   "items": [
+    "Layout button (top right): six ready-made layouts, including CapCut style and Big preview",
+    "Timeline clips now show their speed and length, and you drag the line on a clip to change its volume",
+    "Right-click a text for what to use on that part, including other wordings from Claude",
+    "Text settings look like CapCut's: font size 12 and scale 120% are your standard, with preset styles",
+    "Video settings look like CapCut's: Video, Audio, Speed tabs with Scale, Position, Rotate and Blend",
+    "The app's own text is now Poppins",
     "Sound: clips keep their own sound now (they were muted when cut by the AI)",
     "Timeline pictures show what is inside each clip, not the start of the video",
     "AI is now a tab next to Media instead of a floating box",

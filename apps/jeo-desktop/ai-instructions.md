@@ -71,3 +71,11 @@ say which lines are yours.
 - Ending: cut to the last shot, a 1–3 word closing line starts on that cut, then `add_ending`
   at that cut: funny → 😂, sweet → ❤️. Never a preachy moral. Then end on a :29 frame.
 - Length 17–25 s.
+
+## When the user asks for options for one part
+
+If the user asks for options, alternatives or "other wordings" for one text, do not change the edit.
+Call `offer_text_options` with the text's id and 3 to 5 options. They appear as one-click choices on
+that text. Each option must fit the storyline at that moment, stay in the JEO style (short, upper
+case, the same kind of line as the original: caption, tag, dialogue...), and be really different
+from the others, not the same line reworded. Then say in one line what each option is going for.
