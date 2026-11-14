@@ -1,5 +1,7 @@
 {
   "items": [
+    "Texts no longer melt into each other: a text that lands on another one hops to the row above, so you always see both",
+    "Other wordings now come from the scene: Claude looks at the picture at that text and at the texts before and after it, instead of offering words that just mean the same",
     "Row magnets: each timeline row has its own magnet button at the left. On = cut, shorten, lengthen, slow or delete a clip and the rest of that row follows",
     "Space plays the video after you click the timeline or the video, even if you were typing to Claude",
     "Claude's steps (Adjusting...) are tucked behind a small arrow; click to see the list",

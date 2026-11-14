@@ -289,4 +289,10 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - Tested in a test window on a copy of BIGGEST INTROVERT (shorten, lengthen, delete, split, left trim, move, freeze, magnet off, space, steps); picture in `output\round10-proof`.
 - Not done: dragging with the magnet shows the overlap until you let go (it does not push live while dragging).
 
+## Round 11: texts never fuse (14 Nov 2026)
+
+- When an edit puts a text, tag, sticker or effect on top of another one on the same row, the one that just arrived hops to the row above: the nearest row of the same kind with room, or a new row if there is none. A selected text stays selected. One undo puts it back.
+- Two texts that were already on top of each other before the edit are left alone.
+- Tested on a copy of BIGGEST INTROVERT: lengthening a text into the next, moving a text onto another, and shortening 8 video clips hard (so later texts are pulled back). No fused texts in any case.
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

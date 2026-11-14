@@ -31,7 +31,7 @@ export async function askForTextOptions({
 	const at = (element.startTime / 120000).toFixed(2);
 	useTextOptions.getState().setAsking({ elementId: element.id, isAsking: true });
 	const sent = await sendChatText({
-		text: `Give me other options for this part: the text "${words}" (id ${element.id}, at ${at} s). Follow my storyline and my style, and look at what is on screen there. Do NOT change the edit. Call offer_text_options with 4 options so I can pick one, then tell me in one line what each option is going for.`,
+		text: `Give me other options for this part: the text "${words}" (id ${element.id}, at ${at} s). Before you write anything: read the edit (get_state) and find the text that comes BEFORE this one and the text that comes AFTER it, then LOOK at the picture (view_timeline) at this text's time, at the text before and at the text after. Each option must say what is really happening on screen at that moment, lead on from the text before and not repeat or spoil the text after. Do not just give words that mean the same as "${words}": a different word is only an option if it fits this scene. Keep the same kind of line (scene text, dialogue, tag...), the same speaker, and the same length or shorter. Do NOT change the edit. Call offer_text_options with 4 options so I can pick one, then tell me in one line why each option fits this scene.`,
 	});
 	if (!sent) {
 		useTextOptions.getState().setAsking({ elementId: element.id, isAsking: false });

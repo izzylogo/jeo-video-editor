@@ -1,7 +1,7 @@
 import type { EditorCore } from "@/core";
 import type { Command, CommandResult } from "@/commands";
 import type { EditorSelectionSnapshot } from "@/selection/editor-selection";
-import { applyMagnet } from "@/ripple";
+import { applyMagnet, separateOverlaps } from "@/ripple";
 import type { SceneTracks } from "@/timeline/types";
 
 interface CommandHistoryEntry {
@@ -135,9 +135,12 @@ export class CommandManager {
 		if (!afterTracks || afterTracks === beforeTracks) {
 			return;
 		}
-		const tidied = applyMagnet({ before: beforeTracks, after: afterTracks });
+		const pulled = applyMagnet({ before: beforeTracks, after: afterTracks });
+		// a text pushed onto another text hops to the row above
+		const tidied = separateOverlaps({ before: beforeTracks, after: pulled });
 		if (tidied !== afterTracks) {
 			this.editor.timeline.updateTracks(tidied);
+			this.editor.timeline.followMovedSelection({ tracks: tidied });
 		}
 	}
 }

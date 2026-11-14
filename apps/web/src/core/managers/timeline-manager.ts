@@ -34,7 +34,7 @@ import {
 } from "@/animation";
 import { resolveAnimationTarget } from "@/timeline/animation-targets";
 import { BatchCommand } from "@/commands";
-import { isTrackMagnetOn } from "@/ripple";
+import { isTrackMagnetOn, separateOverlaps } from "@/ripple";
 import {
 	AddTrackCommand,
 	RemoveTrackCommand,
@@ -209,12 +209,34 @@ export class TimelineManager {
 				main: shift(changed.main),
 				audio: changed.audio.map((track) => shift(track)),
 			};
+		}
+		const separated = separateOverlaps({ before, after });
+		if (separated !== changed) {
+			after = separated;
 			this.updateTracks(after);
+			this.followMovedSelection({ tracks: after });
 		}
 		if (pushHistory) {
 			this.editor.command.push({
 				command: new TracksSnapshotCommand({ before, after }),
 			});
+		}
+	}
+
+	/** JEO: a selected text that hopped to another row stays selected. */
+	followMovedSelection({ tracks }: { tracks: SceneTracks }): void {
+		const selected = this.editor.selection.getSelectedElements();
+		if (selected.length === 0) return;
+		const rowOf = new Map<string, string>();
+		for (const track of [...tracks.overlay, tracks.main, ...tracks.audio]) {
+			for (const element of track.elements) rowOf.set(element.id, track.id);
+		}
+		const next = selected.flatMap((ref) => {
+			const trackId = rowOf.get(ref.elementId);
+			return trackId ? [{ ...ref, trackId }] : [];
+		});
+		if (next.some((ref, index) => ref.trackId !== selected[index]?.trackId)) {
+			this.editor.selection.setSelectedElements({ elements: next });
 		}
 	}
 
