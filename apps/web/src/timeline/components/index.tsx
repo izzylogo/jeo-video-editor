@@ -4,6 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Delete02Icon,
 	MagicWand05Icon,
+	MagnetIcon,
 	MusicNote03Icon,
 	TaskAdd02Icon,
 	TextIcon,
@@ -116,6 +117,26 @@ const TRACK_ICONS: Record<TimelineTrack["type"], ReactNode> = {
 };
 
 export function Timeline() {
+	// JEO: clicking the timeline or the video takes the keyboard away from any
+	// box you were typing in (the AI chat, a text field), so Space plays the
+	// video instead of typing a space.
+	useEffect(() => {
+		const onPointerDown = (event: PointerEvent) => {
+			const target = event.target as HTMLElement | null;
+			if (!target?.closest?.("[data-jeo-zone]")) return;
+			if (target.closest("input, textarea, select, [contenteditable='true']")) return;
+			const active = document.activeElement;
+			if (
+				active instanceof HTMLElement &&
+				active !== document.body &&
+				active.matches("input, textarea, select, [contenteditable='true']")
+			) {
+				active.blur();
+			}
+		};
+		document.addEventListener("pointerdown", onPointerDown, true);
+		return () => document.removeEventListener("pointerdown", onPointerDown, true);
+	}, []);
 	const snappingEnabled = useTimelineStore((s) => s.snappingEnabled);
 	const {
 		selectedElements,
@@ -431,6 +452,7 @@ export function Timeline() {
 
 	return (
 		<section
+			data-jeo-zone="timeline"
 			className={
 				"panel bg-background relative flex h-full flex-col overflow-hidden rounded-sm border"
 			}
@@ -700,6 +722,10 @@ function TrackLabelsPanel({
 													}
 												/>
 											)}
+											<TrackMagnetButton
+												trackId={track.id}
+												isMain={track.id === scene?.tracks.main.id}
+											/>
 											<TrackIcon track={track} />
 										</div>
 										{expandedRows.length > 0 && (
@@ -898,6 +924,42 @@ function TimelineGutter({
 	return (
 		// eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- spatial gesture surface (empty space below tracks); clicks here clear selection. Keyboard control is global timeline shortcuts.
 		<div className="flex-1" onMouseDown={onMouseDown} onClick={onClick} />
+	);
+}
+
+// JEO: one magnet per row. On = when a clip on this row is cut, shortened,
+// lengthened, slowed or deleted, the clips after it follow.
+function TrackMagnetButton({
+	trackId,
+	isMain,
+}: {
+	trackId: string;
+	isMain: boolean;
+}) {
+	const saved = useTimelineStore((s) => s.magnetTracks[trackId]);
+	const setTrackMagnet = useTimelineStore((s) => s.setTrackMagnet);
+	const isOn = saved ?? isMain;
+	return (
+		<button
+			type="button"
+			data-jeo="row-magnet"
+			data-on={isOn ? "1" : "0"}
+			aria-pressed={isOn}
+			title={
+				isOn
+					? "Magnet is ON for this row: clips after an edit follow. Click to turn off."
+					: "Magnet is OFF for this row: other clips stay where they are. Click to turn on."
+			}
+			onClick={() => setTrackMagnet(trackId, !isOn)}
+			className={cn(
+				"flex size-5 cursor-pointer items-center justify-center rounded transition-colors duration-150",
+				isOn
+					? "bg-primary/20 text-primary"
+					: "text-muted-foreground/60 hover:text-foreground",
+			)}
+		>
+			<HugeiconsIcon icon={MagnetIcon} className="size-3.5" />
+		</button>
 	);
 }
 

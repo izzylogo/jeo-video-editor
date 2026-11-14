@@ -375,9 +375,7 @@ function ToolbarRightSection({
 	onZoom: (options: { direction: "in" | "out" }) => void;
 }) {
 	const snappingEnabled = useTimelineStore((s) => s.snappingEnabled);
-	const rippleEditingEnabled = useTimelineStore((s) => s.rippleEditingEnabled);
 	const toggleSnapping = useTimelineStore((s) => s.toggleSnapping);
-	const toggleRippleEditing = useTimelineStore((s) => s.toggleRippleEditing);
 	const hoverPreviewOn = useHoverPreview((s) => s.isOn);
 	const toggleHoverPreview = useHoverPreview((s) => s.toggle);
 
@@ -390,17 +388,9 @@ function ToolbarRightSection({
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={MagnetIcon} />}
 					isActive={snappingEnabled}
-					tooltip="Auto snapping: clips and texts stick to cuts and the playhead"
+					tooltip="Auto snapping: clips and texts stick to cuts and the playhead while you drag. (The row magnets are at the left of each row.)"
 					jeoId="snapping"
 					onClick={() => toggleSnapping()}
-				/>
-
-				<ToolbarButton
-					icon={<OcRippleIcon size={24} className="scale-110" />}
-					isActive={rippleEditingEnabled}
-					tooltip="Main track magnet: deleting a clip closes the gap"
-					jeoId="magnet"
-					onClick={() => toggleRippleEditing()}
 				/>
 
 				<ToolbarButton

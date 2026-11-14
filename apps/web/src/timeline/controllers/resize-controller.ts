@@ -1,3 +1,4 @@
+import { isTrackMagnetOn } from "@/ripple";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/timeline/scale";
 import {
@@ -91,9 +92,14 @@ export function buildResizeMembers({
 		const element = track?.elements.find((el) => el.id === elementId);
 		if (!track || !element) return [];
 
-		const otherElements = track.elements.filter(
-			(el) => !selectedElementIds.has(el.id),
-		);
+		// JEO: with the row magnet on, the neighbours do not block the resize;
+		// they follow when the mouse is let go
+		const otherElements = isTrackMagnetOn({
+			trackId,
+			mainTrackId: tracks.main.id,
+		})
+			? []
+			: track.elements.filter((el) => !selectedElementIds.has(el.id));
 		const leftNeighborBound = otherElements
 			.filter(
 				(el) =>

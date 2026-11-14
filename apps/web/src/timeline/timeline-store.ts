@@ -11,6 +11,9 @@ interface TimelineStore {
 	toggleSnapping: () => void;
 	rippleEditingEnabled: boolean;
 	toggleRippleEditing: () => void;
+	/** JEO: magnet per timeline row (row id -> on/off). Unset = on for the main video row only. */
+	magnetTracks: Record<string, boolean>;
+	setTrackMagnet: (trackId: string, isOn: boolean) => void;
 	expandedElementIds: Set<string>;
 	toggleElementExpanded: (elementId: string) => void;
 }
@@ -29,6 +32,14 @@ export const useTimelineStore = create<TimelineStore>()(
 			toggleRippleEditing: () => {
 				set((state) => ({
 					rippleEditingEnabled: !state.rippleEditingEnabled,
+				}));
+			},
+
+			magnetTracks: {},
+
+			setTrackMagnet: (trackId, isOn) => {
+				set((state) => ({
+					magnetTracks: { ...state.magnetTracks, [trackId]: isOn },
 				}));
 			},
 
@@ -51,6 +62,7 @@ export const useTimelineStore = create<TimelineStore>()(
 			partialize: (state) => ({
 				snappingEnabled: state.snappingEnabled,
 				rippleEditingEnabled: state.rippleEditingEnabled,
+				magnetTracks: state.magnetTracks,
 			}),
 		},
 	),

@@ -280,4 +280,13 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **Readable AI replies.** Claude's replies are drawn as headings, bold words, bullet and numbered lists; the #, * and table symbols are gone. Claude is also told to answer in short plain sentences.
 - Tested on a copy of BIGGEST INTROVERT in a test window; pictures in `output\round9-proof`.
 
+## Round 10: row magnets, space bar, AI steps (14 Nov 2026)
+
+- **A magnet on each row.** At the left of every timeline row, next to the sound and eye buttons. It starts ON for the main video row and OFF for the others. With it on: shorten a clip (either edge), lengthen it, slow or speed it, or delete it, and the clips after it on that row follow. A clip can now be dragged longer past its neighbour; the neighbour moves when you let go. Moving a clip by hand or only splitting it moves nothing else. The single ripple switch at the top is gone.
+- **The main video row carries the rest.** When its magnet moves clips, the texts, tags and sounds that start after the change move the same amount, so they stay on their scene.
+- **Space plays after a click on the timeline or the video**, even if you were typing in the AI chat or a text box.
+- **AI steps behind an arrow.** While Claude works you see the current step with a spinner; afterwards one line (for example '5 steps done') that opens to the full list.
+- Tested in a test window on a copy of BIGGEST INTROVERT (shorten, lengthen, delete, split, left trim, move, freeze, magnet off, space, steps); picture in `output\round10-proof`.
+- Not done: dragging with the magnet shows the overlap until you let go (it does not push live while dragging).
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

@@ -243,7 +243,14 @@ export function AiChatView() {
 						))}
 					</div>
 				)}
-				{messages.map((message) => (
+				{messages.map((message, messageIndex) =>
+					message.role === "tool" ? (
+						<ToolSteps
+							key={message.id}
+							text={message.text}
+							isLive={isBusy && messageIndex === messages.length - 1}
+						/>
+					) : (
 					<div
 						key={message.id}
 						className={cn(
@@ -251,8 +258,6 @@ export function AiChatView() {
 							message.role === "user" &&
 								"bg-primary text-primary-foreground ml-auto",
 							message.role === "assistant" && "bg-accent",
-							message.role === "tool" &&
-								"text-muted-foreground max-w-full px-1 py-0 text-xs leading-relaxed",
 							message.role === "error" &&
 								"bg-destructive/15 text-destructive text-xs",
 						)}
@@ -263,7 +268,8 @@ export function AiChatView() {
 							message.text
 						)}
 					</div>
-				))}
+					),
+				)}
 				{isBusy && (
 					<div
 						className="jeo-rise text-muted-foreground flex items-center gap-2 text-xs"
@@ -317,6 +323,56 @@ export function AiChatView() {
 					)}
 				</div>
 			</div>
+		</div>
+	);
+}
+
+/**
+ * The steps Claude took ("Adjusting…", "Looking at the video…"). Shown as one
+ * small line with an arrow; click it to see the whole list, click again to
+ * tuck it away. Keeps the chat short.
+ */
+function ToolSteps({ text, isLive }: { text: string; isLive: boolean }) {
+	const [isOpen, setIsOpen] = useState(false);
+	const steps = text.split("\n").filter((line) => line.trim() !== "");
+	if (steps.length === 0) return null;
+	const latest = steps[steps.length - 1];
+	const summary = isLive
+		? latest
+		: steps.length === 1
+			? latest
+			: `${steps.length} steps done`;
+	return (
+		<div className="text-muted-foreground max-w-full text-xs" data-jeo="chat-steps">
+			<button
+				type="button"
+				aria-expanded={isOpen}
+				onClick={() => setIsOpen((open) => !open)}
+				className="hover:text-foreground flex max-w-full cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 text-left transition-colors duration-150"
+			>
+				<span
+					aria-hidden
+					className={cn(
+						"inline-block text-[9px] transition-transform duration-150",
+						isOpen && "rotate-90",
+					)}
+				>
+					&#9654;
+				</span>
+				{isLive && <Spinner className="size-3" />}
+				<span className="truncate">{summary}</span>
+				{isLive && steps.length > 1 && (
+					<span className="shrink-0 opacity-70">({steps.length})</span>
+				)}
+			</button>
+			{isOpen && (
+				<ol className="border-foreground/15 jeo-rise mt-1 ml-2 flex flex-col gap-0.5 border-l pl-3 leading-relaxed">
+					{steps.map((step, index) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: a fixed list of lines
+						<li key={index}>{step}</li>
+					))}
+				</ol>
+			)}
 		</div>
 	);
 }

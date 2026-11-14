@@ -1,7 +1,7 @@
 import type { EditorCore } from "@/core";
 import type { Command, CommandResult } from "@/commands";
 import type { EditorSelectionSnapshot } from "@/selection/editor-selection";
-import { applyRippleAdjustments, computeRippleAdjustments } from "@/ripple";
+import { applyMagnet } from "@/ripple";
 import type { SceneTracks } from "@/timeline/types";
 
 interface CommandHistoryEntry {
@@ -19,9 +19,8 @@ export class CommandManager {
 	constructor(private editor: EditorCore) {}
 
 	execute({ command }: { command: Command }): Command {
-		const beforeTracks = this.isRippleEnabled
-			? (this.editor.scenes.getActiveSceneOrNull()?.tracks ?? null)
-			: null;
+		const beforeTracks =
+			this.editor.scenes.getActiveSceneOrNull()?.tracks ?? null;
 		const previousSelection = this.getSelectionSnapshot();
 		const result = command.execute();
 		this.applyRippleIfEnabled({ beforeTracks });
@@ -74,9 +73,8 @@ export class CommandManager {
 			return;
 		}
 
-		const beforeTracks = this.isRippleEnabled
-			? (this.editor.scenes.getActiveSceneOrNull()?.tracks ?? null)
-			: null;
+		const beforeTracks =
+			this.editor.scenes.getActiveSceneOrNull()?.tracks ?? null;
 		const previousSelection = this.getSelectionSnapshot();
 		const result = entry.command.redo();
 		this.applyRippleIfEnabled({ beforeTracks });
@@ -124,31 +122,22 @@ export class CommandManager {
 		}
 	}
 
+	// JEO: rows with their magnet on close up / make room after an edit
 	private applyRippleIfEnabled({
 		beforeTracks,
 	}: {
 		beforeTracks: SceneTracks | null;
 	}): void {
-		if (!this.isRippleEnabled || !beforeTracks) {
+		if (!beforeTracks) {
 			return;
 		}
-
 		const afterTracks = this.editor.scenes.getActiveSceneOrNull()?.tracks;
-		if (!afterTracks) {
+		if (!afterTracks || afterTracks === beforeTracks) {
 			return;
 		}
-		const adjustments = computeRippleAdjustments({
-			beforeTracks,
-			afterTracks,
-		});
-		if (adjustments.length === 0) {
-			return;
+		const tidied = applyMagnet({ before: beforeTracks, after: afterTracks });
+		if (tidied !== afterTracks) {
+			this.editor.timeline.updateTracks(tidied);
 		}
-
-		const tracksWithRipple = applyRippleAdjustments({
-			tracks: afterTracks,
-			adjustments,
-		});
-		this.editor.timeline.updateTracks(tracksWithRipple);
 	}
 }

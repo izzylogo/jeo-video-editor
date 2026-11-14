@@ -34,6 +34,7 @@ import {
 } from "@/animation";
 import { resolveAnimationTarget } from "@/timeline/animation-targets";
 import { BatchCommand } from "@/commands";
+import { isTrackMagnetOn } from "@/ripple";
 import {
 	AddTrackCommand,
 	RemoveTrackCommand,
@@ -177,7 +178,8 @@ export class TimelineManager {
 			oldEnd = next.startTime;
 		}
 		let after = changed;
-		if (delta !== 0) {
+		const magnetOn = isTrackMagnetOn({ trackId, mainTrackId: before.main.id });
+		if (delta !== 0 && magnetOn) {
 			// a clip on the main video row carries the texts and sounds after it
 			// along; a sound or overlay only moves what follows on its own row
 			const isMainClip = before.main.id === trackId;

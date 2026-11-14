@@ -78,6 +78,7 @@ export function PreviewPanel({
 	return (
 		<div
 			ref={handleContainerRef}
+			data-jeo-zone="preview"
 			className="panel bg-background relative flex size-full min-h-0 min-w-0 flex-col rounded-sm border"
 		>
 			<PreviewCanvas

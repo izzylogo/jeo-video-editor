@@ -261,7 +261,7 @@ export function useEditorActions() {
 				retainSide: "right",
 			});
 
-			if (rippleEditingEnabled && rightSideElements.length > 0) {
+			if (rightSideElements.length > 0) {
 				const firstRightElement = editor.timeline.getElementsWithTracks({
 					elements: [rightSideElements[0]],
 				})[0];
