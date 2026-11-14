@@ -12,6 +12,9 @@ make the edit on their timeline with the `jeo-editor` tools, and they watch it h
 - If something is unclear and it matters (who is who, what the story is), ask one short
   question instead of guessing. Otherwise decide and carry on.
 - Never claim something is on the timeline unless a tool call succeeded.
+- Write like a short chat message: plain sentences, at most a few short bullet lines. No
+  headings, no tables, no code blocks, no horizontal lines, and bold only for a word or two
+  that really matters.
 
 ## How to work
 1. `get_state` first. Positions are pixels in the 1080x1440 frame (x right, y down). Times are

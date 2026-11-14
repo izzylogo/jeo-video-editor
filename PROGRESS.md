@@ -273,4 +273,11 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **Tested**: a fresh copy in `C:\jt\` went through the whole setup and its report said "Everything checked out". Two problems found and fixed on the way: a very long folder path breaks the package install (setup now checks and says so), and the package list file was out of date.
 - **Not tested**: the Electron download itself (the test copied Electron from this PC), the `winget` installs of Git/Node/Bun, and a PC that is not this one.
 
+## Round 9: three bugs you found (14 Nov 2026)
+
+- **Speed change moves what comes after.** Slowing or speeding a clip on the main video row now shifts every clip, text, tag and sound that starts after it by the same amount. A sound or overlay only moves what follows on its own row. If the next clip was already sitting on top (from before this fix), the next speed change on that clip lines it up. One undo puts everything back.
+- **Speed slider.** Speed tab: minus and plus buttons (0.05x each), a slider with 1x near the middle (arrow keys work on it), marks to click (0.1x to 5x), quick speeds (0.5, 0.8, 1, 1.05, 1.5, 2) and a line showing the clip's new length. The number box still takes exact values like 1.03.
+- **Readable AI replies.** Claude's replies are drawn as headings, bold words, bullet and numbered lists; the #, * and table symbols are gone. Claude is also told to answer in short plain sentences.
+- Tested on a copy of BIGGEST INTROVERT in a test window; pictures in `output\round9-proof`.
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

@@ -1,6 +1,7 @@
 "use client";
 
 import { Spinner, useElapsedSeconds } from "./feedback";
+import { ChatText } from "./chat-text";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { useEditor } from "@/editor/use-editor";
@@ -256,7 +257,11 @@ export function AiChatView() {
 								"bg-destructive/15 text-destructive text-xs",
 						)}
 					>
-						{message.text}
+						{message.role === "assistant" ? (
+							<ChatText text={message.text} />
+						) : (
+							message.text
+						)}
 					</div>
 				))}
 				{isBusy && (

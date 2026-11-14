@@ -11,7 +11,12 @@ import type {
 import { calculateTotalDuration } from "@/timeline";
 import { TimelineDragSource } from "@/timeline/drag-source";
 import { findTrackInSceneTracks } from "@/timeline/track-element-update";
-import { lastFrameMediaTime, type MediaTime, ZERO_MEDIA_TIME } from "@/wasm";
+import {
+	lastFrameMediaTime,
+	type MediaTime,
+	TICKS_PER_SECOND,
+	ZERO_MEDIA_TIME,
+} from "@/wasm";
 import {
 	canElementBeHidden,
 	canElementHaveAudio,
@@ -142,18 +147,73 @@ export class TimelineManager {
 		retime?: RetimeConfig;
 		pushHistory?: boolean;
 	}): void {
-		this.updateElements({
-			updates: [
-				{
-					trackId,
-					elementId,
-					patch: {
-						retime,
-					},
-				},
-			],
-			pushHistory,
-		});
+		// JEO: a speed change makes the clip longer or shorter, so everything that
+		// starts after it moves along with it (like CapCut). Without this the
+		// longer clip slides underneath the next one.
+		const before = this.editor.scenes.getActiveSceneOrNull()?.tracks;
+		const original = this.getElementByRef({ trackId, elementId });
+		new UpdateElementsCommand({
+			updates: [{ trackId, elementId, patch: { retime } }],
+		}).execute();
+		const changed = this.editor.scenes.getActiveSceneOrNull()?.tracks;
+		const updated = this.getElementByRef({ trackId, elementId });
+		if (!before || !changed || !original || !updated) return;
+
+		const slack = Math.round(TICKS_PER_SECOND / 60); // half a frame
+		const realOldEnd = original.startTime + original.duration;
+		let delta = updated.duration - original.duration;
+		let oldEnd = realOldEnd - slack;
+		// If the next clip on the same track was already sitting on top of this
+		// one (an older speed change left it there), line it up with the new end.
+		const sameTrack = findTrackInSceneTracks({ tracks: before, trackId });
+		const next = sameTrack?.elements
+			.filter(
+				(element) =>
+					element.id !== elementId && element.startTime > original.startTime + slack,
+			)
+			.sort((a, b) => a.startTime - b.startTime)[0];
+		if (next && next.startTime < oldEnd) {
+			delta = updated.startTime + updated.duration - next.startTime;
+			oldEnd = next.startTime;
+		}
+		let after = changed;
+		if (delta !== 0) {
+			// a clip on the main video row carries the texts and sounds after it
+			// along; a sound or overlay only moves what follows on its own row
+			const isMainClip = before.main.id === trackId;
+			const shift = <TTrack extends TimelineTrack>(track: TTrack): TTrack => {
+				if (!isMainClip && track.id !== trackId) return track;
+				if (
+					!track.elements.some(
+						(element) => element.id !== elementId && element.startTime >= oldEnd,
+					)
+				) {
+					return track;
+				}
+				return {
+					...track,
+					elements: track.elements.map((element) =>
+						element.id !== elementId && element.startTime >= oldEnd
+							? ({
+									...element,
+									startTime: Math.max(0, element.startTime + delta),
+								} as TimelineElement)
+							: element,
+					),
+				} as TTrack;
+			};
+			after = {
+				overlay: changed.overlay.map((track) => shift(track)),
+				main: shift(changed.main),
+				audio: changed.audio.map((track) => shift(track)),
+			};
+			this.updateTracks(after);
+		}
+		if (pushHistory) {
+			this.editor.command.push({
+				command: new TracksSnapshotCommand({ before, after }),
+			});
+		}
 	}
 
 	moveElements({
