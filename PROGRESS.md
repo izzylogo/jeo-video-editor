@@ -295,4 +295,8 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - Two texts that were already on top of each other before the edit are left alone.
 - Tested on a copy of BIGGEST INTROVERT: lengthening a text into the next, moving a text onto another, and shortening 8 video clips hard (so later texts are pulled back). No fused texts in any case.
 
+## Round 12: volume line kept resetting scale (14 Nov 2026)
+
+- Dragging the dB line on a clip saved 'volume' as the clip's only setting, which threw away scale, position and the rest. Now the dragged setting is laid over the others. Tested: scale 103%, drag volume to -9 dB, scale still 103%; undo restores the volume.
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

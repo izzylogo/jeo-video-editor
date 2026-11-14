@@ -865,9 +865,16 @@ export class TimelineManager {
 
 			const nextElements = track.elements.map((element) => {
 				const overlay = this.previewOverlay.get(element.id);
-				return overlay
-					? ({ ...element, ...overlay } as TimelineElement)
-					: element;
+				if (!overlay) return element;
+				// JEO: a previewed setting (for example the volume line) is laid
+				// over the clip's other settings; it must not wipe scale, position…
+				return {
+					...element,
+					...overlay,
+					...(overlay.params
+						? { params: { ...element.params, ...overlay.params } }
+						: {}),
+				} as TimelineElement;
 			});
 
 			return { ...track, elements: nextElements } as TTrack;
