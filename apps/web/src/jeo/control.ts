@@ -8,7 +8,14 @@
  * Units for Claude: seconds for time, pixels in the 1080x1440 frame for
  * positions (x right, y down, origin top-left).
  */
-import { OPTIONS_PARAM, useTextOptions } from "./text-options";
+import {
+	EARLIER_PARAM,
+	OPTIONS_PARAM,
+	earlierOnElement,
+	mergeEarlier,
+	optionsOnElement,
+	useTextOptions,
+} from "./text-options";
 import { EditorCore } from "@/core";
 import { TracksSnapshotCommand } from "@/commands/timeline";
 import type { InsertElementParams } from "@/commands/timeline/element/insert-element";
@@ -560,7 +567,16 @@ function offerTextOptions(args: Args): ToolResult {
 		.filter((item): item is string => typeof item === "string" && item.trim() !== "")
 		.map((item) => item.trim().toUpperCase());
 	if (options.length === 0) return { ok: false, error: "Give at least one option." };
-	useTextOptions.getState().setOptions({ elementId: element.id, options });
+	// the options that were showing are kept: they move into "Earlier options"
+	const store = useTextOptions.getState();
+	const storedNow = store.options[element.id];
+	const storedEarlier = store.earlier[element.id];
+	const earlier = mergeEarlier({
+		previous: storedNow && storedNow.length > 0 ? storedNow : optionsOnElement(element),
+		earlier: storedEarlier ?? earlierOnElement(element),
+		next: options,
+	});
+	store.setOptions({ elementId: element.id, options, earlier });
 	// also on the text itself, so the options are saved with the project
 	const { track } = findElement({ id: element.id });
 	editor().timeline.updateElements({
@@ -568,12 +584,21 @@ function offerTextOptions(args: Args): ToolResult {
 			{
 				trackId: track.id,
 				elementId: element.id,
-				patch: { params: { ...element.params, [OPTIONS_PARAM]: JSON.stringify(options) } },
+				patch: {
+					params: {
+						...element.params,
+						[OPTIONS_PARAM]: JSON.stringify(options),
+						[EARLIER_PARAM]: JSON.stringify(earlier),
+					},
+				},
 			},
 		],
 		pushHistory: false,
 	});
-	return { ok: true, result: { offered: options.length, on: element.id } };
+	return {
+		ok: true,
+		result: { offered: options.length, earlierKept: earlier.length, on: element.id },
+	};
 }
 
 function updateElement(args: Args): ToolResult {

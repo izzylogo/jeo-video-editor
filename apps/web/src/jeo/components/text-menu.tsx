@@ -27,7 +27,11 @@ import {
 	toggleTriangle,
 } from "../actions";
 import { followHead } from "../control";
-import { optionsOnElement, useTextOptions } from "../text-options";
+import {
+	earlierOnElement,
+	optionsOnElement,
+	useTextOptions,
+} from "../text-options";
 import { askForTextOptions } from "./text-quick";
 
 function report(result: ActionResult): void {
@@ -49,6 +53,10 @@ export function TextMenuItems({
 	const id = element.id;
 	const stored = useTextOptions((state) => state.options[id]);
 	const offered = stored && stored.length > 0 ? stored : optionsOnElement(element);
+	const storedEarlier = useTextOptions((state) => state.earlier[id]);
+	const earlier = (storedEarlier ?? earlierOnElement(element)).filter(
+		(option) => !offered.includes(option),
+	);
 	const animated = Object.keys(element.animations ?? {});
 	const hasPopUp = animated.some((path) => path.startsWith("transform.scale"));
 	const hasTriangle = element.params["tag.triangle"] === true;
@@ -83,6 +91,25 @@ export function TextMenuItems({
 							<span className="whitespace-pre-line">{option}</span>
 						</ContextMenuItem>
 					))}
+					{earlier.length > 0 && (
+						<ContextMenuSub>
+							<ContextMenuSubTrigger data-jeo-menu="earlier-wordings">
+								Earlier options ({earlier.length})
+							</ContextMenuSubTrigger>
+							<ContextMenuSubContent className="max-h-80 w-72 overflow-y-auto">
+								{earlier.map((option) => (
+									<ContextMenuItem
+										key={option}
+										onClick={run(() =>
+											report(setTextContent({ elementId: id, content: option })),
+										)}
+									>
+										<span className="whitespace-pre-line">{option}</span>
+									</ContextMenuItem>
+								))}
+							</ContextMenuSubContent>
+						</ContextMenuSub>
+					)}
 					{offered.length > 0 && <ContextMenuSeparator />}
 					<ContextMenuItem
 						onClick={run(() => void askForTextOptions({ element }))}

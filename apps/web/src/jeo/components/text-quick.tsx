@@ -17,7 +17,11 @@ import {
 	toggleTriangle,
 } from "../actions";
 import { followHead } from "../control";
-import { optionsOnElement, useTextOptions } from "../text-options";
+import {
+	earlierOnElement,
+	optionsOnElement,
+	useTextOptions,
+} from "../text-options";
 import { sendChatText, useChatStore } from "./ai-chat";
 import { SkeletonLines, Spinner, useElapsedSeconds, withWorkingNotice } from "./feedback";
 
@@ -107,6 +111,11 @@ export function TextQuickActions({ element }: { element: TextElement }) {
 	const follows = animated.some((path) => path.startsWith("transform.position"));
 	const stored = useTextOptions((state) => state.options[id]);
 	const offered = stored && stored.length > 0 ? stored : optionsOnElement(element);
+	const storedEarlier = useTextOptions((state) => state.earlier[id]);
+	const earlier = (storedEarlier ?? earlierOnElement(element)).filter(
+		(option) => !offered.includes(option),
+	);
+	const [showEarlier, setShowEarlier] = useState(false);
 	const wasAsked = useTextOptions((state) => state.asking[id] === true);
 	const isChatBusy = useChatStore((state) => state.isBusy);
 	const isAsking = wasAsked && isChatBusy;
@@ -147,7 +156,7 @@ export function TextQuickActions({ element }: { element: TextElement }) {
 		<div className="space-y-3 border-b px-3 py-3" data-jeo="text-options">
 			<div>
 				<p className="text-muted-foreground mb-1.5 text-xs">
-					Other wordings for this part
+					{earlier.length > 0 ? "Newest options for this part" : "Other wordings for this part"}
 				</p>
 				<div className="flex flex-col gap-1.5">
 					{offered.map((option) => (
@@ -169,6 +178,49 @@ export function TextQuickActions({ element }: { element: TextElement }) {
 							{option}
 						</button>
 					))}
+					{earlier.length > 0 && (
+						<div data-jeo="earlier-options">
+							<button
+								type="button"
+								aria-expanded={showEarlier}
+								onClick={() => setShowEarlier((open) => !open)}
+								className="text-muted-foreground hover:text-foreground flex w-full cursor-pointer items-center gap-1.5 rounded px-1 py-1 text-left text-xs transition-colors duration-150"
+							>
+								<span
+									aria-hidden
+									className={cn(
+										"inline-block text-[9px] transition-transform duration-150",
+										showEarlier && "rotate-90",
+									)}
+								>
+									&#9654;
+								</span>
+								Earlier options ({earlier.length})
+							</button>
+							{showEarlier && (
+								<div className="jeo-rise mt-1 flex flex-col gap-1.5">
+									{earlier.map((option) => (
+										<button
+											key={option}
+											type="button"
+											data-jeo-earlier-option
+											onClick={() =>
+												report(setTextContent({ elementId: id, content: option }))
+											}
+											className={cn(
+												"cursor-pointer rounded-md px-2.5 py-1.5 text-left text-xs whitespace-pre-line transition-colors duration-150 active:scale-[0.98]",
+												option === current
+													? "bg-secondary text-secondary-foreground"
+													: "bg-accent/50 hover:bg-accent/70",
+											)}
+										>
+											{option}
+										</button>
+									))}
+								</div>
+							)}
+						</div>
+					)}
 					{isAsking && (
 						<div data-jeo="options-loading" role="status" className="jeo-rise">
 							<div className="text-muted-foreground mb-1.5 flex items-center gap-2 text-xs">

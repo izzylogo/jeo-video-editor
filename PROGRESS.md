@@ -299,4 +299,10 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 
 - Dragging the dB line on a clip saved 'volume' as the clip's only setting, which threw away scale, position and the rest. Now the dragged setting is laid over the others. Tested: scale 103%, drag volume to -9 dB, scale still 103%; undo restores the volume.
 
+## Round 13: earlier options kept, slow start (16 Nov 2026)
+
+- **Old and new options.** Asking Claude for more options no longer throws the old ones away. The newest are shown on top; everything offered before sits under **Earlier options (N)**, in the Options tab and in the right-click menu. Up to 40 are kept, none twice, and they are saved with the project.
+- **"JEO Editor could not start"** on a busy laptop: the editor only waited 1 minute for its own server. It now waits up to 5 minutes while the server is still starting, and says why if it really fails.
+- Tested: three asks in a row on a copy of BIGGEST INTROVERT (3 newest shown, 7 earlier in the dropdown, an old one picked and applied).
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

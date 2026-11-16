@@ -1,5 +1,7 @@
 {
   "items": [
+    "Asking Claude for more options keeps the old ones: the new options are on top, the old ones are under Earlier options",
+    "The editor waits longer for itself to start on a busy computer instead of showing could not start",
     "Fixed: dragging the volume line on a clip no longer resets its scale and other settings",
     "Texts no longer melt into each other: a text that lands on another one hops to the row above, so you always see both",
     "Other wordings now come from the scene: Claude looks at the picture at that text and at the texts before and after it, instead of offering words that just mean the same",
