@@ -312,4 +312,10 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - The window buttons turn dark in the light look.
 - Tested in a visible test window; pictures in `outputound14-proof`. Not tested by hand: dragging the window by the bar and double-click to maximise.
 
+## Round 15: top organised like CapCut (17 Nov 2026)
+
+- **Thin title bar** (40 px): logo and Projects on the left, the project name in the middle, Open in CapCut / Export / Layout / colour / light-dark on the right, then the window buttons.
+- **Category tabs moved to the left panel**: AI, Media, Audio, Captions, Tags, Freeze, Effects, Endings, Stickers, Subtitles, Settings, each an icon with its name underneath. Two even rows on a normal window; one row of icons when the panel is very narrow.
+- Checked at 1500, 1100 and 420 wide: no sideways scrolling, tabs still switch the panel. Pictures in `outputound15-proof`.
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

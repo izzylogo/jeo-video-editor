@@ -1,6 +1,7 @@
 "use client";
 
 import { AudioView } from "@/jeo/components/audio-view";
+import { CategoryBar } from "@/components/editor/category-bar";
 import {
 	type Tab,
 	useAssetsPanelStore,
@@ -19,8 +20,8 @@ import {
 	useExposeJeoActions,
 } from "@/jeo/components/panels";
 
-// JEO: the category buttons live in the top toolbar (CategoryBar); this panel
-// only shows the options of the chosen category.
+// JEO: like CapCut, the category tabs sit at the top of this panel and the
+// options of the chosen category are shown underneath.
 export function AssetsPanel() {
 	const { activeTab } = useAssetsPanelStore();
 	useExposeJeoActions();
@@ -40,8 +41,9 @@ export function AssetsPanel() {
 	};
 
 	return (
-		<div className="panel bg-background flex h-full overflow-hidden rounded-sm border">
-			<div className="flex-1 overflow-hidden">{viewMap[activeTab]}</div>
+		<div className="panel bg-background flex h-full flex-col overflow-hidden rounded-sm border">
+			<CategoryBar />
+			<div className="min-h-0 flex-1 overflow-hidden">{viewMap[activeTab]}</div>
 		</div>
 	);
 }

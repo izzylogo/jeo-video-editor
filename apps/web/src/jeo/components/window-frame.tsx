@@ -7,7 +7,7 @@ import { getDesktopBridge } from "@/services/desktop/bridge";
  * JEO: the editor's own top bar is the window's title bar (like CapCut).
  *
  * The desktop window has no separate Windows title strip and no menu row. The
- * top 54 px of the page can be dragged to move the window, the minimise /
+ * top 40 px of the page can be dragged to move the window, the minimise /
  * maximise / close buttons sit at its right end, and the File / Edit / View /
  * Window / Help menu only appears when Alt is pressed on its own.
  */

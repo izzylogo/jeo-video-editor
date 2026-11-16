@@ -577,7 +577,7 @@ function registerIpc() {
 		if (!mainWindow || mainWindow.isDestroyed()) return;
 		const { Menu } = require("electron");
 		const menu = Menu.getApplicationMenu();
-		if (menu) menu.popup({ window: mainWindow, x: 8, y: 50 });
+		if (menu) menu.popup({ window: mainWindow, x: 8, y: 38 });
 	});
 
 	ipcMain.handle("jeo:appInfo", async () => ({
@@ -1158,7 +1158,7 @@ function restartForUpdate({ projectId }) {
 // ---------- window ----------
 
 async function createWindow() {
-	const TITLE_BAR_HEIGHT = 54;
+	const TITLE_BAR_HEIGHT = 40;
 	mainWindow = new BrowserWindow({
 		width: Number((argValue("window-size") || "").split("x")[0]) || 1366,
 		height: Number((argValue("window-size") || "").split("x")[1]) || 800,

@@ -25,16 +25,19 @@ const TAB_TIPS: Record<Tab, string> = {
 };
 
 /**
- * JEO top toolbar: [AI] · Media · Audio · Captions · Tags · Freeze · Effects ·
- * Endings · … Clicking a category shows its options in the left panel.
+ * JEO category tabs, laid out like CapCut's: a row at the top of the left
+ * panel, each tab an icon with its name underneath. Clicking one shows its
+ * options in the panel below. When the panel is narrow the row wraps onto a
+ * second line, so every tab stays visible.
  */
 export function CategoryBar() {
 	const { activeTab, setActiveTab } = useAssetsPanelStore();
 	const isClaudeBusy = useChatStore((state) => state.isBusy);
 
 	return (
-		<div className="flex min-w-0 items-center gap-1">
-			<div className="scrollbar-hidden flex min-w-0 items-center gap-0.5 overflow-x-auto">
+		<div className="@container shrink-0 border-b px-1.5 py-1" data-jeo="category-bar">
+			{/* even columns; a very narrow panel shows the icons only, in one row */}
+			<div className="grid grid-cols-[repeat(11,minmax(0,1fr))] gap-0.5 @[20rem]:grid-cols-[repeat(auto-fit,minmax(3.2rem,1fr))]">
 				{TAB_KEYS.map((tabKey) => {
 					const tab = tabs[tabKey];
 					const isActive = activeTab === tabKey;
@@ -48,20 +51,19 @@ export function CategoryBar() {
 							data-jeo-category={tabKey}
 							onClick={() => setActiveTab(tabKey)}
 							className={cn(
-								"flex h-9 min-w-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors duration-150 max-[899px]:h-11 max-[899px]:min-w-11",
+								"relative flex h-8 min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-md px-0.5 text-[0.66rem] leading-none font-medium transition-colors duration-150 @[20rem]:h-11",
 								isActive
-									? "bg-secondary text-secondary-foreground"
+									? "text-primary"
 									: tabKey === "ai"
-										? "text-primary hover:bg-primary/15"
+										? "text-primary/80 hover:bg-primary/15"
 										: "text-muted-foreground hover:bg-accent hover:text-foreground",
 							)}
 						>
-							<tab.icon className="size-4" />
-							{/* JEO: on a small laptop the words go and the icons stay */}
-							<span className="hidden min-[1560px]:inline">{tab.label}</span>
+							<tab.icon className="size-4 shrink-0 @[20rem]:size-[1.15rem]" />
+							<span className="hidden whitespace-nowrap @[20rem]:inline">{tab.label}</span>
 							{/* a dot on the AI tab while Claude is still working */}
 							{tabKey === "ai" && isClaudeBusy && !isActive && (
-								<span className="bg-primary size-1.5 animate-pulse rounded-full" />
+								<span className="bg-primary absolute top-1 right-1.5 size-1.5 animate-pulse rounded-full" />
 							)}
 						</button>
 					);

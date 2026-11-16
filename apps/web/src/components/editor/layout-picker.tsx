@@ -73,7 +73,7 @@ export function LayoutPicker() {
 				<Button
 					variant="ghost"
 					size="sm"
-					className="h-9 shrink-0 px-2.5 text-xs font-medium"
+					className="h-8 shrink-0 px-2.5 text-xs font-medium"
 					title="Change how the editor is laid out"
 					data-jeo="layout-picker"
 				>

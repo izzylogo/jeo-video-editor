@@ -16,7 +16,6 @@ import { ThemeToggle } from "../theme-toggle";
 import { AccentPicker } from "../accent-picker";
 import { LayoutPicker } from "./layout-picker";
 import { JeoLogo } from "../jeo-logo";
-import { CategoryBar } from "./category-bar";
 import { OpenInCapCutButton } from "@/jeo/components/capcut-button";
 import { toast } from "sonner";
 import { useEditor } from "@/editor/use-editor";
@@ -32,17 +31,18 @@ import { cn } from "@/utils/ui";
 
 export function EditorHeader() {
 	return (
-		<header data-jeo-titlebar className="bg-background flex h-[3.4rem] items-center justify-between gap-2 px-3 pt-0.5 max-[899px]:gap-1 max-[899px]:px-1.5">
-			<div className="flex min-w-0 items-center gap-2">
+		// JEO: a thin title bar like CapCut's: logo and Projects on the left, the
+		// project name in the middle, the actions on the right. The category
+		// tabs (Media, Audio, Text…) are on the left panel, not up here.
+		<header data-jeo-titlebar className="bg-background relative flex h-10 shrink-0 items-center justify-between gap-2 px-2 max-[899px]:gap-1 max-[899px]:px-1.5">
+			<div className="flex min-w-0 items-center gap-1">
 				<ProjectDropdown />
 				<ProjectsButton />
-				<div className="bg-border h-5 w-px shrink-0" />
-				<CategoryBar />
 			</div>
-			<nav className="flex shrink-0 items-center gap-2">
-				<div className="hidden min-[1180px]:block">
-					<EditableProjectName />
-				</div>
+			<div className="absolute top-1/2 left-1/2 hidden -translate-x-1/2 -translate-y-1/2 min-[1180px]:block">
+				<EditableProjectName />
+			</div>
+			<nav className="flex shrink-0 items-center gap-1.5">
 				<div className="hidden min-[620px]:block">
 					<OpenInCapCutButton />
 				</div>
@@ -84,13 +84,13 @@ function ProjectsButton() {
 		<Button
 			variant="ghost"
 			size="sm"
-			className="h-9 shrink-0 gap-1.5 px-2.5 text-xs font-medium"
+			className="h-8 shrink-0 gap-1.5 px-2.5 text-xs font-medium"
 			onClick={goToProjects}
 			disabled={isLeaving}
 			title="All your projects: open one, or start a new empty project"
 		>
 			<HugeiconsIcon icon={FolderOpenIcon} className="size-4" />
-			<span className="hidden min-[1100px]:inline">{isLeaving ? "Saving…" : "Projects"}</span>
+			<span className="hidden min-[520px]:inline">{isLeaving ? "Saving…" : "Projects"}</span>
 		</Button>
 	);
 }
@@ -163,8 +163,8 @@ function ProjectDropdown() {
 		<>
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
-					<Button variant="ghost" size="icon" className="p-1 rounded-sm size-8">
-						<JeoLogo className="size-6" />
+					<Button variant="ghost" size="icon" className="p-1 rounded-sm size-7">
+						<JeoLogo className="size-5" />
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="start" className="z-100 w-44">
@@ -288,7 +288,7 @@ function EditableProjectName() {
 			onKeyDown={handleKeyDown}
 			style={{ fieldSizing: "content" }}
 			className={cn(
-				"text-[0.9rem] h-8 px-2 py-1 rounded-sm bg-transparent outline-none cursor-pointer hover:bg-accent hover:text-accent-foreground",
+				"text-[0.82rem] h-7 px-2 py-1 text-center font-medium rounded-sm bg-transparent outline-none cursor-pointer hover:bg-accent hover:text-accent-foreground",
 				isEditing && "ring-1 ring-ring cursor-text hover:bg-transparent",
 			)}
 		/>

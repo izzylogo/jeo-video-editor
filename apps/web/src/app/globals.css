@@ -411,7 +411,7 @@ html[data-jeo-frame] .jeo-window-drag {
 	top: 0;
 	left: 0;
 	right: 0;
-	height: 54px;
+	height: 40px;
 	z-index: 0;
 	-webkit-app-region: drag;
 }
