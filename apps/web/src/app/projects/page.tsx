@@ -141,7 +141,7 @@ function ProjectsHeader() {
 
 	return (
 		<header className="sticky top-0 z-20 px-8 bg-background flex flex-col gap-2">
-			<div className="flex items-center justify-between h-16 pt-2">
+			<div data-jeo-titlebar className="flex items-center justify-between h-16 pt-2">
 				<div className="flex items-center gap-5">
 					<Breadcrumb>
 						<BreadcrumbList>

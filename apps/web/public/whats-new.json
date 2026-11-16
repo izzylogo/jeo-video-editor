@@ -1,5 +1,6 @@
 {
   "items": [
+    "The top bar is now the window title bar, like CapCut: no extra strip above it. Press Alt to see File, Edit, View, Window, Help",
     "Asking Claude for more options keeps the old ones: the new options are on top, the old ones are under Earlier options",
     "The editor waits longer for itself to start on a busy computer instead of showing could not start",
     "Fixed: dragging the volume line on a clip no longer resets its scale and other settings",

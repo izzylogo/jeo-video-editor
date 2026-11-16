@@ -563,6 +563,23 @@ function registerIpc() {
 	ipcMain.handle("jeo:updateNow", async (_event, args) => restartForUpdate(args || {}));
 	ipcMain.handle("jeo:checkGitHub", async () => checkGitHub().catch(() => ({ ok: false, reason: "error" })));
 	ipcMain.handle("jeo:pullUpdate", async () => pullUpdate());
+	// ---- the merged title bar ----
+	ipcMain.handle("jeo:setTitleBar", async (_event, { dark }) => {
+		if (!mainWindow || mainWindow.isDestroyed()) return;
+		try {
+			mainWindow.setTitleBarOverlay({
+				color: "#00000000",
+				symbolColor: dark ? "#e8e8e8" : "#1a1a1a",
+			});
+		} catch {}
+	});
+	ipcMain.handle("jeo:showAppMenu", async () => {
+		if (!mainWindow || mainWindow.isDestroyed()) return;
+		const { Menu } = require("electron");
+		const menu = Menu.getApplicationMenu();
+		if (menu) menu.popup({ window: mainWindow, x: 8, y: 50 });
+	});
+
 	ipcMain.handle("jeo:appInfo", async () => ({
 		dataFolder: DATA_ROOT,
 		codeFolder: REPO_ROOT,
@@ -1141,6 +1158,7 @@ function restartForUpdate({ projectId }) {
 // ---------- window ----------
 
 async function createWindow() {
+	const TITLE_BAR_HEIGHT = 54;
 	mainWindow = new BrowserWindow({
 		width: Number((argValue("window-size") || "").split("x")[0]) || 1366,
 		height: Number((argValue("window-size") || "").split("x")[1]) || 800,
@@ -1148,7 +1166,11 @@ async function createWindow() {
 		minHeight: 560,
 		title: "JEO Editor",
 		backgroundColor: "#0d0d0d",
-		autoHideMenuBar: true,
+		// JEO: no separate title strip or menu row. The editor's own top bar is
+		// the title bar (like CapCut); Windows draws only the three window
+		// buttons over its right end. The menu appears when Alt is pressed.
+		titleBarStyle: "hidden",
+		titleBarOverlay: { color: "#00000000", symbolColor: "#e8e8e8", height: TITLE_BAR_HEIGHT },
 		show: !CAPTURE_PATH || process.argv.includes("--visible"),
 		icon: fs.existsSync(ICON_PATH) ? ICON_PATH : undefined,
 		webPreferences: {

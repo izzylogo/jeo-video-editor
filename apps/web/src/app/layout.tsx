@@ -5,6 +5,7 @@ import { TooltipProvider } from "../components/ui/tooltip";
 import { baseMetaData } from "./metadata";
 import { AccentApplier } from "../components/accent-picker";
 import { UpdateNotice } from "@/jeo/components/update-notice";
+import { WindowFrame } from "@/jeo/components/window-frame";
 
 export const metadata = baseMetaData;
 
@@ -23,6 +24,7 @@ export default function RootLayout({
 				>
 					<TooltipProvider>
 						<AccentApplier />
+						<WindowFrame />
 						<UpdateNotice />
 						<Toaster />
 						{children}

@@ -32,7 +32,7 @@ import { cn } from "@/utils/ui";
 
 export function EditorHeader() {
 	return (
-		<header className="bg-background flex h-[3.4rem] items-center justify-between gap-2 px-3 pt-0.5 max-[899px]:gap-1 max-[899px]:px-1.5">
+		<header data-jeo-titlebar className="bg-background flex h-[3.4rem] items-center justify-between gap-2 px-3 pt-0.5 max-[899px]:gap-1 max-[899px]:px-1.5">
 			<div className="flex min-w-0 items-center gap-2">
 				<ProjectDropdown />
 				<ProjectsButton />

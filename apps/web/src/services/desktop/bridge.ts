@@ -70,6 +70,10 @@ export interface JeoDesktopBridge {
 	/** Download, install and build the newer version. Restart afterwards. */
 	pullUpdate(): Promise<{ ok: boolean; error?: string }>;
 	appInfo(): Promise<{ dataFolder: string; codeFolder: string; commit: string }>;
+	/** The merged title bar: colour of the window buttons for the current look. */
+	setTitleBar?(args: { dark: boolean }): Promise<void>;
+	/** Shows the File / Edit / View / Window / Help menu (Alt key). */
+	showAppMenu?(): Promise<void>;
 	onRemoteUpdate(listener: (info: { count: number; items: string[] }) => void): () => void;
 	onPullProgress(listener: (stage: string) => void): () => void;
 	/** Ids of projects whose folder is in projects\\_trash. */

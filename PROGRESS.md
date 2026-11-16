@@ -305,4 +305,11 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **"JEO Editor could not start"** on a busy laptop: the editor only waited 1 minute for its own server. It now waits up to 5 minutes while the server is still starting, and says why if it really fails.
 - Tested: three asks in a row on a copy of BIGGEST INTROVERT (3 newest shown, 7 earlier in the dropdown, an old one picked and applied).
 
+## Round 14: the top bar is the title bar (16 Nov 2026)
+
+- Like CapCut: the Windows title strip and the menu row are gone. The editor's own top bar is the title bar; minimise / maximise / close sit at its right end, and you move the window by dragging an empty part of the bar.
+- **Alt** (pressed and let go on its own) shows File / Edit / View / Window / Help as a drop-down under the logo.
+- The window buttons turn dark in the light look.
+- Tested in a visible test window; pictures in `outputound14-proof`. Not tested by hand: dragging the window by the bar and double-click to maximise.
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

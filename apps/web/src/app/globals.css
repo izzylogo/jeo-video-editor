@@ -400,3 +400,44 @@ input,
 	.jeo-spin { animation-duration: 1.6s; }
 	.jeo-shimmer { animation: none; }
 }
+
+/* ---- JEO: the top bar is the window's title bar (desktop app only) ---- */
+.jeo-window-drag {
+	display: none;
+}
+html[data-jeo-frame] .jeo-window-drag {
+	display: block;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 54px;
+	z-index: 0;
+	-webkit-app-region: drag;
+}
+/* everything you can click stays clickable on top of the drag strip */
+html[data-jeo-frame]
+	:is(
+		button,
+		a,
+		input,
+		select,
+		textarea,
+		label,
+		[role="button"],
+		[role="tab"],
+		[role="menu"],
+		[role="menuitem"],
+		[role="dialog"],
+		[role="listbox"],
+		[role="slider"],
+		[data-radix-popper-content-wrapper],
+		[data-sonner-toaster],
+		[data-jeo-category]
+	) {
+	-webkit-app-region: no-drag;
+}
+/* leave room for the minimise / maximise / close buttons */
+html[data-jeo-frame] [data-jeo-titlebar] {
+	padding-right: 148px;
+}

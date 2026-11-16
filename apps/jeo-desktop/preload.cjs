@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld("jeoDesktop", {
 	checkGitHub: () => ipcRenderer.invoke("jeo:checkGitHub"),
 	pullUpdate: () => ipcRenderer.invoke("jeo:pullUpdate"),
 	appInfo: () => ipcRenderer.invoke("jeo:appInfo"),
+	setTitleBar: (args) => ipcRenderer.invoke("jeo:setTitleBar", args),
+	showAppMenu: () => ipcRenderer.invoke("jeo:showAppMenu"),
 	onRemoteUpdate: (listener) => {
 		const handler = (_event, info) => listener(info);
 		ipcRenderer.on("jeo:remoteUpdate", handler);
