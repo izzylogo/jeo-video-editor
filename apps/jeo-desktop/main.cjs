@@ -60,17 +60,19 @@ function ping() {
 			resolve(true);
 		});
 		request.on("error", () => resolve(false));
-		request.setTimeout(1500, () => {
+		request.setTimeout(5000, () => {
 			request.destroy();
 			resolve(false);
 		});
 	});
 }
 
-async function waitForServer({ timeoutMs }) {
+async function waitForServer({ timeoutMs, isAlive }) {
 	const startedAt = Date.now();
 	while (Date.now() - startedAt < timeoutMs) {
 		if (await ping()) return true;
+		// the server program stopped by itself: no point waiting longer
+		if (isAlive && !isAlive()) return false;
 		await new Promise((resolve) => setTimeout(resolve, 500));
 	}
 	return false;
@@ -109,8 +111,18 @@ async function startServer() {
 		serverProcess = null;
 	});
 
-	const ready = await waitForServer({ timeoutMs: mode === "dev" ? 180000 : 60000 });
-	if (!ready) throw new Error(`The editor server did not start. See ${logPath}`);
+	// A busy laptop can need well over a minute here. Keep waiting (up to 5
+	// minutes) for as long as the server program is still running.
+	const ready = await waitForServer({
+		timeoutMs: 300000,
+		isAlive: () => serverProcess !== null,
+	});
+	if (!ready) {
+		const why = serverProcess
+			? "The editor server took more than 5 minutes to start. The computer may be very busy: close other programs and try again."
+			: "The editor server stopped while starting.";
+		throw new Error(`${why} Details: ${logPath}`);
+	}
 }
 
 function stopServer() {
