@@ -1,5 +1,7 @@
 {
   "items": [
+    "A Menu button at the top left, like CapCut: File, Edit, Layout, Help, Settings, Back to projects, Quit",
+    "The tabs are one row that slides: small arrows show when more tabs are hidden, and the AI tab stays fixed on the left",
     "Top laid out like CapCut: a thin title bar with the project name in the middle, and the Media, Audio, Captions... tabs on the left panel with their names under the icons",
     "The top bar is now the window title bar, like CapCut: no extra strip above it. Press Alt to see File, Edit, View, Window, Help",
     "Asking Claude for more options keeps the old ones: the new options are on top, the old ones are under Earlier options",

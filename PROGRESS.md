@@ -318,4 +318,10 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **Category tabs moved to the left panel**: AI, Media, Audio, Captions, Tags, Freeze, Effects, Endings, Stickers, Subtitles, Settings, each an icon with its name underneath. Two even rows on a normal window; one row of icons when the panel is very narrow.
 - Checked at 1500, 1100 and 420 wide: no sideways scrolling, tabs still switch the panel. Pictures in `outputound15-proof`.
 
+## Round 16: Menu drop-down and sliding tabs (17 Nov 2026)
+
+- **Menu** button at the top left (like CapCut). File: New project, Import media, Export, Rename project, Show project folder. Edit: Undo, Redo, Split, Copy, Paste, Duplicate, Delete, Select all. Layout: the ready-made layouts. Help: Keyboard shortcuts, Ask Claude. Then Settings, Back to projects, Quit (Quit saves first).
+- **Tabs in one sliding row.** The AI tab stands alone on the left and never moves. The other tabs slide: a small round arrow appears on the side where tabs are hidden, the mouse wheel slides the row, there is a thin slider bar under it, and choosing a tab brings it into view.
+- Tested in a test window: arrows appear and work, AI did not move by a pixel, every menu entry is listed. Not tested by hand: Import media and Quit from the menu.
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TransitionTopIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -48,6 +48,12 @@ export function ExportButton() {
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActiveOrNull());
 	const hasProject = !!activeProject;
+	// JEO: Menu > File > Export opens this same box
+	useEffect(() => {
+		const open = () => setIsExportPopoverOpen(true);
+		window.addEventListener("jeo:open-export", open);
+		return () => window.removeEventListener("jeo:open-export", open);
+	}, []);
 
 	const handlePopoverOpenChange = ({ open }: { open: boolean }) => {
 		if (!open) {

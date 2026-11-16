@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { VoiceRecordButton } from "@/jeo/components/voice-record";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { MediaDragOverlay } from "@/components/editor/panels/assets/drag-overlay";
@@ -148,6 +148,14 @@ export function MediaView() {
 			multiple: true,
 			onFilesSelected: (files) => processFiles({ files }),
 		});
+	// JEO: Menu > File > Import media opens the same file picker
+	const openFilePickerRef = useRef(openFilePicker);
+	openFilePickerRef.current = openFilePicker;
+	useEffect(() => {
+		const open = () => openFilePickerRef.current();
+		window.addEventListener("jeo:import-media", open);
+		return () => window.removeEventListener("jeo:import-media", open);
+	}, []);
 
 	const handleRemove = ({
 		event,

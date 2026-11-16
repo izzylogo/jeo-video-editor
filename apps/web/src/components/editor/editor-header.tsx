@@ -6,8 +6,16 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { invokeAction } from "@/actions";
+import { LAYOUT_PRESETS } from "@/panels/layout";
+import { usePanelStore } from "@/editor/panel-store";
+import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import { RenameProjectDialog } from "@/project/components/rename-project-dialog";
 import { DeleteProjectDialog } from "@/project/components/delete-project-dialog";
 import { useRouter } from "next/navigation";
@@ -119,6 +127,35 @@ function ProjectDropdown() {
 		}
 	};
 
+	const layout = usePanelStore((state) => state.layout);
+	const applyLayout = usePanelStore((state) => state.applyLayout);
+	const setActiveTab = useAssetsPanelStore((state) => state.setActiveTab);
+
+	const handleNewProject = async () => {
+		if (isExiting) return;
+		setIsExiting(true);
+		try {
+			await editor.project.prepareExit();
+		} catch (error) {
+			console.error("Failed to save before starting a new project:", error);
+		}
+		editor.project.closeProject();
+		const projectId = await editor.project.createNewProject({ name: "New project" });
+		router.push(`/editor/${projectId}`);
+	};
+
+	// save first, then close the window
+	const handleQuit = async () => {
+		if (isExiting) return;
+		setIsExiting(true);
+		try {
+			await editor.project.prepareExit();
+		} catch (error) {
+			console.error("Failed to save before quitting:", error);
+		}
+		window.close();
+	};
+
 	const handleSaveProjectName = async (newName: string) => {
 		if (
 			activeProject &&
@@ -161,41 +198,137 @@ function ProjectDropdown() {
 
 	return (
 		<>
+			{/* JEO: the Menu drop-down, like CapCut's */}
+			<JeoLogo className="size-5 shrink-0" />
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
-					<Button variant="ghost" size="icon" className="p-1 rounded-sm size-7">
-						<JeoLogo className="size-5" />
+					<Button
+						variant="ghost"
+						size="sm"
+						data-jeo="main-menu"
+						className="bg-accent/60 h-7 shrink-0 gap-1 rounded-md px-2.5 text-xs font-medium"
+					>
+						Menu
+						<span aria-hidden className="text-[8px] opacity-70">
+							&#9660;
+						</span>
 					</Button>
 				</DropdownMenuTrigger>
-				<DropdownMenuContent align="start" className="z-100 w-44">
-					<DropdownMenuItem
-						onClick={handleExit}
-						disabled={isExiting}
-						icon={<HugeiconsIcon icon={Logout05Icon} />}
-					>
-						Exit project
+				<DropdownMenuContent align="start" className="z-100 w-52">
+					<DropdownMenuSub>
+						<DropdownMenuSubTrigger>File</DropdownMenuSubTrigger>
+						<DropdownMenuSubContent className="z-100 w-52">
+							<DropdownMenuItem onClick={handleNewProject}>
+								New project
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => {
+									setActiveTab("media");
+									window.setTimeout(
+										() => window.dispatchEvent(new Event("jeo:import-media")),
+										200,
+									);
+								}}
+							>
+								Import media…
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() =>
+									window.setTimeout(
+										() => window.dispatchEvent(new Event("jeo:open-export")),
+										120,
+									)
+								}
+							>
+								Export…
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onClick={() => setOpenDialog("rename")}>
+								Rename project…
+							</DropdownMenuItem>
+							{getDesktopBridge() && activeProject && (
+								<DropdownMenuItem
+									onClick={() =>
+										getDesktopBridge()?.showProjectFolder({
+											id: activeProject.metadata.id,
+										})
+									}
+								>
+									Show project folder
+								</DropdownMenuItem>
+							)}
+						</DropdownMenuSubContent>
+					</DropdownMenuSub>
+					<DropdownMenuSub>
+						<DropdownMenuSubTrigger>Edit</DropdownMenuSubTrigger>
+						<DropdownMenuSubContent className="z-100 w-52">
+							<DropdownMenuItem onClick={() => invokeAction("undo")}>
+								Undo
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => invokeAction("redo")}>
+								Redo
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onClick={() => invokeAction("split")}>
+								Split at the playhead
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => invokeAction("copy-selected")}>
+								Copy
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => invokeAction("paste-copied")}>
+								Paste
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => invokeAction("duplicate-selected")}>
+								Duplicate
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => invokeAction("delete-selected")}>
+								Delete
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onClick={() => invokeAction("select-all")}>
+								Select all
+							</DropdownMenuItem>
+						</DropdownMenuSubContent>
+					</DropdownMenuSub>
+					<DropdownMenuSub>
+						<DropdownMenuSubTrigger>Layout</DropdownMenuSubTrigger>
+						<DropdownMenuSubContent className="z-100 w-56">
+							{LAYOUT_PRESETS.map((preset) => (
+								<DropdownMenuItem
+									key={preset.id}
+									onClick={() => applyLayout(preset.id)}
+								>
+									<span className="flex-1">{preset.name}</span>
+									{preset.id === layout && (
+										<span aria-hidden className="text-primary text-xs">
+											&#10003;
+										</span>
+									)}
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuSubContent>
+					</DropdownMenuSub>
+					<DropdownMenuSub>
+						<DropdownMenuSubTrigger>Help</DropdownMenuSubTrigger>
+						<DropdownMenuSubContent className="z-100 w-52">
+							<DropdownMenuItem onClick={() => setOpenDialog("shortcuts")}>
+								Keyboard shortcuts
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => setActiveTab("ai")}>
+								Ask Claude
+							</DropdownMenuItem>
+						</DropdownMenuSubContent>
+					</DropdownMenuSub>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem onClick={() => setActiveTab("settings")}>
+						Settings
 					</DropdownMenuItem>
-
-					<DropdownMenuItem
-						onClick={() => setOpenDialog("shortcuts")}
-						icon={<HugeiconsIcon icon={CommandIcon} />}
-					>
-						Shortcuts
+					<DropdownMenuItem onClick={handleExit} disabled={isExiting}>
+						Back to projects
 					</DropdownMenuItem>
-
-					{getDesktopBridge() && activeProject && (
-						<DropdownMenuItem
-							onClick={() =>
-								getDesktopBridge()?.showProjectFolder({
-									id: activeProject.metadata.id,
-								})
-							}
-							icon={<HugeiconsIcon icon={FolderOpenIcon} />}
-						>
-							Show project folder
-						</DropdownMenuItem>
-					)}
-
+					<DropdownMenuItem onClick={handleQuit} disabled={isExiting}>
+						Quit
+					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
 			<RenameProjectDialog

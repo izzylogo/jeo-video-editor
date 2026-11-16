@@ -441,3 +441,20 @@ html[data-jeo-frame]
 html[data-jeo-frame] [data-jeo-titlebar] {
 	padding-right: 148px;
 }
+/* ---- JEO: the sliding row of category tabs ---- */
+.jeo-tab-slider {
+	scrollbar-width: thin;
+}
+.jeo-tab-slider::-webkit-scrollbar {
+	height: 4px;
+}
+.jeo-tab-slider::-webkit-scrollbar-track {
+	background: transparent;
+}
+.jeo-tab-slider::-webkit-scrollbar-thumb {
+	background: color-mix(in oklab, var(--foreground) 28%, transparent);
+	border-radius: 999px;
+}
+.jeo-tab-slider::-webkit-scrollbar-thumb:hover {
+	background: var(--primary);
+}
