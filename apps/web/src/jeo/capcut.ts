@@ -215,7 +215,9 @@ export async function openInCapCut({
 		underline: false,
 		align: "center",
 	});
-	for (const track of tracks.overlay) {
+	// bottom row first: in CapCut a later layer is drawn on top (in JEO the
+	// first row is on top), so the stacking comes out the same
+	for (const track of [...tracks.overlay].reverse()) {
 		for (const element of track.elements as TimelineElement[]) {
 			if (element.type === "text") {
 				texts.push({

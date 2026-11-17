@@ -722,11 +722,13 @@ export function featherToShare({ pixels, maskWidth, maskHeight }: { pixels: numb
 }
 
 /**
- * A spotlight, the way the user builds it in CapCut:
- *  1. the freeze frame gets a soft Rectangle mask and is made darker,
- *  2. a copy of it goes on top with a Circle mask, at full brightness.
- * Outside the rectangle the picture is black. x / y / radius are frame pixels.
- * The clip is cut at the spotlight's start and end so only that part changes.
+ * A spotlight, the way the user builds it in CapCut, in three levels measured
+ * from their finished GIRLFRIEND EXPOSED video:
+ *  - the whole freeze frame is dimmed (about 22 % bright),
+ *  - a soft Rectangle-masked copy brings that area up to about 67 %,
+ *  - a Circle-masked copy on top is at full brightness.
+ * x / y / radius are frame pixels. The clip is cut at the spotlight's start
+ * and end so only that part changes.
  */
 export function addMaskSpotlight({
 	start,
@@ -734,14 +736,18 @@ export function addMaskSpotlight({
 	x,
 	y,
 	radius,
-	darkness = 0.55,
+	outside = 0.22,
+	box: boxLevel = 0.67,
 }: {
 	start: number;
 	durationSeconds: number;
 	x: number;
 	y: number;
 	radius: number;
-	darkness?: number;
+	/** how bright the picture stays outside the rectangle (0..1) */
+	outside?: number;
+	/** how bright it is inside the rectangle (0..1) */
+	box?: number;
 }): ActionResult {
 	const before = tracks();
 	const project = editor().project.getActive();
@@ -832,26 +838,32 @@ export function addMaskSpotlight({
 		feather: featherToPixels({ share: 0.21, ...sourcePixels(circle) }),
 	};
 
+	const dim = Math.min(1, Math.max(0.05, outside));
+	// the rectangle copy sits over the dimmed picture: dim + (1 - dim) x a = boxLevel
+	const boxAlpha = Math.min(1, Math.max(0, (boxLevel - dim) / (1 - dim)));
 	const dark = {
 		...piece,
-		masks: [rectangleMask],
-		params: { ...piece.params, opacity: Math.min(1, Math.max(0.1, 1 - darkness)) },
+		params: { ...piece.params, opacity: dim },
 	} as TimelineElement;
-	const light = {
-		...piece,
-		id: generateUUID(),
-		name: "Spotlight",
-		masks: [circleMask],
-		params: { ...piece.params, opacity: 1, muted: true },
-	} as TimelineElement;
-	const lightTrack = {
-		...buildEmptyTrack({ id: generateUUID(), type: "video", name: "Spotlight" }),
-		elements: [light],
-	} as SceneTracks["overlay"][number];
+	const copy = (name: string, mask: RectangleMask | EllipseMask, opacity: number) =>
+		({
+			...piece,
+			id: generateUUID(),
+			name,
+			masks: [mask],
+			params: { ...piece.params, opacity, muted: true },
+		}) as TimelineElement;
+	const row = (element: TimelineElement, name: string) =>
+		({
+			...buildEmptyTrack({ id: generateUUID(), type: "video", name }),
+			elements: [element],
+		}) as SceneTracks["overlay"][number];
+	const boxTrack = row(copy("Spotlight box", rectangleMask, boxAlpha), "Spotlight box");
+	const lightTrack = row(copy("Spotlight", circleMask, 1), "Spotlight");
 
 	const after: SceneTracks = {
-		// the light goes just above the main row, under texts and tags
-		overlay: [...split.overlay, lightTrack],
+		// just above the main row, under texts and tags; the first row is on top
+		overlay: [...split.overlay, lightTrack, boxTrack],
 		main: {
 			...split.main,
 			elements: split.main.elements.map((element) =>
@@ -861,7 +873,7 @@ export function addMaskSpotlight({
 		audio: split.audio,
 	};
 	editor().command.execute({ command: new TracksSnapshotCommand({ before, after }) });
-	return ok("Spotlight added: a dark rectangle with a bright circle. Drag the circle in the Masks tab to move it.");
+	return ok("Spotlight added: the picture dimmed, a softer rectangle and a bright circle. Move them in each layer's Masks tab.");
 }
 
 // ---------- endings ----------

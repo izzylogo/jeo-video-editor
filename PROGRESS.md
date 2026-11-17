@@ -339,5 +339,6 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **To CapCut:** masks on clips now go across as CapCut masks (JEO rectangle -> Rectangle, ellipse -> Circle), with the darker clip's opacity. Checked by drawing the CapCut project's own numbers next to JEO's picture: same place, same look.
 - Old spotlights made before this (the dark picture) still export as a circle mask.
 - Not checked inside CapCut 9.8 itself. JEO draws one mask per clip, which is why the circle is a second layer (CapCut could hold both on one clip).
+- **Corrected the same day:** your finished GIRLFRIEND EXPOSED video is not black outside. Measured from it: outside about 22 % bright, rectangle about 67 %, circle 100 %. The spotlight is now three layers: the freeze frame at 22 %, a Rectangle-masked copy at 58 % on top (which brings that area to 67 %), and a Circle-masked copy at 100 % on top of that. Measured in JEO afterwards: 0.22 / 0.67 / 1.00. In CapCut the layers keep the same order (bottom to top).
 
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.
