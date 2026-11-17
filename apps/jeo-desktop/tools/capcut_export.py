@@ -303,7 +303,37 @@ class Draft:
                 "visible": True,
             }
         )
+        if item.get("mask"):
+            self.add_mask(segment, item["mask"])
         return segment
+
+    def add_mask(self, segment, mask):
+        """A JEO mask (already in CapCut's numbers) as a CapCut mask on the segment."""
+        shape = mask.get("shape", "circle")
+        template = library()["masks"].get(shape)
+        if template is None:
+            note = f"{shape} mask (use CapCut's {shape.capitalize()} mask once on any clip, then export again)"
+            if note not in self.warnings:
+                self.warnings.append(note)
+            return
+        material = copy.deepcopy(template)
+        material["id"] = new_id()
+        material["config"] = {
+            **(template.get("config") or {}),
+            "width": float(mask["width"]),
+            "height": float(mask["height"]),
+            "centerX": float(mask["centerX"]),
+            "centerY": float(mask["centerY"]),
+            "rotation": float(mask.get("rotation", 0)),
+            "feather": float(mask.get("feather", 0)),
+            "expansion": 0.0,
+            "roundCorner": 0.0,
+            "invert": bool(mask.get("invert", False)),
+            "aspectRatio": 1.0,
+        }
+        self.materials.setdefault("common_mask", []).append(material)
+        segment["extra_material_refs"].append(material["id"])
+        segment["enable_video_mask"] = True
 
     # ----- effects and transitions (only ones already on this computer) -----
     EFFECT_NAMES = {"split": "RGB Distort", "shake": "Shake"}

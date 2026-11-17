@@ -9,8 +9,10 @@
  * animation (pop-up, growing/fading emoji, tags that follow a person), the
  * colour split and blur shake (as CapCut's own "RGB Distort" and "Shake"),
  * the Glare transition (as CapCut's "Glare II") and sounds.
- * Spotlights become a CapCut circle mask on the clip underneath (the way the
- * user builds them in CapCut: everything outside the circle goes black).
+ * Masks on clips go across as CapCut masks (rectangle and circle), so a
+ * spotlight (dark rectangle-masked freeze frame + bright circle-masked copy on
+ * top) arrives exactly as the user builds it in CapCut. Old graphic spotlights
+ * become a circle mask on the clip underneath.
  * A colour flash becomes a "(ADD C.F)" scene text at that moment, as a
  * reminder to add CapCut's own flash there.
  * What does not: the other JEO effects and transitions, crop boxes and
@@ -21,6 +23,7 @@ import type { TimelineElement } from "@/timeline";
 import { getDesktopBridge } from "@/services/desktop/bridge";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import { TICKS_PER_SECOND } from "@/wasm";
+import { featherToShare } from "./actions";
 
 const S = TICKS_PER_SECOND;
 
@@ -88,6 +91,36 @@ function starting({
 	return num("params" in element ? element.params[path] : undefined, fallback);
 }
 
+/**
+ * A clip's mask in CapCut's terms. JEO and CapCut both give the size as a part
+ * of the clip; CapCut counts the centre in half-sizes with up positive, JEO in
+ * whole sizes with down positive. Rectangle -> CapCut Rectangle, ellipse ->
+ * CapCut Circle (its width and height are set separately, so ovals work too).
+ */
+function maskOf({
+	element,
+	asset,
+}: {
+	element: TimelineElement;
+	asset: { width?: number; height?: number };
+}): Record<string, unknown> | undefined {
+	const mask = "masks" in element ? element.masks?.[0] : undefined;
+	if (!mask || (mask.type !== "rectangle" && mask.type !== "ellipse")) return undefined;
+	const params = mask.params;
+	const sourceWidth = params.width * (asset.width ?? 1080);
+	const sourceHeight = params.height * (asset.height ?? 1920);
+	return {
+		shape: mask.type === "ellipse" ? "circle" : "rectangle",
+		centerX: 2 * params.centerX,
+		centerY: -2 * params.centerY,
+		width: params.width * params.scale,
+		height: params.height * params.scale,
+		rotation: params.rotation,
+		feather: featherToShare({ pixels: params.feather, maskWidth: sourceWidth, maskHeight: sourceHeight }),
+		invert: params.inverted,
+	};
+}
+
 export interface CapCutExportResult {
 	ok: boolean;
 	error?: string;
@@ -149,6 +182,7 @@ export async function openInCapCut({
 			mediaWidth: asset.width,
 			mediaHeight: asset.height,
 			mediaDuration: asset.duration ?? 0,
+			mask: maskOf({ element, asset }),
 		});
 	};
 	for (const element of tracks.main.elements) {

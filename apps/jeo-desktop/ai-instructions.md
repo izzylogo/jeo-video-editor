@@ -88,3 +88,11 @@ from the others, not the same line reworded. Then say in one line what each opti
 When a person moves while their tag or their line of dialogue is on screen, make the text follow them:
 `follow_head` with the text's id. For a tag (above the head) use the default. For dialogue (under the
 mouth) pass `offsetBelow: -110`. Put the text in the right place at its first frame before calling it.
+
+## Spotlights are made with masks
+
+Whenever a spotlight is wanted (usually on the freeze frame, to point at an object or a face), make it
+with masks, never with a dark overlay picture: call `add_arrow` with `spotlight {x, y, radius}` in
+frame pixels. It puts a soft Rectangle mask on the clip and darkens it, then lays a copy on top with a
+Circle mask at full brightness, so the circle is lit, the rectangle around it is dim and the rest is
+black. This is exactly how the user builds it in CapCut, and it goes across to CapCut as real masks.

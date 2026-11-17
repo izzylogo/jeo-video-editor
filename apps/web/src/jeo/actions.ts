@@ -29,7 +29,10 @@ import { getDesktopBridge, type JeoAssetFile } from "@/services/desktop/bridge";
 import { generateUUID } from "@/utils/id";
 import { type MediaTime, TICKS_PER_SECOND } from "@/wasm";
 import { JEO_FLASH, JEO_SHAKE, JEO_SPLIT } from "./post-fx";
-import { JEO_ARROW, JEO_SPOTLIGHT } from "./graphics";
+import { JEO_ARROW } from "./graphics";
+import { buildDefaultMaskInstance } from "@/masks";
+import type { EllipseMask, RectangleMask } from "@/masks/types";
+import { buildEmptyTrack } from "@/timeline/placement/track-factory";
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; message: string };
 
@@ -310,18 +313,20 @@ export function addTag({ preset }: { preset: TagPreset }): ActionResult {
 				}),
 			);
 			break;
-		case "arrow-spotlight":
-			items.push(
-				graphicItem({
-					definitionId: JEO_SPOTLIGHT,
-					name: "Spotlight",
-					start,
-					durationSeconds: 2,
-					params: { "transform.scaleX": 1, "transform.scaleY": 1.3334 },
-				}),
-				arrow(-130, 130),
-			);
+		case "arrow-spotlight": {
+			// the spotlight is built with masks on the freeze frame (as in CapCut)
+			const size = editor().project.getActive()?.settings.canvasSize ?? { width: 1080, height: 1440 };
+			const lit = addMaskSpotlight({
+				start: start / TICKS_PER_SECOND,
+				durationSeconds: 2,
+				x: size.width / 2,
+				y: size.height / 2,
+				radius: size.width * 0.14,
+			});
+			if (!lit.ok) return lit;
+			items.push(arrow(-130, 130));
 			break;
+		}
 	}
 
 	insertAll({ items });
@@ -702,6 +707,161 @@ export async function addFreeze({
 	}
 	editor().playback.seek({ time: at });
 	return ok(`Freeze added: ${holdSeconds.toFixed(1)} s. Now add a ▼ tag and a scene text on it.`);
+}
+
+// ---------- spotlight (built with masks, the way it is done in CapCut) ----------
+
+/** CapCut feather (0..1) <-> JEO feather (pixels of the clip): a share of the
+ * mask's half short side. Used both ways so an export lands where it started. */
+export function featherToPixels({ share, maskWidth, maskHeight }: { share: number; maskWidth: number; maskHeight: number }): number {
+	return Math.max(0, share) * 0.5 * Math.min(maskWidth, maskHeight);
+}
+export function featherToShare({ pixels, maskWidth, maskHeight }: { pixels: number; maskWidth: number; maskHeight: number }): number {
+	const half = 0.5 * Math.min(maskWidth, maskHeight);
+	return half > 0 ? Math.min(1, Math.max(0, pixels / half)) : 0;
+}
+
+/**
+ * A spotlight, the way the user builds it in CapCut:
+ *  1. the freeze frame gets a soft Rectangle mask and is made darker,
+ *  2. a copy of it goes on top with a Circle mask, at full brightness.
+ * Outside the rectangle the picture is black. x / y / radius are frame pixels.
+ * The clip is cut at the spotlight's start and end so only that part changes.
+ */
+export function addMaskSpotlight({
+	start,
+	durationSeconds,
+	x,
+	y,
+	radius,
+	darkness = 0.55,
+}: {
+	start: number;
+	durationSeconds: number;
+	x: number;
+	y: number;
+	radius: number;
+	darkness?: number;
+}): ActionResult {
+	const before = tracks();
+	const project = editor().project.getActive();
+	if (!before || !project) return fail("Open a project first.");
+	const from = seconds(start);
+	const to = toTime(from + seconds(Math.max(0.2, durationSeconds)));
+	const middle = toTime((from + to) / 2);
+	const covering = (sceneTracks: SceneTracks) =>
+		sceneTracks.main.elements.find(
+			(element) =>
+				(element.type === "video" || element.type === "image") &&
+				element.startTime <= middle &&
+				middle < element.startTime + element.duration,
+		);
+	const clip = covering(before);
+	if (!clip) return fail("Put the spotlight over a clip on the main track (your freeze frame).");
+
+	// cut the clip where the spotlight starts and ends
+	let cuts = 0;
+	for (const at of [from, to]) {
+		const now = tracks();
+		const piece = now ? covering(now) : undefined;
+		if (!now || !piece) break;
+		const frame = frameTicks();
+		if (at > piece.startTime + frame && at < piece.startTime + piece.duration - frame) {
+			editor().timeline.splitElements({
+				elements: [{ trackId: now.main.id, elementId: piece.id }],
+				splitTime: at,
+			});
+			cuts += 1;
+		}
+	}
+	const split = tracks();
+	const piece = split ? covering(split) : undefined;
+	for (let i = 0; i < cuts; i++) editor().command.undo();
+	if (!split || !piece || !("mediaId" in piece) || !("params" in piece)) {
+		return fail("Could not prepare the clip for the spotlight.");
+	}
+	const asset = editor()
+		.media.getAssets()
+		.find((item) => item.id === piece.mediaId);
+	if (!asset?.width || !asset.height) return fail("The clip's picture is missing.");
+
+	// where the clip sits on screen (fitted into the frame, then scaled and moved)
+	const { width: W, height: H } = project.settings.canvasSize;
+	const fit = Math.min(W / asset.width, H / asset.height);
+	const scaleX = Number(piece.params["transform.scaleX"] ?? 1) || 1;
+	const scaleY = Math.abs(Number(piece.params["transform.scaleY"] ?? scaleX) || scaleX);
+	const shownW = asset.width * fit * Math.abs(scaleX);
+	const shownH = asset.height * fit * scaleY;
+	const clipX = W / 2 + Number(piece.params["transform.positionX"] ?? 0);
+	const clipY = H / 2 + Number(piece.params["transform.positionY"] ?? 0);
+	let centerX = (x - clipX) / shownW;
+	const centerY = (y - clipY) / shownH;
+	if (scaleX < 0) centerX = -centerX;
+
+	// sizes as parts of the clip; the rectangle is about 2.2 x 3.2 circles
+	// (the proportions of the user's own spotlight in GIRLFRIEND EXPOSED)
+	const circle = { width: (2 * radius) / shownW, height: (2 * radius) / shownH };
+	const box = {
+		width: Math.min(1.2, (2.2 * 2 * radius) / shownW),
+		height: Math.min(1.2, (3.2 * 2 * radius) / shownH),
+	};
+	const sourcePixels = (share: { width: number; height: number }) => ({
+		maskWidth: share.width * asset.width!,
+		maskHeight: share.height * asset.height!,
+	});
+	const rectangleMask = buildDefaultMaskInstance({ maskType: "rectangle" }) as RectangleMask;
+	rectangleMask.params = {
+		...rectangleMask.params,
+		centerX,
+		centerY,
+		...box,
+		rotation: 0,
+		scale: 1,
+		inverted: false,
+		feather: featherToPixels({ share: 0.58, ...sourcePixels(box) }),
+	};
+	const circleMask = buildDefaultMaskInstance({ maskType: "ellipse" }) as EllipseMask;
+	circleMask.params = {
+		...circleMask.params,
+		centerX,
+		centerY,
+		...circle,
+		rotation: 0,
+		scale: 1,
+		inverted: false,
+		feather: featherToPixels({ share: 0.21, ...sourcePixels(circle) }),
+	};
+
+	const dark = {
+		...piece,
+		masks: [rectangleMask],
+		params: { ...piece.params, opacity: Math.min(1, Math.max(0.1, 1 - darkness)) },
+	} as TimelineElement;
+	const light = {
+		...piece,
+		id: generateUUID(),
+		name: "Spotlight",
+		masks: [circleMask],
+		params: { ...piece.params, opacity: 1, muted: true },
+	} as TimelineElement;
+	const lightTrack = {
+		...buildEmptyTrack({ id: generateUUID(), type: "video", name: "Spotlight" }),
+		elements: [light],
+	} as SceneTracks["overlay"][number];
+
+	const after: SceneTracks = {
+		// the light goes just above the main row, under texts and tags
+		overlay: [...split.overlay, lightTrack],
+		main: {
+			...split.main,
+			elements: split.main.elements.map((element) =>
+				element.id === piece.id ? dark : element,
+			) as typeof split.main.elements,
+		},
+		audio: split.audio,
+	};
+	editor().command.execute({ command: new TracksSnapshotCommand({ before, after }) });
+	return ok("Spotlight added: a dark rectangle with a bright circle. Drag the circle in the Masks tab to move it.");
 }
 
 // ---------- endings ----------

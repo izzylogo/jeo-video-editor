@@ -332,4 +332,12 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - Fixed: a spotlight added by Claude read its size in pixels as a percentage (150 px became 150 %).
 - Not checked: opening the exported mask inside CapCut 9.8 itself. JEO's spotlight only darkens to 65 %; in CapCut the outside goes fully black (your own way).
 
+## Round 18: spotlights made with masks (17 Nov 2026)
+
+- **Your method, built in.** A spotlight now (1) puts a soft Rectangle mask on the freeze frame and makes it darker (45 % bright), then (2) lays a copy of the freeze frame on top with a Circle mask at full brightness. Circle lit, rectangle dim, everything else black. Sizes and softness follow your GIRLFRIEND EXPOSED spotlight (rectangle about 2.2 x 3.2 circles, soft edges 0.58 and 0.21).
+- Used by Claude (add_arrow with a spotlight, and it is told to always make spotlights this way) and by Tags -> "Arrow + spotlight". If the spotlight is shorter than the clip, the clip is cut at its start and end. One undo removes it.
+- **To CapCut:** masks on clips now go across as CapCut masks (JEO rectangle -> Rectangle, ellipse -> Circle), with the darker clip's opacity. Checked by drawing the CapCut project's own numbers next to JEO's picture: same place, same look.
+- Old spotlights made before this (the dark picture) still export as a circle mask.
+- Not checked inside CapCut 9.8 itself. JEO draws one mask per clip, which is why the circle is a second layer (CapCut could hold both on one clip).
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

@@ -774,25 +774,15 @@ function addArrow(args: Args): ToolResult {
 	const items: InsertElementParams[] = [];
 	const spotlight = args.spotlight as Args | undefined;
 	if (spotlight && typeof spotlight === "object") {
-		items.push(
-			actions.graphicItem({
-				definitionId: JEO_SPOTLIGHT,
-				name: "Spotlight",
-				start,
-				durationSeconds,
-				params: {
-					"transform.scaleX": 1,
-					"transform.scaleY": height / width,
-					holeX: ((num(spotlight.x, width / 2) - width / 2) / width) * 100,
-					holeY: ((num(spotlight.y, height / 2) - height / 2) / height) * 100,
-					// radius comes in frame pixels; the graphic wants % of the width
-					radius:
-						spotlight.radius === undefined
-							? 24
-							: Math.min(80, Math.max(4, (num(spotlight.radius, 260) / width) * 100)),
-				},
-			}),
-		);
+		// spotlights are built with masks on the clip (dark rectangle + bright circle)
+		const lit = actions.addMaskSpotlight({
+			start: num(args.start, 0),
+			durationSeconds,
+			x: num(spotlight.x, width / 2),
+			y: num(spotlight.y, height / 2),
+			radius: num(spotlight.radius, width * 0.14),
+		});
+		if (!lit.ok) return { ok: false, error: lit.message ?? "Could not add the spotlight." };
 	}
 	const { px, py } = toPosition({ x: num(args.x, width / 2), y: num(args.y, height / 2) });
 	items.push(
