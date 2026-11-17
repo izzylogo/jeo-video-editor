@@ -324,4 +324,12 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **Tabs in one sliding row.** The AI tab stands alone on the left and never moves. The other tabs slide: a small round arrow appears on the side where tabs are hidden, the mouse wheel slides the row, there is a thin slider bar under it, and choosing a tab brings it into view.
 - Tested in a test window: arrows appear and work, AI did not move by a pixel, every menu entry is listed. Not tested by hand: Import media and Quit from the menu.
 
+## Round 17: spotlight and colour flash in CapCut (17 Nov 2026)
+
+- **How CapCut does masks** (read from GIRLFRIEND EXPOSED, read only): a mask is a `common_mask` material (Circle, Rectangle...) that the clip points at. Its centre is in half-sizes of the clip (-1 to 1, up is positive), its width and height are parts of the clip, plus feather, round corners and invert. A clip can carry more than one mask. Outside the mask the clip is see-through, so on the main row it shows black.
+- **Spotlight -> Circle mask.** Open in CapCut cuts the clip where the spotlight starts and ends and puts a Circle mask on that part, at the same spot and size. Checked on the numbers: the mask lands at the same pixel and size as JEO's light.
+- **Colour flash -> "(ADD C.F)"** scene text at that moment in the CapCut project, as a reminder to add CapCut's flash.
+- Fixed: a spotlight added by Claude read its size in pixels as a percentage (150 px became 150 %).
+- Not checked: opening the exported mask inside CapCut 9.8 itself. JEO's spotlight only darkens to 65 %; in CapCut the outside goes fully black (your own way).
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

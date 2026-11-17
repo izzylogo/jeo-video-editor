@@ -75,11 +75,19 @@ def library():
     global _LIBRARY
     if _LIBRARY is not None:
         return _LIBRARY
-    found = {"video_effects": {}, "transitions": {}, "effect_segment": None, "effect_track": None}
+    found = {"video_effects": {}, "transitions": {}, "masks": {}, "effect_segment": None, "effect_track": None}
+    # the user's projects, plus the copies CapCut keeps of cloud projects
+    folders = []
     for name in os.listdir(DRAFTS):
         if name.startswith("JEO "):
             continue
-        path = os.path.join(DRAFTS, name, "draft_content.json")
+        folder = os.path.join(DRAFTS, name)
+        if name.startswith(".cloud_cache_") and os.path.isdir(folder):
+            folders += [os.path.join(folder, inner) for inner in os.listdir(folder)]
+        else:
+            folders.append(folder)
+    for folder in folders:
+        path = os.path.join(folder, "draft_content.json")
         if not os.path.isfile(path):
             continue
         try:
@@ -91,6 +99,11 @@ def library():
             for item in materials.get(kind) or []:
                 if item.get("name") and os.path.exists(item.get("path") or "") and item["name"] not in found[kind]:
                     found[kind][item["name"]] = item
+        # masks (circle, rectangle...), by shape, if CapCut still has the shape
+        for item in materials.get("common_mask") or []:
+            shape = item.get("resource_type")
+            if shape and os.path.exists(item.get("path") or "") and shape not in found["masks"]:
+                found["masks"][shape] = item
         if found["effect_segment"] is None:
             for track in content.get("tracks") or []:
                 if track.get("type") == "effect" and track.get("segments"):
@@ -321,6 +334,45 @@ class Draft:
         )
         return segment
 
+    # ----- spotlight = a circle mask on the clip (outside the circle goes black) -----
+    def add_spotlight_mask(self, segment, clip, spot):
+        template = library()["masks"].get("circle")
+        if template is None:
+            if "spotlight" not in " ".join(self.warnings):
+                self.warnings.append("spotlight (use CapCut's Circle mask once on any clip, then export again)")
+            return
+        # the clip as shown: fitted into the frame, then scaled and moved
+        media_w = float(clip.get("mediaWidth") or self.width)
+        media_h = float(clip.get("mediaHeight") or self.height)
+        fit = min(self.width / media_w, self.height / media_h)
+        signed = float(clip.get("scale", 1))
+        shown_w = media_w * fit * abs(signed)
+        shown_h = media_h * fit * abs(float(clip.get("scaleY") or signed))
+        # CapCut: centre in half-sizes of the clip (-1..1, up is positive),
+        # size as a part of the clip (measured on the user's own project)
+        center_x = (float(spot["x"]) - float(clip.get("x", 0))) / (shown_w / 2)
+        center_y = -(float(spot["y"]) - float(clip.get("y", 0))) / (shown_h / 2)
+        if signed < 0:
+            center_x = -center_x
+        mask = copy.deepcopy(template)
+        mask["id"] = new_id()
+        mask["config"] = {
+            **(template.get("config") or {}),
+            "width": 2 * float(spot["radius"]) / shown_w,
+            "height": 2 * float(spot["radius"]) / shown_h,
+            "centerX": center_x,
+            "centerY": center_y,
+            "rotation": 0.0,
+            "feather": 0.3,
+            "expansion": 0.0,
+            "roundCorner": 0.0,
+            "invert": False,
+            "aspectRatio": 1.0,
+        }
+        self.materials.setdefault("common_mask", []).append(mask)
+        segment["extra_material_refs"].append(mask["id"])
+        segment["enable_video_mask"] = True
+
     def add_transition(self, item, main_segments):
         """A transition belongs to the clip that ends on the cut."""
         source = library()["transitions"].get(self.TRANSITION_NAMES.get(item.get("style")))
@@ -479,6 +531,39 @@ class Draft:
         return segment
 
 
+def split_at(clips, times):
+    """Cut clips where a spotlight starts or ends, so only that part is masked."""
+    result = []
+    for clip in clips:
+        pieces = [clip]
+        for at in sorted(set(times)):
+            piece = pieces[-1]
+            start, end = piece["start"], piece["start"] + piece["duration"]
+            if not (start + 0.05 < at < end - 0.05):
+                continue
+            offset = at - start
+            speed = float(piece.get("speed", 1))
+            left = {**piece, "duration": offset}
+            right = {
+                **piece,
+                "start": at,
+                "duration": end - at,
+                "sourceIn": float(piece.get("sourceIn", 0)) + offset * speed,
+                # the right part's animation starts later
+                "keyframes": {
+                    name: [[t - offset, v] for t, v in points if t >= offset]
+                    for name, points in (piece.get("keyframes") or {}).items()
+                },
+            }
+            left["keyframes"] = {
+                name: [[t, v] for t, v in points if t <= offset]
+                for name, points in (piece.get("keyframes") or {}).items()
+            }
+            pieces[-1:] = [left, right]
+        result += pieces
+    return result
+
+
 def lay_out_rows(items):
     """Things that overlap in time need separate tracks."""
     rows = []
@@ -515,9 +600,20 @@ def main():
         return {"ok": False, "error": f"A media file is missing: {missing[0]}"}
 
     draft = Draft(pattern, data)
-    main_clips = [clip for clip in data["clips"] if not clip.get("overlay")]
+    spotlights = data.get("spotlights", [])
+    main_clips = split_at(
+        [clip for clip in data["clips"] if not clip.get("overlay")],
+        [edge for spot in spotlights for edge in (spot["start"], spot["start"] + spot["duration"])],
+    )
     overlay_clips = [clip for clip in data["clips"] if clip.get("overlay")]
-    main_segments = [draft.video_segment(clip, 0) for clip in sorted(main_clips, key=lambda c: c["start"])]
+    main_clips.sort(key=lambda c: c["start"])
+    main_segments = [draft.video_segment(clip, 0) for clip in main_clips]
+    for clip, segment in zip(main_clips, main_segments):
+        middle = clip["start"] + clip["duration"] / 2
+        for spot in spotlights:
+            if spot["start"] - 1e-3 <= middle <= spot["start"] + spot["duration"] + 1e-3:
+                draft.add_spotlight_mask(segment, clip, spot)
+                break
     effects = data.get("effects", [])
     for item in effects:
         if item.get("kind") == "transition":

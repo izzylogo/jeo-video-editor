@@ -9,8 +9,12 @@
  * animation (pop-up, growing/fading emoji, tags that follow a person), the
  * colour split and blur shake (as CapCut's own "RGB Distort" and "Shake"),
  * the Glare transition (as CapCut's "Glare II") and sounds.
- * What does not: colour flash, the other JEO effects and transitions, crop
- * boxes, arrows and spotlights. Those are listed back to the user.
+ * Spotlights become a CapCut circle mask on the clip underneath (the way the
+ * user builds them in CapCut: everything outside the circle goes black).
+ * A colour flash becomes a "(ADD C.F)" scene text at that moment, as a
+ * reminder to add CapCut's own flash there.
+ * What does not: the other JEO effects and transitions, crop boxes and
+ * arrows. Those are listed back to the user.
  */
 import { EditorCore } from "@/core";
 import type { TimelineElement } from "@/timeline";
@@ -153,6 +157,30 @@ export async function openInCapCut({
 
 	const texts: Array<Record<string, unknown>> = [];
 	const effects: Array<Record<string, unknown>> = [];
+	const spotlights: Array<Record<string, unknown>> = [];
+	const frameWidth = project.settings.canvasSize.width;
+	const frameHeight = project.settings.canvasSize.height;
+	/** a plain scene text in the house style (white, dark outline, centred) */
+	const sceneText = ({ text, start, duration }: { text: string; start: number; duration: number }) => ({
+		text,
+		start,
+		duration,
+		x: 0,
+		y: 0,
+		size: 5.478,
+		scale: 1,
+		rotation: 0,
+		opacity: 1,
+		keyframes: {},
+		triangle: false,
+		color: "#ffffff",
+		stroke: true,
+		strokeColor: "#000000",
+		bold: true,
+		italic: false,
+		underline: false,
+		align: "center",
+	});
 	for (const track of tracks.overlay) {
 		for (const element of track.elements as TimelineElement[]) {
 			if (element.type === "text") {
@@ -197,7 +225,16 @@ export async function openInCapCut({
 									element.params?.style === "glare"
 								? "transition"
 								: null;
-				if (kind) {
+				if (element.effectType === "jeo-flash") {
+					// CapCut's flash is not on this computer: leave a note in the video
+					texts.push(
+						sceneText({
+							text: "(ADD C.F)",
+							start: element.startTime / S,
+							duration: Math.max(element.duration / S, 0.5),
+						}),
+					);
+				} else if (kind) {
 					effects.push({
 						kind,
 						style: element.params?.style,
@@ -208,6 +245,24 @@ export async function openInCapCut({
 				} else {
 					leftOut.add(`effect: ${element.name}`);
 				}
+			} else if (element.type === "graphic" && element.definitionId === "jeo-spotlight") {
+				// where the light sits on screen, in frame pixels from the centre
+				// (graphics are fitted into the frame like clips: a square side
+				// of the frame's short edge, then stretched by its scale)
+				const side = Math.min(frameWidth, frameHeight);
+				const width = side * Math.abs(starting({ element, path: "transform.scaleX", fallback: 1 }));
+				const height = side * Math.abs(starting({ element, path: "transform.scaleY", fallback: 1 }));
+				spotlights.push({
+					start: element.startTime / S,
+					duration: element.duration / S,
+					x:
+						starting({ element, path: "transform.positionX", fallback: 0 }) +
+						(num(element.params.holeX, 0) / 100) * width,
+					y:
+						starting({ element, path: "transform.positionY", fallback: 0 }) +
+						(num(element.params.holeY, 0) / 100) * height,
+					radius: (num(element.params.radius, 24) / 100) * width,
+				});
 			} else if (element.type === "graphic") {
 				leftOut.add(`${element.name.toLowerCase()} graphic`);
 			} else {
@@ -285,6 +340,7 @@ export async function openInCapCut({
 			texts,
 			audio,
 			effects,
+			spotlights,
 			coverBase64,
 		},
 	});

@@ -785,7 +785,11 @@ function addArrow(args: Args): ToolResult {
 					"transform.scaleY": height / width,
 					holeX: ((num(spotlight.x, width / 2) - width / 2) / width) * 100,
 					holeY: ((num(spotlight.y, height / 2) - height / 2) / height) * 100,
-					radius: num(spotlight.radius, 24),
+					// radius comes in frame pixels; the graphic wants % of the width
+					radius:
+						spotlight.radius === undefined
+							? 24
+							: Math.min(80, Math.max(4, (num(spotlight.radius, 260) / width) * 100)),
 				},
 			}),
 		);
