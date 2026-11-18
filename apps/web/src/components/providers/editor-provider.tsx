@@ -8,6 +8,8 @@ import { useEditor } from "@/editor/use-editor";
 import { useKeybindingsListener } from "@/actions/use-keybindings";
 import { useKeybindingsStore } from "@/actions/keybindings-store";
 import { useTimelineStore } from "@/timeline/timeline-store";
+import { TabSwitchScreen } from "@/jeo/components/project-tabs";
+import { isBackgroundEditor, useProjectTabs } from "@/jeo/tabs";
 import { useEditorActions } from "@/actions/use-editor-actions";
 import { loadFontAtlas } from "@/fonts/google-fonts";
 import {
@@ -26,6 +28,7 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const { setLoadingProject } = useKeybindingsStore();
+	const hasTabs = useProjectTabs((state) => state.tabs.length > 0);
 
 	useEffect(() => {
 		setLoadingProject(isLoading);
@@ -98,6 +101,8 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 	}
 
 	if (isLoading) {
+		// JEO: switching tabs keeps the tab bar on screen while the project opens
+		if (hasTabs && !isBackgroundEditor()) return <TabSwitchScreen projectId={projectId} />;
 		return (
 			<div className="bg-background flex h-screen w-screen items-center justify-center">
 				<div className="flex flex-col items-center gap-4">

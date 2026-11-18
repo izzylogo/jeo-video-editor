@@ -8,10 +8,12 @@ const readline = require("node:readline");
 
 const PORT = Number(process.env.JEO_CONTROL_PORT || 0);
 const TOKEN = process.env.JEO_CONTROL_TOKEN || "";
+// the project this Claude works on (empty for the live link)
+const PROJECT = process.env.JEO_PROJECT_ID || "";
 
 function control(payload) {
 	return new Promise((resolve, reject) => {
-		const body = JSON.stringify(payload);
+		const body = JSON.stringify(PROJECT ? { ...payload, project: PROJECT } : payload);
 		const request = http.request(
 			{
 				host: "127.0.0.1",

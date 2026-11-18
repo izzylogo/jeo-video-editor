@@ -6,12 +6,15 @@ import { ChatRefsBar, refsForBubble, refsForClaude, useChatRefs } from "./chat-r
 import { useCallback, useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { useEditor } from "@/editor/use-editor";
+import { Clock01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	getDesktopBridge,
 	type JeoChatEvent,
 } from "@/services/desktop/bridge";
 import { generateUUID } from "@/utils/id";
 import { cn } from "@/utils/ui";
+import { isBackgroundEditor, isProjectBusy, useJobs } from "../tabs";
 
 type ChatRole = "user" | "assistant" | "tool" | "error";
 
@@ -24,6 +27,8 @@ interface ChatMessage {
 interface ChatStore {
 	isOpen: boolean;
 	isBusy: boolean;
+	/** place in line while waiting for a free Claude (0 = not waiting) */
+	queuePosition: number;
 	projectId: string | null;
 	sessionId: string | null;
 	messages: ChatMessage[];
@@ -43,13 +48,14 @@ interface ChatStore {
 export const useChatStore = create<ChatStore>((set) => ({
 	isOpen: false,
 	isBusy: false,
+	queuePosition: 0,
 	projectId: null,
 	sessionId: null,
 	messages: [],
 	toggle: () => set((state) => ({ isOpen: !state.isOpen })),
 	close: () => set({ isOpen: false }),
 	load: ({ projectId, sessionId, messages }) =>
-		set({ projectId, sessionId, messages, isBusy: false }),
+		set({ projectId, sessionId, messages, isBusy: false, queuePosition: 0 }),
 	add: (message) =>
 		set((state) => {
 			const last = state.messages[state.messages.length - 1];
@@ -83,62 +89,99 @@ function saveChat(): void {
 
 /**
  * Loads the project's chat and listens for Claude's replies. Mounted once for
- * the whole editor, so replies keep arriving while another tab is showing.
+ * the editor in the main window. Replies for a project whose tab is not
+ * showing are saved by the desktop app straight into that project's chat.
  */
 export function AiChatRuntime() {
 	const projectId = useEditor(
 		(editor) => editor.project.getActiveOrNull()?.metadata.id ?? null,
 	);
+	// events that arrive while the chat file is still loading
+	const pending = useRef<{ projectId: string; events: JeoChatEvent[] } | null>(null);
 
 	useEffect(() => {
 		const desktop = getDesktopBridge();
-		if (!desktop || !projectId) return;
+		if (!desktop || !projectId || isBackgroundEditor()) return;
 		let cancelled = false;
-		void desktop
-			.readChat({ projectId })
-			.then((json) => {
-				if (cancelled) return;
-				let saved: { sessionId?: string | null; messages?: ChatMessage[] } = {};
-				try {
-					saved = json ? JSON.parse(json) : {};
-				} catch {
-					saved = {};
-				}
-				useChatStore.getState().load({
-					projectId,
-					sessionId: saved.sessionId ?? null,
-					messages: Array.isArray(saved.messages) ? saved.messages : [],
-				});
-			})
-			.catch(() => {
-				if (!cancelled) {
-					useChatStore.getState().load({ projectId, sessionId: null, messages: [] });
-				}
+		pending.current = { projectId, events: [] };
+		void (async () => {
+			// tell the app this project is showing (Claude's replies come here
+			// now), then read what it saved while the tab was in the background
+			await desktop.setActiveProject?.({ projectId }).catch(() => {});
+			const json = await desktop.readChat({ projectId }).catch(() => null);
+			if (cancelled) return;
+			let saved: { sessionId?: string | null; messages?: ChatMessage[] } = {};
+			try {
+				saved = json ? JSON.parse(json) : {};
+			} catch {
+				saved = {};
+			}
+			useChatStore.getState().load({
+				projectId,
+				sessionId: saved.sessionId ?? null,
+				messages: Array.isArray(saved.messages) ? saved.messages : [],
 			});
+			const waiting = pending.current?.projectId === projectId ? pending.current.events : [];
+			pending.current = null;
+			for (const event of waiting) applyChatEvent(event);
+			if (waiting.length > 0) saveChat();
+			syncBusy();
+		})();
 		return () => {
 			cancelled = true;
+			// leaving this project: Claude's replies go to its chat file again
+			void desktop.setActiveProject?.({ projectId: null }).catch(() => {});
 		};
 	}, [projectId]);
 
 	useEffect(() => {
 		const desktop = getDesktopBridge();
-		if (!desktop) return;
+		if (!desktop || isBackgroundEditor()) return;
 		return desktop.onChatEvent((event: JeoChatEvent) => {
-			const store = useChatStore.getState();
-			if (event.type === "text") {
-				store.add({ role: "assistant", text: event.text });
-			} else if (event.type === "tool") {
-				store.add({ role: "tool", text: event.summary });
-			} else {
-				if (event.sessionId) store.setSession(event.sessionId);
-				if (event.error) store.add({ role: "error", text: event.error });
-				store.setBusy(false);
+			const waiting = pending.current;
+			if (waiting && (!event.projectId || event.projectId === waiting.projectId)) {
+				waiting.events.push(event);
+				return;
 			}
+			const showing = useChatStore.getState().projectId;
+			if (event.projectId && event.projectId !== showing) return;
+			applyChatEvent(event);
 			saveChat();
 		});
 	}, []);
 
+	// "Claude is working" follows the app's list of jobs
+	useEffect(() => {
+		if (isBackgroundEditor()) return;
+		syncBusy();
+		return useJobs.subscribe(syncBusy);
+	}, []);
+
 	return null;
+}
+
+function applyChatEvent(event: JeoChatEvent): void {
+	const store = useChatStore.getState();
+	if (event.type === "text") {
+		store.add({ role: "assistant", text: event.text });
+	} else if (event.type === "tool") {
+		store.add({ role: "tool", text: event.summary });
+	} else {
+		if (event.sessionId) store.setSession(event.sessionId);
+		if (event.error) store.add({ role: "error", text: event.error });
+		store.setBusy(false);
+	}
+}
+
+function syncBusy(): void {
+	const store = useChatStore.getState();
+	const jobs = useJobs.getState().state;
+	const job = store.projectId ? jobs.jobs[store.projectId] : undefined;
+	const busy = isProjectBusy(jobs, store.projectId);
+	const position = job?.status === "queued" ? job.position : 0;
+	if (store.isBusy !== busy || store.queuePosition !== position) {
+		useChatStore.setState({ isBusy: busy, queuePosition: position });
+	}
 }
 
 const EXAMPLES = [
@@ -158,19 +201,26 @@ export async function sendChatText({ text }: { text: string }): Promise<boolean>
 	const outcome = await desktop
 		.chatSend({ projectId: store.projectId, text, sessionId: store.sessionId })
 		.catch((error: unknown) => ({ ok: false, error: String(error) }));
+	return afterSend(outcome);
+}
+
+function afterSend(outcome: { ok: boolean; error?: string; queued?: boolean; position?: number }): boolean {
+	const store = useChatStore.getState();
 	if (!outcome.ok) {
 		store.add({ role: "error", text: outcome.error ?? "Could not reach Claude." });
 		store.setBusy(false);
 		saveChat();
 		return false;
 	}
+	if (outcome.queued) useChatStore.setState({ queuePosition: outcome.position ?? 1 });
 	return true;
 }
 
 /** The chat itself. Lives in the left panel as the "AI" tab. */
 export function AiChatView() {
-	const { isBusy, messages } = useChatStore();
-	const workingFor = useElapsedSeconds(isBusy);
+	const { isBusy, messages, queuePosition } = useChatStore();
+	const isWaiting = isBusy && queuePosition > 0;
+	const workingFor = useElapsedSeconds(isBusy && !isWaiting);
 	const [draft, setDraft] = useState("");
 	const listRef = useRef<HTMLDivElement>(null);
 	const desktop = getDesktopBridge();
@@ -196,11 +246,7 @@ export function AiChatView() {
 		const outcome = await desktop
 			.chatSend({ projectId: store.projectId, text: refsForClaude(refs) + text, sessionId: store.sessionId })
 			.catch((error: unknown) => ({ ok: false, error: String(error) }));
-		if (!outcome.ok) {
-			store.add({ role: "error", text: outcome.error ?? "Could not reach Claude." });
-			store.setBusy(false);
-			saveChat();
-		}
+		afterSend(outcome);
 	}, [desktop, draft]);
 
 	return (
@@ -281,8 +327,21 @@ export function AiChatView() {
 						role="status"
 						data-jeo="chat-working"
 					>
-						<Spinner className="text-primary size-3.5" />
-						Claude is working… <span className="tabular-nums">{workingFor} s</span>
+						{isWaiting ? (
+							<>
+								<HugeiconsIcon icon={Clock01Icon} className="text-primary size-3.5 shrink-0" aria-hidden />
+								<span>
+									Waiting for a free Claude (number{" "}
+									<span className="tabular-nums">{queuePosition}</span> in line). It
+									starts by itself, and you can switch tabs meanwhile.
+								</span>
+							</>
+						) : (
+							<>
+								<Spinner className="text-primary size-3.5" />
+								Claude is working… <span className="tabular-nums">{workingFor} s</span>
+							</>
+						)}
 					</div>
 				)}
 			</div>
@@ -313,7 +372,10 @@ export function AiChatView() {
 					{isBusy ? (
 						<button
 							type="button"
-							onClick={() => desktop?.chatStop()}
+							onClick={() => {
+								const projectId = useChatStore.getState().projectId;
+								if (projectId) void desktop?.chatStop({ projectId });
+							}}
 							className="bg-destructive text-destructive-foreground cursor-pointer rounded px-3 py-1 text-xs"
 						>
 							Stop

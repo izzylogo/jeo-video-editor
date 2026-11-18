@@ -132,6 +132,8 @@ export class ProjectManager {
 		}
 
 		this.editor.save.pause();
+		// JEO: undo steps belong to one project (a tab brings its own back)
+		this.editor.command.clear();
 		await this.ensureStorageMigrations();
 		this.editor.media.clearAllAssets();
 		this.editor.scenes.clearScenes();

@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "../ui/button";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -33,9 +33,10 @@ import {
 	Logout05Icon,
 } from "@hugeicons/core-free-icons";
 import { getDesktopBridge } from "@/services/desktop/bridge";
+import { ClaudeAtOnceChoices, ProjectTabs } from "@/jeo/components/project-tabs";
+import { leaveCurrentProject, newProjectTab, useProjectTabs } from "@/jeo/tabs";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "@/actions/components/shortcuts-dialog";
-import { cn } from "@/utils/ui";
 
 export function EditorHeader() {
 	return (
@@ -43,12 +44,12 @@ export function EditorHeader() {
 		// project name in the middle, the actions on the right. The category
 		// tabs (Media, Audio, Text…) are on the left panel, not up here.
 		<header data-jeo-titlebar className="bg-background relative flex h-10 shrink-0 items-center justify-between gap-2 px-2 max-[899px]:gap-1 max-[899px]:px-1.5">
-			<div className="flex min-w-0 items-center gap-1">
+			<div className="flex min-w-0 flex-1 items-center gap-1">
 				<ProjectDropdown />
 				<ProjectsButton />
-			</div>
-			<div className="absolute top-1/2 left-1/2 hidden -translate-x-1/2 -translate-y-1/2 min-[1180px]:block">
-				<EditableProjectName />
+				<span aria-hidden className="bg-border mx-1 h-4 w-px shrink-0" />
+				{/* JEO: one tab per open project; the tab shows the project's name */}
+				<ProjectTabs />
 			</div>
 			<nav className="flex shrink-0 items-center gap-1.5">
 				<div className="hidden min-[620px]:block">
@@ -79,7 +80,7 @@ function ProjectsButton() {
 		if (isLeaving) return;
 		setIsLeaving(true);
 		try {
-			await editor.project.prepareExit();
+			await leaveCurrentProject();
 		} catch (error) {
 			console.error("Failed to save before leaving the project:", error);
 		} finally {
@@ -117,8 +118,7 @@ function ProjectDropdown() {
 		setIsExiting(true);
 
 		try {
-			await editor.project.prepareExit();
-			editor.project.closeProject();
+			await leaveCurrentProject();
 		} catch (error) {
 			console.error("Failed to prepare project exit:", error);
 		} finally {
@@ -131,18 +131,8 @@ function ProjectDropdown() {
 	const applyLayout = usePanelStore((state) => state.applyLayout);
 	const setActiveTab = useAssetsPanelStore((state) => state.setActiveTab);
 
-	const handleNewProject = async () => {
-		if (isExiting) return;
-		setIsExiting(true);
-		try {
-			await editor.project.prepareExit();
-		} catch (error) {
-			console.error("Failed to save before starting a new project:", error);
-		}
-		editor.project.closeProject();
-		const projectId = await editor.project.createNewProject({ name: "New project" });
-		router.push(`/editor/${projectId}`);
-	};
+	// a new project opens in its own tab; this one stays open in its tab
+	const handleNewProject = () => void newProjectTab({ navigate: router.push });
 
 	// save first, then close the window
 	const handleQuit = async () => {
@@ -184,6 +174,7 @@ function ProjectDropdown() {
 				await editor.project.deleteProjects({
 					ids: [activeProject.metadata.id],
 				});
+				useProjectTabs.getState().removeTab(activeProject.metadata.id);
 				router.push("/projects");
 			} catch (error) {
 				toast.error("Failed to delete project", {
@@ -259,6 +250,14 @@ function ProjectDropdown() {
 							)}
 						</DropdownMenuSubContent>
 					</DropdownMenuSub>
+					{getDesktopBridge()?.setMaxJobs && (
+						<DropdownMenuSub>
+							<DropdownMenuSubTrigger>Claude</DropdownMenuSubTrigger>
+							<DropdownMenuSubContent className="z-100 w-60">
+								<ClaudeAtOnceChoices />
+							</DropdownMenuSubContent>
+						</DropdownMenuSub>
+					)}
 					<DropdownMenuSub>
 						<DropdownMenuSubTrigger>Edit</DropdownMenuSubTrigger>
 						<DropdownMenuSubContent className="z-100 w-52">
@@ -351,79 +350,3 @@ function ProjectDropdown() {
 	);
 }
 
-function EditableProjectName() {
-	const editor = useEditor();
-	const activeProject = useEditor((e) => e.project.getActive());
-	const [isEditing, setIsEditing] = useState(false);
-	const inputRef = useRef<HTMLInputElement>(null);
-	const originalNameRef = useRef("");
-
-	const projectName = activeProject?.metadata.name || "";
-
-	const startEditing = () => {
-		if (isEditing) return;
-		originalNameRef.current = projectName;
-		setIsEditing(true);
-
-		requestAnimationFrame(() => {
-			inputRef.current?.select();
-		});
-	};
-
-	const saveEdit = async () => {
-		if (!inputRef.current || !activeProject) return;
-		const newName = inputRef.current.value.trim();
-		setIsEditing(false);
-
-		if (!newName) {
-			inputRef.current.value = originalNameRef.current;
-			return;
-		}
-
-		if (newName !== originalNameRef.current) {
-			try {
-				await editor.project.renameProject({
-					id: activeProject.metadata.id,
-					name: newName,
-				});
-			} catch (error) {
-				toast.error("Failed to rename project", {
-					description:
-						error instanceof Error ? error.message : "Please try again",
-				});
-			}
-		}
-	};
-
-	const handleKeyDown = (event: React.KeyboardEvent) => {
-		if (event.key === "Enter") {
-			event.preventDefault();
-			inputRef.current?.blur();
-		} else if (event.key === "Escape") {
-			event.preventDefault();
-			if (inputRef.current) {
-				inputRef.current.value = originalNameRef.current;
-				inputRef.current.setSelectionRange(0, 0);
-			}
-			setIsEditing(false);
-			inputRef.current?.blur();
-		}
-	};
-
-	return (
-		<input
-			ref={inputRef}
-			type="text"
-			defaultValue={projectName}
-			readOnly={!isEditing}
-			onClick={startEditing}
-			onBlur={saveEdit}
-			onKeyDown={handleKeyDown}
-			style={{ fieldSizing: "content" }}
-			className={cn(
-				"text-[0.82rem] h-7 px-2 py-1 text-center font-medium rounded-sm bg-transparent outline-none cursor-pointer hover:bg-accent hover:text-accent-foreground",
-				isEditing && "ring-1 ring-ring cursor-text hover:bg-transparent",
-			)}
-		/>
-	);
-}

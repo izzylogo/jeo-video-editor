@@ -47,8 +47,20 @@ export interface JeoDesktopBridge {
 		projectId: string;
 		text: string;
 		sessionId: string | null;
-	}): Promise<{ ok: boolean; error?: string }>;
-	chatStop(): Promise<void>;
+	}): Promise<{ ok: boolean; error?: string; queued?: boolean; position?: number }>;
+	chatStop(args?: { projectId?: string }): Promise<void>;
+	/** Claude jobs (one per project, several at once). */
+	getJobs?(): Promise<JeoJobsState>;
+	onJobs?(listener: (state: JeoJobsState) => void): () => void;
+	jobSeen?(args: { projectId: string }): Promise<void>;
+	setMaxJobs?(args: { value: number }): Promise<number>;
+	/** The main window tells the app which project it shows (null = switching). */
+	setActiveProject?(args: { projectId: string | null }): Promise<void>;
+	releaseProject?(args: { projectId: string }): Promise<boolean>;
+	/** The main window saved the project it left. */
+	leftProject?(args: { projectId: string }): Promise<void>;
+	claimProject?(args: { projectId: string }): Promise<boolean>;
+	onProjectChangedElsewhere?(listener: (info: { projectId: string }) => void): () => void;
 	onChatEvent(listener: (event: JeoChatEvent) => void): () => void;
 	/** Fires when a newer build of the editor is ready; items = what's new. */
 	onUpdateReady(listener: (items: string[]) => void): () => void;
@@ -163,10 +175,29 @@ export interface CapCutPlan {
 	missing: string[];
 }
 
-export type JeoChatEvent =
+export type JeoChatEvent = (
 	| { type: "text"; text: string }
 	| { type: "tool"; name: string; summary: string }
-	| { type: "done"; sessionId: string | null; error?: string };
+	| { type: "done"; sessionId: string | null; error?: string }
+) & { projectId?: string };
+
+export type JeoJobStatus = "queued" | "working" | "done" | "error" | "stopped";
+
+export interface JeoJob {
+	status: JeoJobStatus;
+	startedAt: number | null;
+	finishedAt: number | null;
+	unread: boolean;
+	/** place in the queue (1 = next), 0 when not queued */
+	position: number;
+	error: string | null;
+}
+
+export interface JeoJobsState {
+	jobs: Record<string, JeoJob>;
+	maxJobs: number;
+	running: number;
+}
 
 export type JeoAssetKind = "music" | "sound-effects" | "emoji";
 

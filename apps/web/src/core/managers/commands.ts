@@ -10,6 +10,12 @@ interface CommandHistoryEntry {
 	selectionOverride?: EditorSelectionSnapshot;
 }
 
+/** A project's undo and redo steps, kept while its tab is in the background. */
+export interface CommandHistorySnapshot {
+	history: CommandHistoryEntry[];
+	redo: CommandHistoryEntry[];
+}
+
 export class CommandManager {
 	public isRippleEnabled = false;
 	private history: CommandHistoryEntry[] = [];
@@ -99,6 +105,16 @@ export class CommandManager {
 	clear(): void {
 		this.history = [];
 		this.redoStack = [];
+	}
+
+	// JEO: each project tab keeps its own undo steps while another tab shows
+	exportHistory(): CommandHistorySnapshot {
+		return { history: [...this.history], redo: [...this.redoStack] };
+	}
+
+	importHistory(snapshot: CommandHistorySnapshot): void {
+		this.history = [...snapshot.history];
+		this.redoStack = [...snapshot.redo];
 	}
 
 	private getSelectionSnapshot(): EditorSelectionSnapshot {

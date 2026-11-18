@@ -15,7 +15,24 @@ contextBridge.exposeInMainWorld("jeoDesktop", {
 	showAssetsFolder: (args) => ipcRenderer.invoke("jeo:showAssetsFolder", args),
 	trackPoint: (args) => ipcRenderer.invoke("jeo:trackPoint", args),
 	chatSend: (args) => ipcRenderer.invoke("jeo:chatSend", args),
-	chatStop: () => ipcRenderer.invoke("jeo:chatStop"),
+	chatStop: (args) => ipcRenderer.invoke("jeo:chatStop", args || {}),
+	getJobs: () => ipcRenderer.invoke("jeo:jobs"),
+	jobSeen: (args) => ipcRenderer.invoke("jeo:jobSeen", args),
+	setMaxJobs: (args) => ipcRenderer.invoke("jeo:setMaxJobs", args),
+	setActiveProject: (args) => ipcRenderer.invoke("jeo:activeProject", args),
+	releaseProject: (args) => ipcRenderer.invoke("jeo:releaseProject", args),
+	leftProject: (args) => ipcRenderer.invoke("jeo:leftProject", args),
+	claimProject: (args) => ipcRenderer.invoke("jeo:claimProject", args),
+	onJobs: (listener) => {
+		const handler = (_event, state) => listener(state);
+		ipcRenderer.on("jeo:jobs", handler);
+		return () => ipcRenderer.removeListener("jeo:jobs", handler);
+	},
+	onProjectChangedElsewhere: (listener) => {
+		const handler = (_event, info) => listener(info);
+		ipcRenderer.on("jeo:projectChangedElsewhere", handler);
+		return () => ipcRenderer.removeListener("jeo:projectChangedElsewhere", handler);
+	},
 	onChatEvent: (listener) => {
 		const handler = (_event, payload) => listener(payload);
 		ipcRenderer.on("jeo:chatEvent", handler);

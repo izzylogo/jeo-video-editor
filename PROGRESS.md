@@ -368,3 +368,13 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **Reference clips in the AI chat:** select a clip, press "+ Reference the selected clip" (chips you can remove), or right-click → Ask Claude about this clip. Claude gets the clip id, kind, row and times; the bubble shows a short label.
 
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.
+
+## Round 21: project tabs and Claude in the background (18 Nov 2026)
+
+- **Project tabs** at the top, after Projects: one tab per open project. Click to switch; the project you leave is saved first. **+** starts a new project or opens one you already have in a new tab. **×** closes a tab (the project stays in Projects). Middle-click also closes. Ctrl+Tab / Ctrl+Shift+Tab go to the next / previous tab. Tabs are remembered when you restart.
+- **Each tab keeps its own undo steps and playhead.** Going back to a tab brings them back (tested: undo still worked, playhead came back at 3 s).
+- **Claude keeps working when you switch tabs.** Send a message in project A, switch to B: Claude goes on editing A in a hidden copy of the editor, its replies are saved in A's chat, and the hidden copy saves and closes when Claude finishes. You see A again with Claude's changes in it.
+- **Several Claudes at once:** 2 by default. More messages wait in line and start by themselves. Change it in Menu → Claude (1 to 4), or click the small counter (spinner + "1/2") next to the tabs.
+- **Icons on each tab:** spinning ring = Claude working, clock + number = waiting its turn, tick = finished (not looked at yet), warning sign = stopped with a problem. Hovering a tab says it in words. A tab can't be closed while Claude works on it.
+- **One rule:** if Claude changed a project while it was in the background, that tab's old undo steps are dropped (undoing them would undo Claude's work in a confusing way). Claude's own changes can still be undone after you open the tab.
+- **Tested** with a pretend Claude (a test switch, so your Claude plan was not used): Claude edited project A in the background while B was showing, B's message waited (limit set to 1 for the test) and started by itself, the tick appeared on A, and A had Claude's 3 texts and its chat replies when opened. Not yet tried with the real Claude.

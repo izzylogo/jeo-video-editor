@@ -42,6 +42,21 @@ const EVAL_FILE = argValue("eval-file");
 const CAPTURE_DELAY = Number(argValue("capture-delay") || 8000);
 const FORCE_DEV = process.argv.includes("--dev");
 
+// tests only: every window's console messages go to this file
+if (process.env.JEO_CONSOLE_LOG) {
+	app.on("web-contents-created", (_event, contents) => {
+		contents.on("console-message", (_e, level, message, line, source) => {
+			try {
+				fs.appendFileSync(
+					process.env.JEO_CONSOLE_LOG,
+					`[${contents.id}:${level}] ${message} (${String(source).slice(-60)}:${line})
+`,
+				);
+			} catch {}
+		});
+	});
+}
+
 // A video editor should never have its preview sound blocked.
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 // tests only: a pretend microphone, so voice recording can be checked
@@ -550,14 +565,21 @@ function registerIpc() {
 
 	// ---- AI chat history, kept in the project folder ----
 	ipcMain.handle("jeo:readChat", async (_event, { projectId }) => {
+		// wait for any chat lines a background job is still writing
+		await jobs.chatSettled(projectId);
 		const dir = await findProjectDir({ id: projectId });
 		if (!dir) return null;
 		return await fsp.readFile(path.join(dir, "chat.json"), "utf8").catch(() => null);
 	});
 
-	ipcMain.handle("jeo:writeChat", async (_event, { projectId, json }) => {
-		const dir = await ensureProjectDir({ id: projectId });
-		await writeFileAtomic(path.join(dir, "chat.json"), String(json));
+	ipcMain.handle("jeo:writeChat", async (event, { projectId, json }) => {
+		// only the main window writes chats; a hidden background editor never does
+		if (!mainWindow || event.sender !== mainWindow.webContents) return;
+		// one writer at a time per project (background jobs write here too)
+		await jobs.queueChatWrite(projectId, async () => {
+			const dir = await ensureProjectDir({ id: projectId });
+			await writeFileAtomic(path.join(dir, "chat.json"), String(json));
+		});
 	});
 
 	ipcMain.handle("jeo:updateNow", async (_event, args) => restartForUpdate(args || {}));
@@ -585,8 +607,19 @@ function registerIpc() {
 		codeFolder: REPO_ROOT,
 		commit: (await git(["log", "-1", "--format=%h %cs %s"])).out,
 	}));
-	ipcMain.handle("jeo:chatSend", async (_event, args) => chatSend(args));
-	ipcMain.handle("jeo:chatStop", async () => chatStop());
+	// AI chat: one job per project, several at once (jobs.cjs)
+	ipcMain.handle("jeo:chatSend", async (_event, args) => jobs.send(args || {}));
+	ipcMain.handle("jeo:chatStop", async (_event, args) => jobs.stop(args && args.projectId));
+	ipcMain.handle("jeo:jobs", async () => jobs.snapshot());
+	ipcMain.handle("jeo:jobSeen", async (_event, { projectId }) => jobs.seen(projectId));
+	ipcMain.handle("jeo:setMaxJobs", async (_event, { value }) => jobs.setMaxJobs(value));
+	ipcMain.handle("jeo:activeProject", async (event, { projectId }) => {
+		// only the main window says what the user is looking at
+		if (mainWindow && event.sender === mainWindow.webContents) await jobs.setMainProject(projectId || null);
+	});
+	ipcMain.handle("jeo:releaseProject", async (_event, { projectId }) => jobs.releaseProject(projectId));
+	ipcMain.handle("jeo:leftProject", async (_event, { projectId }) => jobs.leftProject(projectId));
+	ipcMain.handle("jeo:claimProject", async (_event, { projectId }) => jobs.claimProject(projectId));
 
 	ipcMain.handle("jeo:showProjectFolder", async (_event, { id }) => {
 		const dir = (await findProjectDir({ id })) || PROJECTS_DIR;
@@ -669,12 +702,12 @@ function waitForEditor({ id, timeoutMs = 45000 }) {
 	return mainWindow.webContents.executeJavaScript(script, true).catch(() => false);
 }
 
-async function callAppTool(tool, args) {
+async function callAppTool(tool, args, project = null) {
 	const run = (script) => mainWindow.webContents.executeJavaScript(script, true);
 	const activeId = await run(`window.__jeoEditor?.project?.getActiveOrNull?.()?.metadata.id ?? null`).catch(() => null);
 	if (tool === "list_projects") {
 		const projects = await projectsOnDisk();
-		return { ok: true, result: { open: activeId, projects } };
+		return { ok: true, result: { open: project || activeId, projects } };
 	}
 	if (tool === "open_project") {
 		const projects = await projectsOnDisk();
@@ -711,7 +744,7 @@ async function callAppTool(tool, args) {
 		if (!stat || !stat.isFile()) return { ok: false, error: `File not found: ${full}` };
 		if (stat.size > 1024 * 1024 * 1024) return { ok: false, error: "That file is over 1 GB; bring it in with the Import button instead." };
 		liveMediaAllowed.add(full);
-		return await callEditor({ tool: "import_media_file", args: { path: full, name: path.basename(full) } });
+		return await callEditor({ tool: "import_media_file", args: { path: full, name: path.basename(full) }, project });
 	}
 	return null;
 }
@@ -721,8 +754,12 @@ async function callEditor(payload) {
 		return { ok: false, error: "The JEO Editor window is closed." };
 	}
 	if (!payload.list && APP_TOOLS.some((tool) => tool.name === payload.tool)) {
+		// a Claude job inside one project's tab must not open other projects
+		if (payload.project && (payload.tool === "open_project" || payload.tool === "new_project")) {
+			return { ok: false, error: "You are working inside one project's tab. Tell the user to open the other project in its own tab." };
+		}
 		try {
-			return await callAppTool(payload.tool, payload.args || {});
+			return await callAppTool(payload.tool, payload.args || {}, payload.project || null);
 		} catch (error) {
 			return { ok: false, error: String(error && error.message ? error.message : error) };
 		}
@@ -738,16 +775,16 @@ async function callEditor(payload) {
 			return { tools: APP_TOOLS };
 		}
 	}
-	const script = payload.list
-		? `(() => ({ tools: window.__jeoControl ? window.__jeoControl.listTools() : [] }))()`
-		: `(async () => window.__jeoControl
+	const script = `(async () => window.__jeoControl
 				? await window.__jeoControl.callTool(${JSON.stringify({
 						name: String(payload.tool || ""),
 						args: payload.args || {},
 					})})
 				: { ok: false, error: "Open a project in JEO Editor first." })()`;
 	try {
-		return await mainWindow.webContents.executeJavaScript(script, true);
+		// a Claude job edits its own project: the main window if it shows it,
+		// otherwise a hidden background editor (jobs.cjs)
+		return await jobs.runIn(payload.project || null, (contents) => contents.executeJavaScript(script, true));
 	} catch (error) {
 		return { ok: false, error: String(error && error.message ? error.message : error) };
 	}
@@ -813,12 +850,18 @@ function startControlServer() {
 // ---------- AI chat: Claude Code, headless ----------
 
 const STYLE_FILE = path.join(DATA_ROOT, "style", "your-style.md");
-let chatProcess = null;
-let chatStopped = false;
+const jobs = require("./jobs.cjs");
 
-function sendChatEvent(event) {
-	if (mainWindow && !mainWindow.isDestroyed()) {
-		mainWindow.webContents.send("jeo:chatEvent", event);
+function killTree(child) {
+	if (!child) return;
+	if (child.fake) {
+		child.stopped = true;
+		return;
+	}
+	if (process.platform === "win32") {
+		execFile("taskkill", ["/pid", String(child.pid), "/T", "/F"], () => {});
+	} else {
+		child.kill();
 	}
 }
 
@@ -831,7 +874,7 @@ function findClaude() {
 	return candidates.find((candidate) => fs.existsSync(candidate)) || "claude";
 }
 
-async function prepareChatFiles() {
+async function prepareChatFiles({ projectId } = {}) {
 	const dir = path.join(app.getPath("userData"), "ai");
 	await fsp.mkdir(dir, { recursive: true });
 	const instructions = await fsp.readFile(path.join(__dirname, "ai-instructions.md"), "utf8");
@@ -841,7 +884,8 @@ async function prepareChatFiles() {
 		promptFile,
 		`${instructions}\n\n---\n\n# The user's measured style (style/your-style.md)\n\n${style}`,
 	);
-	const configFile = path.join(dir, "mcp.json");
+	// one MCP config per project, so each Claude's tool calls carry its project
+	const configFile = path.join(dir, projectId ? `mcp-${String(projectId).replace(/[^a-zA-Z0-9-]/g, "")}.json` : "mcp.json");
 	await fsp.writeFile(
 		configFile,
 		JSON.stringify({
@@ -853,6 +897,7 @@ async function prepareChatFiles() {
 						ELECTRON_RUN_AS_NODE: "1",
 						JEO_CONTROL_PORT: String(controlPort),
 						JEO_CONTROL_TOKEN: CONTROL_TOKEN,
+						JEO_PROJECT_ID: projectId ? String(projectId) : "",
 					},
 				},
 			},
@@ -896,9 +941,39 @@ function describeToolUse({ name, input }) {
 	return { name: short, summary: `${label}${detail}` };
 }
 
-async function chatSend({ text, sessionId }) {
-	if (chatProcess) return { ok: false, error: "Claude is still working on the last message." };
-	const { dir, promptFile, configFile } = await prepareChatFiles();
+/**
+ * Tests only (JEO_FAKE_CLAUDE=<seconds per step>): a pretend Claude that adds
+ * three texts to its project through the same tool route, without using the
+ * user's Claude plan.
+ */
+async function fakeClaude({ projectId, text, onEvent, onChild, onDone }) {
+	const child = { fake: true, stopped: false };
+	onChild(child);
+	const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+	const step = Number(process.env.JEO_FAKE_CLAUDE) * 1000 || 2000;
+	onEvent({ type: "text", text: `Working on it (test): ${String(text).slice(0, 40)}` });
+	for (let index = 0; index < 3 && !child.stopped; index++) {
+		await wait(step);
+		if (child.stopped) break;
+		onEvent({ type: "tool", name: "add_text", summary: "Adding a text" });
+		const result = await callEditor({
+			tool: "add_text",
+			args: { kind: "scene", text: `*FAKE ${index}*`, start: index + 0.2, end: index + 0.9 },
+			project: projectId,
+		});
+		if (!result || result.ok === false) {
+			onDone({ error: `test step failed: ${result && result.error}` });
+			return;
+		}
+	}
+	if (!child.stopped) onEvent({ type: "text", text: "Done (test)." });
+	onDone({ sessionId: null });
+}
+
+/** Starts one headless Claude for one project's message (jobs.cjs decides when). */
+async function startClaude({ projectId, text, sessionId, onEvent, onChild, onDone }) {
+	if (process.env.JEO_FAKE_CLAUDE) return fakeClaude({ projectId, text, onEvent, onChild, onDone });
+	const { dir, promptFile, configFile } = await prepareChatFiles({ projectId });
 	const args = [
 		"-p",
 		"--output-format", "stream-json",
@@ -912,25 +987,23 @@ async function chatSend({ text, sessionId }) {
 	if (typeof sessionId === "string" && /^[0-9a-fA-F-]{8,64}$/.test(sessionId)) {
 		args.push("--resume", sessionId);
 	}
-
 	let child;
 	try {
 		child = spawn(findClaude(), args, { cwd: dir, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
 	} catch (error) {
-		return { ok: false, error: `Could not start Claude Code: ${error.message}` };
+		onDone({ error: `Could not start Claude Code: ${error.message}` });
+		return;
 	}
-	chatProcess = child;
-	chatStopped = false;
+	onChild(child);
 	let latestSession = typeof sessionId === "string" ? sessionId : null;
 	let finished = false;
 	let errorText = "";
+	let stopped = false;
 	const finish = (error) => {
 		if (finished) return;
 		finished = true;
-		chatProcess = null;
-		sendChatEvent({ type: "done", sessionId: latestSession, ...(error ? { error } : {}) });
+		onDone({ sessionId: latestSession, ...(error ? { error } : {}) });
 	};
-
 	const lines = require("node:readline").createInterface({ input: child.stdout });
 	lines.on("line", (line) => {
 		let event;
@@ -942,11 +1015,8 @@ async function chatSend({ text, sessionId }) {
 		if (event.session_id) latestSession = event.session_id;
 		if (event.type === "assistant" && Array.isArray(event.message?.content)) {
 			for (const part of event.message.content) {
-				if (part.type === "text" && part.text) {
-					sendChatEvent({ type: "text", text: part.text });
-				} else if (part.type === "tool_use") {
-					sendChatEvent({ type: "tool", ...describeToolUse(part) });
-				}
+				if (part.type === "text" && part.text) onEvent({ type: "text", text: part.text });
+				else if (part.type === "tool_use") onEvent({ type: "tool", ...describeToolUse(part) });
 			}
 		} else if (event.type === "result" && event.is_error) {
 			errorText = String(event.result || "Claude stopped with an error.");
@@ -956,31 +1026,25 @@ async function chatSend({ text, sessionId }) {
 		errorText = (errorText + String(chunk)).slice(-600);
 	});
 	child.on("error", (error) =>
-		finish(
-			error.code === "ENOENT"
-				? "Claude Code was not found on this computer."
-				: `Could not start Claude Code: ${error.message}`,
-		),
+		finish(error.code === "ENOENT" ? "Claude Code was not found on this computer." : `Could not start Claude Code: ${error.message}`),
 	);
-	child.on("close", (code) =>
-		finish(code === 0 || chatStopped ? undefined : errorText.trim() || `Claude stopped (code ${code}).`),
-	);
-
+	child.on("exit", (_code, signal) => {
+		if (signal) stopped = true;
+	});
+	child.on("close", (code) => finish(code === 0 || stopped ? undefined : errorText.trim() || `Claude stopped (code ${code}).`));
 	child.stdin.write(String(text));
 	child.stdin.end();
-	return { ok: true };
 }
 
-function chatStop() {
-	if (!chatProcess) return;
-	const pid = chatProcess.pid;
-	chatStopped = true;
-	if (process.platform === "win32") {
-		execFile("taskkill", ["/pid", String(pid), "/T", "/F"], () => {});
-	} else {
-		chatProcess.kill();
-	}
-}
+jobs.setup({
+	app,
+	port: PORT,
+	getMainWindow: () => mainWindow,
+	ensureProjectDir: (args) => ensureProjectDir(args),
+	writeFileAtomic: (file, data) => writeFileAtomic(file, data),
+	startClaude,
+	killTree,
+});
 
 // ---------- updates ----------
 // When Claude (or anyone) rebuilds the editor while it is open, the window
@@ -1133,7 +1197,7 @@ async function pullUpdate() {
 }
 
 function restartForUpdate({ projectId }) {
-	chatStop();
+	jobs.closeAll();
 	if (serverProcess && process.platform === "win32") {
 		// wait for the old server to be gone, so the new window starts a fresh one
 		try {
@@ -1286,9 +1350,12 @@ if (!app.requestSingleInstanceLock()) {
 		}
 	});
 
-	app.on("window-all-closed", () => app.quit());
+	app.on("window-all-closed", () => {
+		jobs.closeAll();
+		app.quit();
+	});
 	app.on("before-quit", () => {
-		chatStop();
+		jobs.closeAll();
 		stopServer();
 	});
 }

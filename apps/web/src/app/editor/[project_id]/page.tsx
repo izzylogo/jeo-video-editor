@@ -19,6 +19,7 @@ import { getLayoutPreset, type TopPanelId } from "@/panels/layout";
 import { usePasteMedia } from "@/media/use-paste-media";
 import { MobileGate } from "@/components/editor/mobile-gate";
 import { AiChatRuntime } from "@/jeo/components/ai-chat";
+import { ProjectTabsRuntime, useIsMainEditorWindow } from "@/jeo/components/project-tabs";
 import { CapCutImportRunner } from "@/jeo/components/capcut-import";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useEditor } from "@/editor/use-editor";
@@ -51,12 +52,24 @@ export default function Editor() {
 						<EditorLayout />
 					</div>
 					<MigrationDialog />
-					<AiChatRuntime />
+					<MainWindowRuntimes />
 					<CapCutImportRunner />
 					<ReplaceMediaDialog />
 				</div>
 			</EditorProvider>
 		</MobileGate>
+	);
+}
+
+/** The chat and the tabs run in the main window, not in Claude's hidden editors. */
+function MainWindowRuntimes() {
+	const isMain = useIsMainEditorWindow();
+	if (!isMain) return null;
+	return (
+		<>
+			<AiChatRuntime />
+			<ProjectTabsRuntime />
+		</>
 	);
 }
 
