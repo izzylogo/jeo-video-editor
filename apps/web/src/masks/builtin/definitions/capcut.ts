@@ -37,6 +37,7 @@ export interface CapCutShapeSettings {
 	f: number;
 	c: number;
 	invert: boolean;
+	hidden: boolean;
 }
 
 export function readSlot(params: CapCutMaskParams, slot: CapCutSlot): CapCutShapeSettings {
@@ -51,6 +52,7 @@ export function readSlot(params: CapCutMaskParams, slot: CapCutSlot): CapCutShap
 		f: Number(p[`f${slot}`] ?? 0),
 		c: Number(p[`c${slot}`] ?? 0),
 		invert: p[`i${slot}`] === true,
+		hidden: p[`o${slot}`] === true,
 	};
 }
 
@@ -65,11 +67,17 @@ export function slotPatch(slot: CapCutSlot, settings: Partial<CapCutShapeSetting
 	if (settings.f !== undefined) out[`f${slot}`] = settings.f;
 	if (settings.c !== undefined) out[`c${slot}`] = settings.c;
 	if (settings.invert !== undefined) out[`i${slot}`] = settings.invert;
+	if (settings.hidden !== undefined) out[`o${slot}`] = settings.hidden;
 	return out as Partial<CapCutMaskParams>;
 }
 
 export function usedSlots(params: CapCutMaskParams): CapCutSlot[] {
 	return CAPCUT_MASK_SLOTS.filter((slot) => readSlot(params, slot).shape !== "none");
+}
+
+/** shapes that are switched on (the eye button) */
+export function visibleSlots(params: CapCutMaskParams): CapCutSlot[] {
+	return usedSlots(params).filter((slot) => !readSlot(params, slot).hidden);
 }
 
 function smoothstep(edge0: number, edge1: number, x: number): number {
@@ -133,7 +141,7 @@ const cache = new Map<string, HTMLCanvasElement | OffscreenCanvas>();
 
 /** The whole mask (all shapes added together) as a small white picture. */
 function maskPicture(params: CapCutMaskParams, width: number, height: number) {
-	const shapes = usedSlots(params).map((slot) => readSlot(params, slot));
+	const shapes = visibleSlots(params).map((slot) => readSlot(params, slot));
 	const gw = Math.max(8, Math.min(320, Math.round(width)));
 	const gh = Math.max(8, Math.round((gw * height) / Math.max(width, 1)));
 	const key = `${gw}x${gh}:${width / Math.max(height, 1)}:${JSON.stringify(shapes)}`;
@@ -190,6 +198,7 @@ function slotParams(slot: CapCutSlot): ParamDefinition<string>[] {
 		{ key: `f${slot}`, label: "Feather", type: "number", default: 0, min: 0, max: 1, step: 0.01 },
 		{ key: `c${slot}`, label: "Round corners", type: "number", default: 0, min: 0, max: 1, step: 0.01 },
 		{ key: `i${slot}`, label: "Invert", type: "boolean", default: false },
+		{ key: `o${slot}`, label: "Hidden", type: "boolean", default: false },
 	];
 }
 
@@ -222,7 +231,7 @@ export const capcutMaskDefinition: MaskDefinition<"capcut"> = {
 		{ key: "active", label: "Editing", type: "number", default: 1, min: 1, max: 4, step: 1 },
 		...CAPCUT_MASK_SLOTS.flatMap((slot) => slotParams(slot)),
 	] as ParamDefinition<keyof CapCutMaskParams & string>[],
-	isActive: (params) => usedSlots(params).length > 0,
+	isActive: (params) => visibleSlots(params).length > 0,
 	buildDefault({ elementSize }) {
 		const width = elementSize?.width ?? 1080;
 		const height = elementSize?.height ?? 1920;
@@ -266,7 +275,7 @@ export const capcutMaskDefinition: MaskDefinition<"capcut"> = {
 			const overlays: MaskOverlay[] = [];
 			const handles: MaskHandlePosition[] = [];
 			const active = Math.min(4, Math.max(1, Math.round(params.active || 1))) as CapCutSlot;
-			for (const slot of usedSlots(params)) {
+			for (const slot of visibleSlots(params)) {
 				const s = readSlot(params, slot);
 				const cx = bounds.cx + (s.x / 2) * bounds.width;
 				const cy = bounds.cy - (s.y / 2) * bounds.height;

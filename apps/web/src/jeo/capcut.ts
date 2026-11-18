@@ -24,7 +24,7 @@ import { getDesktopBridge } from "@/services/desktop/bridge";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { featherToShare } from "./actions";
-import { readSlot, usedSlots } from "@/masks/builtin/definitions/capcut";
+import { readSlot, visibleSlots } from "@/masks/builtin/definitions/capcut";
 
 const S = TICKS_PER_SECOND;
 
@@ -135,7 +135,8 @@ function masksOf({
 	const mask = "masks" in element ? element.masks?.[0] : undefined;
 	if (mask?.type === "capcut") {
 		// already in CapCut's own numbers: straight across
-		return usedSlots(mask.params).map((slot) => {
+		// a hidden mask (eye off) is left out, so CapCut shows what JEO shows
+		return visibleSlots(mask.params).map((slot) => {
 			const s = readSlot(mask.params, slot);
 			return {
 				shape: s.shape,

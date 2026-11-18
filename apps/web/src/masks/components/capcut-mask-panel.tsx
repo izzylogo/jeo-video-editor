@@ -25,6 +25,8 @@ import {
 	StarsIcon,
 	TextFontIcon,
 	Cancel01Icon,
+	ViewIcon,
+	ViewOffSlashIcon,
 	ArrowDataTransferHorizontalIcon,
 	ArrowDataTransferVerticalIcon,
 } from "@hugeicons/core-free-icons";
@@ -197,6 +199,9 @@ export function CapCutMaskPanel({
 	const mask = element.masks?.[0]?.type === "capcut" ? (element.masks[0] as CapCutMask) : undefined;
 	const [isOpen, setIsOpen] = useState(true);
 	const [settingsOpen, setSettingsOpen] = useState(true);
+	// while a slider is dragged it shows this value (the saved one only
+	// changes when the mouse is let go), so the knob follows the mouse
+	const [drag, setDrag] = useState<{ key: "f" | "c"; value: number } | null>(null);
 
 	const save = (masks: Mask[]) => {
 		editor.timeline.discardPreview();
@@ -245,6 +250,14 @@ export function CapCutMaskPanel({
 	const active = (mask ? Math.min(4, Math.max(1, Math.round(mask.params.active || 1))) : 1) as CapCutSlot;
 	const current = mask ? readSlot(mask.params, active) : undefined;
 
+	const anyShown = used.some((slot) => mask && !readSlot(mask.params, slot).hidden);
+	const toggleAll = () => {
+		if (!mask) return turnOn();
+		const patch: Partial<CapCutMaskParams> = {};
+		for (const slot of used) Object.assign(patch, slotPatch(slot, { hidden: anyShown }));
+		change(patch);
+	};
+
 	const addMask = () => {
 		if (!mask) return turnOn();
 		const free = CAPCUT_MASK_SLOTS.find((slot) => readSlot(mask.params, slot).shape === "none");
@@ -281,15 +294,16 @@ export function CapCutMaskPanel({
 				<button
 					type="button"
 					role="checkbox"
-					aria-checked={Boolean(mask)}
-					aria-label="Mask on or off"
-					onClick={() => (mask ? turnOff() : turnOn())}
+					aria-checked={anyShown}
+					aria-label="Masks on or off (keeps their settings)"
+					title={anyShown ? "Hide all masks (settings are kept)" : "Show the masks"}
+					onClick={toggleAll}
 					className={cn(
 						"flex size-4 cursor-pointer items-center justify-center rounded-[3px] border text-[10px] leading-none",
-						mask ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/50",
+						anyShown ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/50",
 					)}
 				>
-					{mask ? "✓" : ""}
+					{anyShown ? "✓" : ""}
 				</button>
 				<button type="button" onClick={() => setIsOpen((open) => !open)} className="flex cursor-pointer items-center gap-1 text-sm font-medium">
 					Mask
@@ -314,7 +328,23 @@ export function CapCutMaskPanel({
 											slot === active ? "bg-accent text-foreground font-medium" : "bg-accent/40 text-muted-foreground hover:text-foreground",
 										)}
 									>
-										Mask{index + 1} {name}
+										<span className={cn(s?.hidden && "line-through opacity-60")}>
+											Mask{index + 1} {name}
+										</span>
+									</button>
+									<button
+										type="button"
+										aria-label={s?.hidden ? `Show mask ${index + 1}` : `Hide mask ${index + 1}`}
+										aria-pressed={!s?.hidden}
+										title={s?.hidden ? "Show this mask" : "Hide this mask to see the difference"}
+										data-jeo="capcut-mask-eye"
+										onClick={() => change(slotPatch(slot, { hidden: !s?.hidden }))}
+										className={cn(
+											"ml-0.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-full align-middle transition-colors",
+											s?.hidden ? "text-muted-foreground/60 hover:text-foreground" : "text-foreground/80 hover:bg-accent",
+										)}
+									>
+										<HugeiconsIcon icon={s?.hidden ? ViewOffSlashIcon : ViewIcon} className="size-3.5" />
 									</button>
 									<button
 										type="button"
@@ -464,12 +494,18 @@ export function CapCutMaskPanel({
 												min={0}
 												max={100}
 												step={1}
-												value={[Math.round(current.f * 100)]}
-												onValueChange={([v]) => change(slotPatch(active, { f: v / 100 }), true)}
-												onValueCommit={([v]) => change(slotPatch(active, { f: v / 100 }))}
+												value={[drag?.key === "f" ? drag.value : Math.round(current.f * 100)]}
+												onValueChange={([v]) => {
+													setDrag({ key: "f", value: v });
+													change(slotPatch(active, { f: v / 100 }), true);
+												}}
+												onValueCommit={([v]) => {
+													setDrag(null);
+													change(slotPatch(active, { f: v / 100 }));
+												}}
 											/>
 											<div className="w-20 shrink-0">
-												<Stepper label="Feather" value={Math.round(current.f * 100)} onChange={(v) => change(slotPatch(active, { f: Math.max(0, Math.min(100, v)) / 100 }))} />
+												<Stepper label="Feather" value={drag?.key === "f" ? drag.value : Math.round(current.f * 100)} onChange={(v) => change(slotPatch(active, { f: Math.max(0, Math.min(100, v)) / 100 }))} />
 											</div>
 										</div>
 									</div>
@@ -482,12 +518,18 @@ export function CapCutMaskPanel({
 													min={0}
 													max={100}
 													step={1}
-													value={[Math.round(current.c * 100)]}
-													onValueChange={([v]) => change(slotPatch(active, { c: v / 100 }), true)}
-													onValueCommit={([v]) => change(slotPatch(active, { c: v / 100 }))}
+													value={[drag?.key === "c" ? drag.value : Math.round(current.c * 100)]}
+													onValueChange={([v]) => {
+														setDrag({ key: "c", value: v });
+														change(slotPatch(active, { c: v / 100 }), true);
+													}}
+													onValueCommit={([v]) => {
+														setDrag(null);
+														change(slotPatch(active, { c: v / 100 }));
+													}}
 												/>
 												<div className="w-20 shrink-0">
-													<Stepper label="Round corners" value={Math.round(current.c * 100)} onChange={(v) => change(slotPatch(active, { c: Math.max(0, Math.min(100, v)) / 100 }))} />
+													<Stepper label="Round corners" value={drag?.key === "c" ? drag.value : Math.round(current.c * 100)} onChange={(v) => change(slotPatch(active, { c: Math.max(0, Math.min(100, v)) / 100 }))} />
 												</div>
 											</div>
 										</div>

@@ -84,6 +84,8 @@ export interface CapCutMaskParams extends BaseMaskParams {
 	/** CapCut round corners 0..1 (rectangle only) */
 	c1: number;
 	i1: boolean;
+	/** hidden in the preview and the export (the eye button) */
+	o1?: boolean;
 	/** shape 2: "none", "rectangle" or "circle" */
 	s2: CapCutMaskShape;
 	/** centre in half-sizes of the clip (-1..1), up is positive (CapCut's numbers) */
@@ -99,6 +101,8 @@ export interface CapCutMaskParams extends BaseMaskParams {
 	/** CapCut round corners 0..1 (rectangle only) */
 	c2: number;
 	i2: boolean;
+	/** hidden in the preview and the export (the eye button) */
+	o2?: boolean;
 	/** shape 3: "none", "rectangle" or "circle" */
 	s3: CapCutMaskShape;
 	/** centre in half-sizes of the clip (-1..1), up is positive (CapCut's numbers) */
@@ -114,6 +118,8 @@ export interface CapCutMaskParams extends BaseMaskParams {
 	/** CapCut round corners 0..1 (rectangle only) */
 	c3: number;
 	i3: boolean;
+	/** hidden in the preview and the export (the eye button) */
+	o3?: boolean;
 	/** shape 4: "none", "rectangle" or "circle" */
 	s4: CapCutMaskShape;
 	/** centre in half-sizes of the clip (-1..1), up is positive (CapCut's numbers) */
@@ -129,6 +135,8 @@ export interface CapCutMaskParams extends BaseMaskParams {
 	/** CapCut round corners 0..1 (rectangle only) */
 	c4: number;
 	i4: boolean;
+	/** hidden in the preview and the export (the eye button) */
+	o4?: boolean;
 }
 
 export interface FreeformPathMaskParams extends BaseMaskParams {

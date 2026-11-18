@@ -351,4 +351,8 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **Mask panel like CapCut's:** tick box "Mask", tabs Mask1 Rectangle / Mask2 Circle / +, shape tiles (Split, Filmstrip, Circle, Rectangle, Stars, Heart, Text, Brush, Pen; only Circle and Rectangle work so far), Mask settings with invert and reset, Position X / Y and Size in clip pixels, Rotation, Feather and Round corners 0-100. Shapes can be dragged, resized, turned and softened on the preview.
 - **Spotlight** is now one freeze clip with that mask (Rectangle feather 58, round corners 100 + Circle feather 21), and exports to CapCut unchanged. Older layered spotlights still export as before.
 
+- **Fixed (your report):** the Feather and Round-corners sliders did not follow the mouse and the change was lost when you let go, so the brightness never came back. They now follow the pointer and save on release (tested with the real mouse).
+- **Eye button on each mask** (Mask1, Mask2...) hides it in the preview so you can compare; hidden masks are also left out of "Open in CapCut". The Mask tick box now hides/shows all masks and keeps their settings.
+- **Export fix:** CapCut counts keyframe times on video clips from the start of the source file (seen in your FALLING DOG project); JEO counted from the clip start, so zooms on trimmed clips were off. Fixed.
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

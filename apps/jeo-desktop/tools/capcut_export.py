@@ -185,8 +185,14 @@ class Draft:
             refs.append(item["id"])
         return refs
 
-    def keyframes(self, item, scale_factor=1.0, speed=1.0):
-        """JEO keyframes -> CapCut common_keyframes (times from the clip start)."""
+    def keyframes(self, item, scale_factor=1.0, speed=1.0, source_start=0.0):
+        """JEO keyframes -> CapCut common_keyframes.
+
+        Texts and stickers count from the segment start. Video and photo
+        segments count in SOURCE time: from the start of the media file, so a
+        clip trimmed to start at 33 s has its keyframes at 33 s + ... (checked
+        in the user's own FALLING DOG project).
+        """
         kinds = {
             "scale": ("KFTypeScaleX", lambda v: abs(v) * scale_factor),
             "x": ("KFTypePositionX", lambda v: v / (self.width / 2)),
@@ -208,7 +214,7 @@ class Draft:
                         {
                             "id": new_id(),
                             "curveType": "Line",
-                            "time_offset": us(float(at) * speed),
+                            "time_offset": us(float(source_start) + float(at) * speed),
                             "left_control": {"x": 0.0, "y": 0.0},
                             "right_control": {"x": 0.0, "y": 0.0},
                             "values": [float(convert(float(value)))],
@@ -298,7 +304,7 @@ class Draft:
                 "extra_material_refs": self.clip_refs(speed, with_canvas=True),
                 "render_index": render_index,
                 "keyframe_refs": [],
-                "common_keyframes": self.keyframes(item, speed=speed),
+                "common_keyframes": self.keyframes(item, speed=speed, source_start=float(item.get("sourceIn", 0))),
                 "group_id": "",
                 "visible": True,
             }

@@ -1,5 +1,7 @@
 {
   "items": [
+    "Mask sliders now follow the mouse; each mask has an eye button to hide it and compare; the Mask tick box hides all masks without losing them",
+    "Open in CapCut: keyframes on trimmed video clips now land at the right moment",
     "Masks work like CapCut: several shapes on one clip (Mask1 Rectangle, Mask2 Circle...), drawn with CapCut's own formula, and a Mask panel laid out like CapCut's",
     "Open in CapCut now gives a spotlight your exact CapCut setup: one freeze clip with a soft rounded Rectangle mask and a Circle mask",
     "Spotlight matches your own videos: the picture dimmed, a softer brighter rectangle, and the circle at full brightness (nothing goes black)",
