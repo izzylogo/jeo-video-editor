@@ -106,8 +106,9 @@ function TimecodeDisplay() {
  * JEO: CapCut's preview zoom bar: minus, a slider, plus. The slider runs on
  * a curve so the small sizes are not squeezed into the first few pixels.
  */
+// 5 % to 500 % on a curve puts 50 % (the size the preview opens at) in the middle
 const ZOOM_SLIDER_MIN_PERCENT = 5;
-const ZOOM_SLIDER_MAX_PERCENT = 400;
+const ZOOM_SLIDER_MAX_PERCENT = 500;
 function ZoomSlider() {
 	const { zoomPercent, setViewportPercent, zoomIn, zoomOut } =
 		usePreviewViewport();

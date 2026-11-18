@@ -18,7 +18,7 @@ import {
 	screenToCanvas,
 } from "@/preview/preview-coords";
 import { clamp, isNearlyEqual } from "@/utils/math";
-import { PREVIEW_ZOOM } from "@/preview/zoom";
+import { PREVIEW_DEFAULT_PERCENT, PREVIEW_ZOOM } from "@/preview/zoom";
 
 const MIDDLE_MOUSE_BUTTON = 1;
 const IS_AT_FIT_EPSILON = 0.001;
@@ -463,7 +463,10 @@ export function usePreviewViewportState({
 		[],
 	);
 
+	// JEO: the preview opens at 50% (not Fit); again when the video size changes
+	const needsDefaultZoom = useRef(true);
 	useEffect(() => {
+		needsDefaultZoom.current = true;
 		setZoomState(1);
 		setCenter({
 			x: canvasWidth / 2,
@@ -472,6 +475,11 @@ export function usePreviewViewportState({
 		panSessionRef.current = null;
 		setIsPanning(false);
 	}, [canvasHeight, canvasWidth]);
+	useEffect(() => {
+		if (!needsDefaultZoom.current || !(fitScale > 0) || viewportWidth <= 0) return;
+		needsDefaultZoom.current = false;
+		setZoomState(getClampedZoom({ zoom: PREVIEW_DEFAULT_PERCENT / 100 / fitScale }));
+	}, [fitScale, viewportWidth]);
 
 	useEffect(() => {
 		setCenter((previousCenter) =>

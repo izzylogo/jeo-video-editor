@@ -394,3 +394,8 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
   - It also says when CapCut is open, and that changes made to the old one inside CapCut are not copied over.
 - Only drafts JEO made (names starting with "JEO ") can be replaced. Your own CapCut projects are never touched.
 - Tested with a scratch drafts folder (your real CapCut folder was not written to): first export made "JEO ...", the second asked and made "(2)", the third replaced the first and kept the old one in the backup folder.
+
+## Round 24: preview opens at 50% (18 Nov 2026)
+
+- The preview now opens at **50%** instead of Fit, and the zoom bar's knob starts in the **middle** (the bar now runs from 5% to 500%, so the middle is 50%). Fit and the other sizes are still in the size menu. On this laptop 50% is bigger than the preview panel, so the edges of the video are cut off at first; zoom out or pick Fit to see the whole frame.
+- Checked in the app: the size reads "50%" and the knob sits exactly in the middle.
