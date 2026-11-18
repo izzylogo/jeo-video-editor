@@ -385,3 +385,12 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **Rename a project from its tab:** double-click the tab, or press F2, or right-click → Rename. Enter saves, Esc cancels. The project folder is renamed too. A tab Claude is editing in the background can be renamed once Claude has finished.
 - **Right-click a tab:** Open, Rename, Make a copy in a new tab, Show project folder, Stop Claude on this project (while it works), Move left / Move right, Close tab, Close other tabs, Close tabs to the right. Tabs where Claude is working are never closed by these.
 - Tested: rename by double-click and from the menu (names saved on disk), Move right, Close other tabs.
+
+## Round 23: replace or add when the project is already in CapCut (18 Nov 2026)
+
+- **Open in CapCut** now checks first. If a JEO project with the same name ("JEO <name>") is already in CapCut, a box asks:
+  - **Replace it**: this edit takes its place. The old one is moved to `output\_capcut-replaced` (not deleted), so you can bring it back. If CapCut is using it, nothing changes and the box tells you to go back to CapCut's home screen first.
+  - **Add as "(2)"**: keeps the old one and adds this edit next to it.
+  - It also says when CapCut is open, and that changes made to the old one inside CapCut are not copied over.
+- Only drafts JEO made (names starting with "JEO ") can be replaced. Your own CapCut projects are never touched.
+- Tested with a scratch drafts folder (your real CapCut folder was not written to): first export made "JEO ...", the second asked and made "(2)", the third replaced the first and kept the old one in the backup folder.

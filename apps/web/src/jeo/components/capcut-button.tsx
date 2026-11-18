@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/dialog";
 import { useEditor } from "@/editor/use-editor";
 import { getDesktopBridge } from "@/services/desktop/bridge";
+import { EditorCore } from "@/core";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Alert02Icon } from "@hugeicons/core-free-icons";
 import { type CapCutExportResult, openInCapCut } from "../capcut";
 import { Spinner, useElapsedSeconds } from "./feedback";
 
@@ -34,6 +37,13 @@ export function OpenInCapCutButton() {
 	const [stage, setStage] = useState<string | null>(null);
 	const [result, setResult] = useState<CapCutExportResult | null>(null);
 	const [capcut, setCapcut] = useState<"starting" | "open" | "slow" | "was-open">("was-open");
+	// a JEO draft with this name is already in CapCut: ask what to do
+	const [choice, setChoice] = useState<{
+		folderName: string;
+		nextName: string;
+		modified: number | null;
+		capcutRunning: boolean;
+	} | null>(null);
 	const desktop = getDesktopBridge();
 	const isBusy = stage !== null;
 	const isStarting = result !== null && capcut === "starting";
@@ -67,9 +77,20 @@ export function OpenInCapCutButton() {
 	if (!desktop) return null;
 
 	const handleClick = async () => {
+		const name = EditorCore.getInstance().project.getActiveOrNull()?.metadata.name ?? "";
+		const found = await desktop.capcutDraftCheck?.({ name }).catch(() => null);
+		if (found?.exists) {
+			setChoice(found);
+			return;
+		}
+		await runExport("new");
+	};
+
+	const runExport = async (mode: "replace" | "new") => {
+		setChoice(null);
 		setStage("Starting");
 		try {
-			const outcome = await openInCapCut({ onStage: setStage });
+			const outcome = await openInCapCut({ onStage: setStage, mode });
 			if (outcome.ok) {
 				setCapcut(outcome.capcutWasRunning ? "was-open" : "starting");
 				setResult(outcome);
@@ -107,7 +128,9 @@ export function OpenInCapCutButton() {
 			<Dialog open={result !== null} onOpenChange={(open) => !open && setResult(null)}>
 				<DialogContent className="max-w-md">
 					<DialogHeader>
-						<DialogTitle>CapCut project created</DialogTitle>
+						<DialogTitle>
+							{result?.replacedBackup ? "CapCut project replaced" : "CapCut project created"}
+						</DialogTitle>
 						<DialogDescription>
 							On CapCut's home screen, open this project:
 						</DialogDescription>
@@ -178,8 +201,15 @@ export function OpenInCapCutButton() {
 								</ul>
 							</div>
 						)}
+						{result?.replacedBackup && (
+							<p className="text-muted-foreground text-xs">
+								The old version is kept in{" "}
+								<span className="font-mono">output\_capcut-replaced</span>, in case you
+								want it back.
+							</p>
+						)}
 						<p className="text-muted-foreground text-xs">
-							Your existing CapCut projects were not changed. A CapCut update could
+							Your own CapCut projects were not changed. A CapCut update could
 							change its project format and break this button.
 						</p>
 					</DialogBody>
@@ -188,6 +218,91 @@ export function OpenInCapCutButton() {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+
+			{/* the name is taken: replace the JEO draft, or add a numbered one */}
+			<Dialog open={choice !== null} onOpenChange={(open) => !open && setChoice(null)}>
+				<DialogContent className="max-w-md" data-jeo="capcut-replace-choice">
+					<DialogHeader>
+						<DialogTitle>Already in CapCut</DialogTitle>
+						<DialogDescription>
+							CapCut already has a project called{" "}
+							<span className="text-foreground font-medium">{choice?.folderName}</span>
+							{choice?.modified ? ` (last changed ${timeAgo(choice.modified)})` : ""}. What
+							should this export do?
+						</DialogDescription>
+					</DialogHeader>
+					<DialogBody className="space-y-2.5">
+						<div className="grid gap-2">
+							<ChoiceButton
+								title="Replace it"
+								detail="Puts this edit in its place. The old one is kept in output\_capcut-replaced, so nothing is lost."
+								primary
+								onClick={() => void runExport("replace")}
+							/>
+							<ChoiceButton
+								title={`Add as "${choice?.nextName ?? ""}"`}
+								detail="Keeps the old one and adds this edit next to it."
+								onClick={() => void runExport("new")}
+							/>
+						</div>
+						{choice?.capcutRunning && (
+							<p className="bg-accent/60 flex items-start gap-2 rounded-md px-3 py-2 text-xs">
+								<HugeiconsIcon icon={Alert02Icon} className="text-primary mt-px size-3.5 shrink-0" aria-hidden />
+								<span>
+									CapCut is open. If that project is open inside CapCut, go back to
+									CapCut's home screen before replacing it.
+								</span>
+							</p>
+						)}
+						<p className="text-muted-foreground text-xs">
+							Changes you made to the old one inside CapCut are not copied into the new one.
+						</p>
+					</DialogBody>
+					<DialogFooter>
+						<Button variant="ghost" onClick={() => setChoice(null)}>
+							Cancel
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</>
 	);
+}
+
+/** One big choice: a title in bold and a line saying what it does. */
+function ChoiceButton({
+	title,
+	detail,
+	primary = false,
+	onClick,
+}: {
+	title: string;
+	detail: string;
+	primary?: boolean;
+	onClick: () => void;
+}) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			className={
+				primary
+					? "border-primary bg-primary/10 hover:bg-primary/15 focus-visible:ring-ring w-full cursor-pointer rounded-lg border px-3.5 py-2.5 text-left outline-none transition-[background-color,transform] duration-150 focus-visible:ring-2 motion-safe:active:scale-[0.98]"
+					: "hover:bg-accent focus-visible:ring-ring w-full cursor-pointer rounded-lg border px-3.5 py-2.5 text-left outline-none transition-[background-color,transform] duration-150 focus-visible:ring-2 motion-safe:active:scale-[0.98]"
+			}
+		>
+			<span className="block text-sm font-medium">{title}</span>
+			<span className="text-muted-foreground mt-0.5 block text-xs leading-snug">{detail}</span>
+		</button>
+	);
+}
+
+function timeAgo(ms: number): string {
+	const minutes = Math.round((Date.now() - ms) / 60000);
+	if (minutes < 1) return "just now";
+	if (minutes < 60) return `${minutes} min ago`;
+	const hours = Math.round(minutes / 60);
+	if (hours < 24) return `${hours} h ago`;
+	const days = Math.round(hours / 24);
+	return `${days} day${days === 1 ? "" : "s"} ago`;
 }

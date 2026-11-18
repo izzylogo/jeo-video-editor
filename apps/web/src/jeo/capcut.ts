@@ -337,15 +337,20 @@ export interface CapCutExportResult {
 	ok: boolean;
 	error?: string;
 	draftName?: string;
+	/** where the replaced draft was kept */
+	replacedBackup?: string;
 	leftOut: string[];
 	capcutWasRunning?: boolean;
 }
 
 export async function openInCapCut({
 	onStage,
+	mode = "new",
 }: {
 	/** called as each step begins, with words for the user */
 	onStage?: (stage: string) => void;
+	/** "replace" = take the place of the JEO draft with the same name */
+	mode?: "replace" | "new";
 } = {}): Promise<CapCutExportResult> {
 	onStage?.("Reading the timeline");
 	const desktop = getDesktopBridge();
@@ -622,6 +627,7 @@ export async function openInCapCut({
 
 	onStage?.("Writing the CapCut project");
 	const outcome = await desktop.exportToCapCut({
+		mode,
 		projectId: project.metadata.id,
 		data: {
 			name: project.metadata.name,
@@ -642,6 +648,7 @@ export async function openInCapCut({
 		ok: outcome.ok,
 		error: outcome.error,
 		draftName: outcome.draftName,
+		replacedBackup: outcome.replacedBackup,
 		capcutWasRunning: outcome.capcutWasRunning,
 		leftOut: [...leftOut, ...(outcome.warnings ?? [])],
 	};

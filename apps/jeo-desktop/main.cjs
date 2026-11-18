@@ -424,8 +424,28 @@ function registerIpc() {
 		},
 	);
 
-	// ---- "Open in CapCut": write the timeline as a NEW CapCut draft ----
-	ipcMain.handle("jeo:exportToCapCut", async (_event, { projectId, data }) => {
+	// ---- "Open in CapCut": is a JEO draft with this name already there? ----
+	ipcMain.handle("jeo:capcutDraftCheck", async (_event, { name }) => {
+		const folderName = capcutFolderName(name);
+		const folder = path.join(capcutDraftsDir(), folderName);
+		const stat = await fsp.stat(folder).catch(() => null);
+		let next = folderName;
+		for (let number = 2; fs.existsSync(path.join(capcutDraftsDir(), next)); number++) {
+			next = `${folderName} (${number})`;
+		}
+		return {
+			exists: Boolean(stat && stat.isDirectory()),
+			folderName,
+			nextName: next,
+			modified: stat ? stat.mtimeMs : null,
+			capcutRunning: await isCapCutRunning(),
+		};
+	});
+
+	// ---- "Open in CapCut": write the timeline as a CapCut draft ----
+	// mode "replace": the JEO draft with the same name is moved to
+	// output\_capcut-replaced (kept, not deleted) and the new one takes its place
+	ipcMain.handle("jeo:exportToCapCut", async (_event, { projectId, data, mode }) => {
 		const dir = await findProjectDir({ id: projectId });
 		if (!dir) return { ok: false, error: "The project folder was not found." };
 		const mediaDir = path.join(dir, "media");
@@ -455,17 +475,35 @@ function registerIpc() {
 			audio: (data.audio || []).map((item) => ({ ...item, path: pathFor(item.mediaId) })),
 		};
 
-		const capcutWasRunning = await new Promise((resolve) => {
-			execFile("tasklist", ["/FI", "IMAGENAME eq CapCut.exe", "/NH"], { windowsHide: true }, (_error, stdout) =>
-				resolve(/CapCut\.exe/i.test(String(stdout))),
-			);
-		});
+		const capcutWasRunning = await isCapCutRunning();
+
+		let replaced = null;
+		if (mode === "replace") {
+			const folderName = capcutFolderName(data.name);
+			const oldFolder = path.join(capcutDraftsDir(), folderName);
+			if (fs.existsSync(oldFolder)) {
+				const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+				const backupDir = path.join(OUTPUT_DIR, "_capcut-replaced");
+				const backup = path.join(backupDir, `${folderName} ${stamp}`);
+				try {
+					await fsp.mkdir(backupDir, { recursive: true });
+					await moveFolder(oldFolder, backup);
+					replaced = backup;
+				} catch {
+					return {
+						ok: false,
+						error: `"${folderName}" is in use. Close it in CapCut (go back to CapCut's home screen), then try again. Nothing was changed.`,
+						leftOut: [],
+					};
+				}
+			}
+		}
 
 		const result = await new Promise((resolve) => {
 			const child = execFile(
 				"py",
 				[path.join(__dirname, "tools", "capcut_export.py")],
-				{ windowsHide: true, timeout: 60000, maxBuffer: 8 * 1024 * 1024, env: { ...process.env, PYTHONIOENCODING: "utf-8" } },
+				{ windowsHide: true, timeout: 60000, maxBuffer: 8 * 1024 * 1024, env: { ...process.env, PYTHONIOENCODING: "utf-8", JEO_CAPCUT_DRAFTS: capcutDraftsDir() } },
 				(error, stdout) => {
 					try {
 						resolve(JSON.parse(String(stdout).trim().split(/\r?\n/).pop()));
@@ -478,6 +516,12 @@ function registerIpc() {
 		});
 
 		if (coverFile) fsp.rm(coverFile, { force: true }).catch(() => {});
+		// the new draft could not be written: put the old one back
+		if (replaced && !result.ok) {
+			await moveFolder(replaced, path.join(capcutDraftsDir(), capcutFolderName(data.name))).catch(() => {});
+			replaced = null;
+		}
+		if (replaced) result.replacedBackup = replaced;
 		if (result.ok && !capcutWasRunning && !process.env.JEO_NO_CAPCUT_LAUNCH) {
 			const exe = path.join(process.env.LOCALAPPDATA || "", "CapCut", "Apps", "CapCut.exe");
 			if (fs.existsSync(exe)) {
@@ -851,6 +895,41 @@ function startControlServer() {
 
 const STYLE_FILE = path.join(DATA_ROOT, "style", "your-style.md");
 const jobs = require("./jobs.cjs");
+
+// ---------- CapCut drafts ----------
+
+/** CapCut's drafts folder (tests set JEO_CAPCUT_DRAFTS to a scratch folder). */
+function capcutDraftsDir() {
+	return (
+		process.env.JEO_CAPCUT_DRAFTS ||
+		path.join(process.env.LOCALAPPDATA || "", "CapCut", "User Data", "Projects", "com.lveditor.draft")
+	);
+}
+
+/** The folder name the export uses: "JEO <project name>" (same rule as capcut_export.py). */
+function capcutFolderName(name) {
+	const safe = String(name || "").replace(/[<>:"/\\|?*]/g, "").trim() || "JEO export";
+	return `JEO ${safe}`;
+}
+
+function isCapCutRunning() {
+	return new Promise((resolve) => {
+		execFile("tasklist", ["/FI", "IMAGENAME eq CapCut.exe", "/NH"], { windowsHide: true }, (_error, stdout) =>
+			resolve(/CapCut\.exe/i.test(String(stdout))),
+		);
+	});
+}
+
+/** Moves a folder; across drives it copies, then removes the original. */
+async function moveFolder(from, to) {
+	try {
+		await fsp.rename(from, to);
+	} catch (error) {
+		if (error.code !== "EXDEV") throw error;
+		await fsp.cp(from, to, { recursive: true, errorOnExist: true });
+		await fsp.rm(from, { recursive: true, force: true });
+	}
+}
 
 function killTree(child) {
 	if (!child) return;

@@ -21,6 +21,9 @@ import time
 import uuid
 
 DRAFTS = os.path.join(os.environ.get("LOCALAPPDATA", ""), "CapCut", "User Data", "Projects", "com.lveditor.draft")
+# where the new draft is written (tests point this at a scratch folder; the
+# pattern is still read, never changed, from CapCut's own folder)
+OUT_DRAFTS = os.environ.get("JEO_CAPCUT_DRAFTS") or DRAFTS
 LEMON_MILK = os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows", "Fonts", "LEMONMILK-Bold.otf")
 US = 1_000_000  # CapCut counts time in microseconds
 
@@ -683,7 +686,7 @@ def unique_folder(name):
     safe = "".join(ch for ch in name if ch not in '<>:"/\\|?*').strip() or "JEO export"
     candidate = f"JEO {safe}"
     number = 2
-    while os.path.exists(os.path.join(DRAFTS, candidate)):
+    while os.path.exists(os.path.join(OUT_DRAFTS, candidate)):
         candidate = f"JEO {safe} ({number})"
         number += 1
     return candidate
@@ -691,7 +694,7 @@ def unique_folder(name):
 
 def main():
     data = json.load(sys.stdin)
-    if not os.path.isdir(DRAFTS):
+    if not os.path.isdir(DRAFTS) or not os.path.isdir(OUT_DRAFTS):
         return {"ok": False, "error": "CapCut's project folder was not found on this computer."}
     pattern, pattern_meta, pattern_folder = find_pattern()
     if pattern is None:
@@ -766,7 +769,7 @@ def main():
     )
 
     folder_name = unique_folder(data.get("name", "export"))
-    folder = os.path.join(DRAFTS, folder_name)
+    folder = os.path.join(OUT_DRAFTS, folder_name)
     now = int(time.time() * US)
     meta = copy.deepcopy(pattern_meta)
     meta.update(
@@ -774,7 +777,7 @@ def main():
             "draft_id": new_id(),
             "draft_name": folder_name,
             "draft_fold_path": folder.replace("\\", "/"),
-            "draft_root_path": DRAFTS.replace("\\", "/"),
+            "draft_root_path": OUT_DRAFTS.replace("\\", "/"),
             "draft_cover": "",
             "draft_materials": [{**entry, "value": []} for entry in pattern_meta.get("draft_materials", []) if isinstance(entry, dict)],
             "draft_materials_copied_info": [],

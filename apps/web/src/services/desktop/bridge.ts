@@ -70,12 +70,23 @@ export interface JeoDesktopBridge {
 	exportToCapCut(args: {
 		projectId: string;
 		data: Record<string, unknown>;
+		/** "replace" = move the JEO draft with the same name aside and take its place */
+		mode?: "replace" | "new";
 	}): Promise<{
+		replacedBackup?: string;
 		ok: boolean;
 		error?: string;
 		draftName?: string;
 		warnings?: string[];
 		capcutWasRunning?: boolean;
+	}>;
+	/** Is a JEO draft with this project's name already in CapCut? */
+	capcutDraftCheck?(args: { name: string }): Promise<{
+		exists: boolean;
+		folderName: string;
+		nextName: string;
+		modified: number | null;
+		capcutRunning: boolean;
 	}>;
 	/** Is there a newer version on GitHub? (only when the code is a git clone) */
 	checkGitHub(): Promise<{ ok: boolean; behind?: number; items?: string[]; reason?: string }>;

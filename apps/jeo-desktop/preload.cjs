@@ -45,6 +45,7 @@ contextBridge.exposeInMainWorld("jeoDesktop", {
 	},
 	updateNow: (args) => ipcRenderer.invoke("jeo:updateNow", args),
 	exportToCapCut: (args) => ipcRenderer.invoke("jeo:exportToCapCut", args),
+	capcutDraftCheck: (args) => ipcRenderer.invoke("jeo:capcutDraftCheck", args),
 	listTrashedProjectIds: () => ipcRenderer.invoke("jeo:listTrashedProjectIds"),
 	checkGitHub: () => ipcRenderer.invoke("jeo:checkGitHub"),
 	pullUpdate: () => ipcRenderer.invoke("jeo:pullUpdate"),
