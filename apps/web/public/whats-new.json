@@ -1,5 +1,6 @@
 {
   "items": [
+    "Tabs: double-click a tab (or F2) to rename the project. Right-click a tab for Rename, Make a copy, Show folder, Stop Claude, Move left or right, Close, Close others, Close to the right",
     "Project tabs: open several projects at the top and switch with one click. Each tab keeps its own undo. Claude keeps editing a tab while you work in another (2 at once, more wait in line)",
     "Mask feather is stronger: it now uses CapCut's own softness numbers, so each step softens more",
     "Open in CapCut: the triangle under tags and the curved arrow now go across as real CapCut shapes you can edit",

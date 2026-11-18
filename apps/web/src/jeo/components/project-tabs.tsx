@@ -26,6 +26,14 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuShortcut,
+	ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -44,7 +52,10 @@ import {
 } from "@/services/desktop/bridge";
 import { cn } from "@/utils/ui";
 import {
+	closeOtherTabs,
 	closeProjectTab,
+	closeTabsToRight,
+	duplicateProjectTab,
 	forgetTabMemory,
 	isBackgroundEditor,
 	isProjectBusy,
@@ -52,6 +63,7 @@ import {
 	newProjectTab,
 	openProjectTab,
 	type ProjectTab,
+	renameProjectTab,
 	restoreTabMemory,
 	useJobs,
 	useProjectTabs,
@@ -165,14 +177,20 @@ function TabStatusIcon({ status, isSwitching }: { status: ReturnType<typeof stat
 
 function Tab({
 	tab,
+	index,
+	count,
 	isActive,
 	onOpen,
 	onClose,
+	navigate,
 }: {
 	tab: ProjectTab;
+	index: number;
+	count: number;
 	isActive: boolean;
 	onOpen: () => void;
 	onClose: () => void;
+	navigate: (href: string) => void;
 }) {
 	const job = useJobs((store) => store.state.jobs[tab.id]);
 	const switchingTo = useProjectTabs((state) => state.switchingTo);
@@ -180,65 +198,197 @@ function Tab({
 	const status = statusOf(job, isActive);
 	const isBusy = job?.status === "working" || job?.status === "queued";
 	const label = status ? `${tab.name}: ${status.text}` : tab.name;
+	const [isRenaming, setIsRenaming] = useState(false);
+	const inputRef = useRef<HTMLInputElement>(null);
+	const doneRef = useRef(false);
+	// a tab Claude edits in the background keeps its name until Claude is done
+	const canRename = isActive || !isBusy;
+
+	const startRename = () => {
+		if (!canRename) {
+			toast.info("Claude is editing this project. Rename it when Claude has finished.");
+			return;
+		}
+		doneRef.current = false;
+		setIsRenaming(true);
+		// after the menu has closed, put the cursor in the name box
+		window.setTimeout(() => {
+			inputRef.current?.focus();
+			inputRef.current?.select();
+		}, 30);
+	};
+
+	const finishRename = async (save: boolean) => {
+		if (doneRef.current) return; // Enter and then losing focus: save once
+		doneRef.current = true;
+		const value = inputRef.current?.value ?? "";
+		setIsRenaming(false);
+		if (!save || value.trim() === "" || value.trim() === tab.name) return;
+		try {
+			const ok = await renameProjectTab({ id: tab.id, name: value });
+			if (!ok) toast.error("Could not rename the project.");
+		} catch (error) {
+			toast.error("Could not rename the project.", {
+				description: error instanceof Error ? error.message : undefined,
+			});
+		}
+	};
+
+	const desktop = getDesktopBridge();
+	const move = (toIndex: number) => useProjectTabs.getState().moveTab({ id: tab.id, toIndex });
 
 	return (
-		<div
-			data-jeo-tab={tab.id}
-			className={cn(
-				"group/tab relative flex h-7 max-w-[13rem] min-w-[6.5rem] shrink-0 items-center rounded-md transition-colors duration-150",
-				isActive
-					? "bg-accent text-foreground"
-					: "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-			)}
-		>
-			<button
-				type="button"
-				role="tab"
-				aria-selected={isActive}
-				aria-label={label}
-				title={label}
-				tabIndex={isActive ? 0 : -1}
-				onClick={onOpen}
-				onAuxClick={(event) => {
-					// middle-click closes, like a browser tab
-					if (event.button === 1 && !isBusy) onClose();
-				}}
-				className={cn(
-					"flex h-full min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md pr-1 pl-2 text-xs outline-none",
-					"focus-visible:ring-ring focus-visible:ring-2",
-					"motion-safe:transition-transform motion-safe:duration-150 motion-safe:active:scale-[0.96]",
-					isActive && "font-medium",
-				)}
+		<ContextMenu>
+			<ContextMenuTrigger asChild>
+				<div
+					data-jeo-tab={tab.id}
+					className={cn(
+						"group/tab relative flex h-7 max-w-[13rem] min-w-[6.5rem] shrink-0 items-center rounded-md transition-colors duration-150",
+						isActive
+							? "bg-accent text-foreground"
+							: "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+					)}
+				>
+					{isRenaming ? (
+						<div className="flex h-full min-w-0 flex-1 items-center gap-1.5 pr-1 pl-2">
+							<TabStatusIcon status={status} isSwitching={isSwitching} />
+							<input
+								ref={inputRef}
+								defaultValue={tab.name}
+								aria-label="Project name"
+								maxLength={120}
+								onBlur={() => void finishRename(true)}
+								onKeyDown={(event) => {
+									// keep editor shortcuts (space, delete…) away while typing
+									event.stopPropagation();
+									if (event.key === "Enter") {
+										event.preventDefault();
+										void finishRename(true);
+									} else if (event.key === "Escape") {
+										event.preventDefault();
+										void finishRename(false);
+									}
+								}}
+								className="bg-background ring-ring h-5 min-w-0 flex-1 rounded px-1 text-xs font-medium outline-none ring-1"
+							/>
+						</div>
+					) : (
+						<button
+							type="button"
+							role="tab"
+							aria-selected={isActive}
+							aria-label={label}
+							title={`${label}\nDouble-click to rename · right-click for more`}
+							tabIndex={isActive ? 0 : -1}
+							onClick={onOpen}
+							onDoubleClick={startRename}
+							onKeyDown={(event) => {
+								if (event.key === "F2") {
+									event.preventDefault();
+									startRename();
+								}
+							}}
+							onAuxClick={(event) => {
+								// middle-click closes, like a browser tab
+								if (event.button === 1 && !isBusy) onClose();
+							}}
+							className={cn(
+								"flex h-full min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-md pr-1 pl-2 text-xs outline-none",
+								"focus-visible:ring-ring focus-visible:ring-2",
+								"motion-safe:transition-transform motion-safe:duration-150 motion-safe:active:scale-[0.96]",
+								isActive && "font-medium",
+							)}
+						>
+							<TabStatusIcon status={status} isSwitching={isSwitching} />
+							<span className="min-w-0 truncate">{tab.name}</span>
+							{status?.kind === "queued" && job && (
+								<span className="text-muted-foreground shrink-0 text-[0.65rem] tabular-nums">
+									#{job.position}
+								</span>
+							)}
+						</button>
+					)}
+					<button
+						type="button"
+						onClick={onClose}
+						disabled={isBusy}
+						aria-label={`Close the ${tab.name} tab`}
+						title={
+							isBusy
+								? "Claude is working on this project. Wait for it to finish, or press Stop in the AI chat."
+								: "Close this tab (the project stays in Projects)"
+						}
+						className={cn(
+							"mr-1 grid size-5 shrink-0 cursor-pointer place-items-center rounded outline-none",
+							"hover:bg-foreground/10 focus-visible:ring-ring focus-visible:ring-2 focus-visible:opacity-100",
+							"transition-[opacity,background-color] duration-150",
+							"disabled:cursor-not-allowed disabled:opacity-0",
+							isActive ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover/tab:opacity-70",
+						)}
+					>
+						<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+					</button>
+				</div>
+			</ContextMenuTrigger>
+			<ContextMenuContent
+				className="w-60"
+				data-jeo="tab-menu"
+				// the name box keeps the cursor after "Rename…"
+				onCloseAutoFocus={(event) => event.preventDefault()}
 			>
-				<TabStatusIcon status={status} isSwitching={isSwitching} />
-				<span className="min-w-0 truncate">{tab.name}</span>
-				{status?.kind === "queued" && job && (
-					<span className="text-muted-foreground shrink-0 text-[0.65rem] tabular-nums">
-						#{job.position}
-					</span>
+				{!isActive && <ContextMenuItem onClick={onOpen}>Open</ContextMenuItem>}
+				<ContextMenuItem onClick={startRename} disabled={!canRename}>
+					Rename…
+					<ContextMenuShortcut>F2</ContextMenuShortcut>
+				</ContextMenuItem>
+				<ContextMenuItem
+					onClick={() =>
+						void duplicateProjectTab({ id: tab.id, navigate }).catch(() =>
+							toast.error("Could not copy the project."),
+						)
+					}
+					disabled={!isActive && isBusy}
+				>
+					Make a copy in a new tab
+				</ContextMenuItem>
+				{desktop && (
+					<ContextMenuItem onClick={() => void desktop.showProjectFolder({ id: tab.id })}>
+						Show project folder
+					</ContextMenuItem>
 				)}
-			</button>
-			<button
-				type="button"
-				onClick={onClose}
-				disabled={isBusy}
-				aria-label={`Close the ${tab.name} tab`}
-				title={
-					isBusy
-						? "Claude is working on this project. Wait for it to finish, or press Stop in the AI chat."
-						: "Close this tab (the project stays in Projects)"
-				}
-				className={cn(
-					"mr-1 grid size-5 shrink-0 cursor-pointer place-items-center rounded outline-none",
-					"hover:bg-foreground/10 focus-visible:ring-ring focus-visible:ring-2 focus-visible:opacity-100",
-					"transition-[opacity,background-color] duration-150",
-					"disabled:cursor-not-allowed disabled:opacity-0",
-					isActive ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover/tab:opacity-70",
+				{isBusy && desktop && (
+					<>
+						<ContextMenuSeparator />
+						<ContextMenuItem
+							variant="destructive"
+							onClick={() => void desktop.chatStop({ projectId: tab.id })}
+						>
+							Stop Claude on this project
+						</ContextMenuItem>
+					</>
 				)}
-			>
-				<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-			</button>
-		</div>
+				<ContextMenuSeparator />
+				<ContextMenuItem onClick={() => move(index - 1)} disabled={index === 0}>
+					Move left
+				</ContextMenuItem>
+				<ContextMenuItem onClick={() => move(index + 1)} disabled={index === count - 1}>
+					Move right
+				</ContextMenuItem>
+				<ContextMenuSeparator />
+				<ContextMenuItem onClick={onClose} disabled={isBusy}>
+					Close tab
+				</ContextMenuItem>
+				<ContextMenuItem onClick={() => void closeOtherTabs({ id: tab.id, navigate })} disabled={count < 2}>
+					Close other tabs
+				</ContextMenuItem>
+				<ContextMenuItem
+					onClick={() => void closeTabsToRight({ id: tab.id, navigate })}
+					disabled={index === count - 1}
+				>
+					Close tabs to the right
+				</ContextMenuItem>
+			</ContextMenuContent>
+		</ContextMenu>
 	);
 }
 
@@ -339,10 +489,13 @@ export function ProjectTabs() {
 					onKeyDown={onKeyDown}
 					className="flex min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 				>
-					{tabs.map((tab) => (
+					{tabs.map((tab, index) => (
 						<Tab
 							key={tab.id}
 							tab={tab}
+							index={index}
+							count={tabs.length}
+							navigate={navigate}
 							isActive={tab.id === shownId}
 							onOpen={() => open(tab)}
 							onClose={() => close(tab)}

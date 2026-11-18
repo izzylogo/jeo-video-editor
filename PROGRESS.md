@@ -378,3 +378,10 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **Icons on each tab:** spinning ring = Claude working, clock + number = waiting its turn, tick = finished (not looked at yet), warning sign = stopped with a problem. Hovering a tab says it in words. A tab can't be closed while Claude works on it.
 - **One rule:** if Claude changed a project while it was in the background, that tab's old undo steps are dropped (undoing them would undo Claude's work in a confusing way). Claude's own changes can still be undone after you open the tab.
 - **Tested** with a pretend Claude (a test switch, so your Claude plan was not used): Claude edited project A in the background while B was showing, B's message waited (limit set to 1 for the test) and started by itself, the tick appeared on A, and A had Claude's 3 texts and its chat replies when opened. Not yet tried with the real Claude.
+
+## Round 22: rename tabs and a right-click menu (18 Nov 2026)
+
+- **Real Claude test passed:** two real Claudes worked at the same time on two tabs (counter showed 2/2). Each added its own text to its own project, and each project's chat got its own reply. Done in about 45 seconds. Run on copies of two projects in a test folder.
+- **Rename a project from its tab:** double-click the tab, or press F2, or right-click → Rename. Enter saves, Esc cancels. The project folder is renamed too. A tab Claude is editing in the background can be renamed once Claude has finished.
+- **Right-click a tab:** Open, Rename, Make a copy in a new tab, Show project folder, Stop Claude on this project (while it works), Move left / Move right, Close tab, Close other tabs, Close tabs to the right. Tabs where Claude is working are never closed by these.
+- Tested: rename by double-click and from the menu (names saved on disk), Move right, Close other tabs.

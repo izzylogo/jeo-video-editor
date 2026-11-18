@@ -247,3 +247,63 @@ export async function closeProjectTab({
 	editor.project.closeProject();
 	navigate("/projects");
 }
+
+// ---------- right-click actions ----------
+
+function busy(projectId: string): boolean {
+	return isProjectBusy(useJobs.getState().state, projectId);
+}
+
+/**
+ * Renames a tab's project. Not while Claude edits it in the background (the
+ * hidden editor would save the old name back).
+ */
+export async function renameProjectTab({ id, name }: { id: string; name: string }): Promise<boolean> {
+	const clean = name.trim().slice(0, 120);
+	if (!clean) return false;
+	const editor = EditorCore.getInstance();
+	const isOpen = editor.project.getActiveOrNull()?.metadata.id === id;
+	if (!isOpen && busy(id)) return false;
+	await editor.project.renameProject({ id, name: clean });
+	useProjectTabs.getState().renameTab({ id, name: clean });
+	return true;
+}
+
+/** Makes a copy of a tab's project and opens the copy in a new tab. */
+export async function duplicateProjectTab({ id, navigate }: { id: string; navigate: Navigate }): Promise<void> {
+	const editor = EditorCore.getInstance();
+	if (editor.project.getActiveOrNull()?.metadata.id === id) await editor.save.flush();
+	const [copyId] = await editor.project.duplicateProjects({ ids: [id] });
+	if (!copyId) return;
+	const name =
+		editor.project.getSavedProjects().find((project) => project.id === copyId)?.name ??
+		`${useProjectTabs.getState().tabs.find((tab) => tab.id === id)?.name ?? "Project"} (copy)`;
+	await openProjectTab({ id: copyId, name, navigate });
+}
+
+/** Closes every tab except this one (tabs where Claude works stay open). */
+export async function closeOtherTabs({ id, navigate }: { id: string; navigate: Navigate }): Promise<void> {
+	const editor = EditorCore.getInstance();
+	if (editor.project.getActiveOrNull()?.metadata.id !== id) await openProjectTab({ id, navigate });
+	for (const tab of useProjectTabs.getState().tabs) {
+		if (tab.id !== id && !busy(tab.id)) {
+			useProjectTabs.getState().removeTab(tab.id);
+			memory.delete(tab.id);
+		}
+	}
+}
+
+/** Closes the tabs to the right of this one (tabs where Claude works stay open). */
+export async function closeTabsToRight({ id, navigate }: { id: string; navigate: Navigate }): Promise<void> {
+	const { tabs } = useProjectTabs.getState();
+	const at = tabs.findIndex((tab) => tab.id === id);
+	if (at < 0) return;
+	const editor = EditorCore.getInstance();
+	const current = editor.project.getActiveOrNull()?.metadata.id ?? null;
+	const right = tabs.slice(at + 1).filter((tab) => !busy(tab.id));
+	if (current && right.some((tab) => tab.id === current)) await openProjectTab({ id, navigate });
+	for (const tab of right) {
+		useProjectTabs.getState().removeTab(tab.id);
+		memory.delete(tab.id);
+	}
+}
