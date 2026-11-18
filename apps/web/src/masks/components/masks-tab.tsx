@@ -22,6 +22,7 @@ import {
 	TextFontIcon,
 } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from "react";
+import { CapCutMaskPanel } from "./capcut-mask-panel";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { FontPicker } from "@/components/ui/font-picker";
@@ -121,12 +122,32 @@ function withPreviewedMaskParam({
 			return { ...mask, params: { ...mask.params, [key]: value } };
 		case "text":
 			return { ...mask, params: { ...mask.params, [key]: value } };
+		case "capcut":
+			return { ...mask, params: { ...mask.params, [key]: value } };
 		case "freeform":
 			return { ...mask, params: { ...mask.params, [key]: value } };
 	}
 }
 
+/**
+ * JEO: masks are CapCut-style (several shapes on one clip, drawn like CapCut).
+ * A clip that still has an older JEO mask shows that mask's settings too,
+ * with a button to switch.
+ */
 export function MasksTab({ element, trackId }: MasksTabProps) {
+	const first = element.masks?.[0];
+	if (!first || first.type === "capcut") {
+		return <CapCutMaskPanel element={element} trackId={trackId} />;
+	}
+	return (
+		<>
+			<CapCutMaskPanel element={element} trackId={trackId} legacyMask={first} />
+			<LegacyMasksTab element={element} trackId={trackId} />
+		</>
+	);
+}
+
+function LegacyMasksTab({ element, trackId }: MasksTabProps) {
 	const editor = useEditor();
 	const { renderElement, previewUpdates, commit } =
 		useElementPreview<MaskableElement>({

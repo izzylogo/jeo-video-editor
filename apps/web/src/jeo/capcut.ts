@@ -24,6 +24,7 @@ import { getDesktopBridge } from "@/services/desktop/bridge";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import { TICKS_PER_SECOND } from "@/wasm";
 import { featherToShare } from "./actions";
+import { readSlot, usedSlots } from "@/masks/builtin/definitions/capcut";
 
 const S = TICKS_PER_SECOND;
 
@@ -123,6 +124,36 @@ function maskOf({
 	};
 }
 
+/** Every mask on a clip in CapCut's terms (a CapCut mask can hold several). */
+function masksOf({
+	element,
+	asset,
+}: {
+	element: TimelineElement;
+	asset: { width?: number; height?: number };
+}): Array<Record<string, unknown>> {
+	const mask = "masks" in element ? element.masks?.[0] : undefined;
+	if (mask?.type === "capcut") {
+		// already in CapCut's own numbers: straight across
+		return usedSlots(mask.params).map((slot) => {
+			const s = readSlot(mask.params, slot);
+			return {
+				shape: s.shape,
+				centerX: s.x,
+				centerY: s.y,
+				width: s.w,
+				height: s.h,
+				rotation: s.r,
+				feather: s.f,
+				roundCorner: s.shape === "rectangle" ? s.c : 0,
+				invert: s.invert,
+			};
+		});
+	}
+	const single = maskOf({ element, asset });
+	return single ? [single] : [];
+}
+
 export interface CapCutExportResult {
 	ok: boolean;
 	error?: string;
@@ -184,7 +215,7 @@ export async function openInCapCut({
 			mediaWidth: asset.width,
 			mediaHeight: asset.height,
 			mediaDuration: asset.duration ?? 0,
-			masks: [maskOf({ element, asset }), ...(extraMasks.get(element.id) ?? [])].filter(Boolean),
+			masks: [...masksOf({ element, asset }), ...(extraMasks.get(element.id) ?? [])],
 			...(opacityOverride.has(element.id) ? { opacity: opacityOverride.get(element.id) } : {}),
 		});
 	};

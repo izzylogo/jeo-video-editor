@@ -31,8 +31,8 @@ import { type MediaTime, TICKS_PER_SECOND } from "@/wasm";
 import { JEO_FLASH, JEO_SHAKE, JEO_SPLIT } from "./post-fx";
 import { JEO_ARROW } from "./graphics";
 import { buildDefaultMaskInstance } from "@/masks";
-import type { EllipseMask, RectangleMask } from "@/masks/types";
-import { buildEmptyTrack } from "@/timeline/placement/track-factory";
+import type { CapCutMask } from "@/masks/types";
+import { slotPatch } from "@/masks/builtin/definitions/capcut";
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; message: string };
 
@@ -722,11 +722,9 @@ export function featherToShare({ pixels, maskWidth, maskHeight }: { pixels: numb
 }
 
 /**
- * A spotlight, the way the user builds it in CapCut, in three levels measured
- * from their finished GIRLFRIEND EXPOSED video:
- *  - the whole freeze frame is dimmed (about 22 % bright),
- *  - a soft Rectangle-masked copy brings that area up to about 67 %,
- *  - a Circle-masked copy on top is at full brightness.
+ * A spotlight, the way the user builds it in CapCut: the freeze frame gets a
+ * CapCut mask with a soft rounded Rectangle and a Circle (see masks/builtin/
+ * definitions/capcut.ts for how CapCut draws them).
  * x / y / radius are frame pixels. The clip is cut at the spotlight's start
  * and end so only that part changes.
  */
@@ -811,69 +809,35 @@ export function addMaskSpotlight({
 		width: Math.min(1.2, (2.2 * 2 * radius) / shownW),
 		height: Math.min(1.2, (3.2 * 2 * radius) / shownH),
 	};
-	const sourcePixels = (share: { width: number; height: number }) => ({
-		maskWidth: share.width * asset.width!,
-		maskHeight: share.height * asset.height!,
-	});
-	const rectangleMask = buildDefaultMaskInstance({ maskType: "rectangle" }) as RectangleMask;
-	rectangleMask.params = {
-		...rectangleMask.params,
-		centerX,
-		centerY,
-		...box,
-		rotation: 0,
-		scale: 1,
-		inverted: false,
-		feather: featherToPixels({ share: 0.58, ...sourcePixels(box) }),
+	// ONE clip with a CapCut mask holding both shapes, exactly the user's setup:
+	// Mask1 Rectangle (feather 58, round corners 100) + Mask2 Circle (feather 21).
+	// CapCut adds the two together; the rectangle's very soft edge is what makes
+	// the rest dim instead of black.
+	const capcut = buildDefaultMaskInstance({
+		maskType: "capcut",
+		elementSize: { width: asset.width, height: asset.height },
+	}) as CapCutMask;
+	capcut.params = {
+		...capcut.params,
+		active: 2,
+		...slotPatch(1, { shape: "rectangle", x: 2 * centerX, y: -2 * centerY, w: box.width, h: box.height, r: 0, f: 0.58, c: 1, invert: false }),
+		...slotPatch(2, { shape: "circle", x: 2 * centerX, y: -2 * centerY, w: circle.width, h: circle.height, r: 0, f: 0.21, c: 0, invert: false }),
 	};
-	const circleMask = buildDefaultMaskInstance({ maskType: "ellipse" }) as EllipseMask;
-	circleMask.params = {
-		...circleMask.params,
-		centerX,
-		centerY,
-		...circle,
-		rotation: 0,
-		scale: 1,
-		inverted: false,
-		feather: featherToPixels({ share: 0.21, ...sourcePixels(circle) }),
-	};
-
-	const dim = Math.min(1, Math.max(0.05, outside));
-	// the rectangle copy sits over the dimmed picture: dim + (1 - dim) x a = boxLevel
-	const boxAlpha = Math.min(1, Math.max(0, (boxLevel - dim) / (1 - dim)));
-	const dark = {
-		...piece,
-		params: { ...piece.params, opacity: dim },
-	} as TimelineElement;
-	const copy = (name: string, mask: RectangleMask | EllipseMask, opacity: number) =>
-		({
-			...piece,
-			id: generateUUID(),
-			name,
-			masks: [mask],
-			params: { ...piece.params, opacity, muted: true },
-		}) as TimelineElement;
-	const row = (element: TimelineElement, name: string) =>
-		({
-			...buildEmptyTrack({ id: generateUUID(), type: "video", name }),
-			elements: [element],
-		}) as SceneTracks["overlay"][number];
-	const boxTrack = row(copy("Spotlight box", rectangleMask, boxAlpha), "Spotlight box");
-	const lightTrack = row(copy("Spotlight", circleMask, 1), "Spotlight");
-
+	void outside;
+	void boxLevel;
+	const lit = { ...piece, masks: [capcut] } as TimelineElement;
 	const after: SceneTracks = {
-		// just above the main row, under texts and tags; the first row is on top
-		overlay: [...split.overlay, lightTrack, boxTrack],
+		overlay: split.overlay,
 		main: {
 			...split.main,
 			elements: split.main.elements.map((element) =>
-				element.id === piece.id ? dark : element,
+				element.id === piece.id ? lit : element,
 			) as typeof split.main.elements,
 		},
 		audio: split.audio,
 	};
 	editor().command.execute({ command: new TracksSnapshotCommand({ before, after }) });
-	return ok("Spotlight added: the picture dimmed, a softer rectangle and a bright circle. Move them in each layer's Masks tab.");
+	return ok("Spotlight added: a soft rounded rectangle and a circle mask on the freeze frame, like CapCut. Adjust them in the Masks tab.");
 }
 
 // ---------- endings ----------

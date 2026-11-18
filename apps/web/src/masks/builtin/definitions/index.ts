@@ -11,6 +11,7 @@ import { rectangleMaskDefinition } from "./rectangle";
 import { splitMaskDefinition } from "./split";
 import { starMaskDefinition } from "./star";
 import { textMaskDefinition } from "./text";
+import { capcutMaskDefinition } from "./capcut";
 import { freeformMaskDefinition } from "../../freeform/definition";
 import {
 	MinusSignIcon,
@@ -70,6 +71,10 @@ export function registerDefaultMasks(): void {
 	registerDefaultMask({
 		definition: textMaskDefinition,
 		icon: { icon: TextFontIcon },
+	});
+	registerDefaultMask({
+		definition: capcutMaskDefinition,
+		icon: { icon: CircleIcon },
 	});
 	registerDefaultMask({
 		definition: freeformMaskDefinition,

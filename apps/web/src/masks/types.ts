@@ -16,7 +16,8 @@ export type BuiltinMaskType =
 	| "heart"
 	| "diamond"
 	| "star"
-	| "text";
+	| "text"
+	| "capcut";
 
 export type MaskType = BuiltinMaskType | "freeform";
 
@@ -56,6 +57,78 @@ export interface TextMaskParams extends BaseMaskParams {
 	centerY: number;
 	rotation: number;
 	scale: number;
+}
+
+export type CapCutMaskShape = "none" | "rectangle" | "circle";
+
+/**
+ * JEO: CapCut's own mask. Up to four shapes on one clip, each drawn with
+ * CapCut's formula and added together (as CapCut does with Mask1, Mask2...).
+ * Numbers are stored in CapCut's units so they go across unchanged.
+ */
+export interface CapCutMaskParams extends BaseMaskParams {
+	/** which shape the panel and the handles are working on (1..4) */
+	active: number;
+	/** shape 1: "none", "rectangle" or "circle" */
+	s1: CapCutMaskShape;
+	/** centre in half-sizes of the clip (-1..1), up is positive (CapCut's numbers) */
+	x1: number;
+	y1: number;
+	/** size as a part of the clip */
+	w1: number;
+	h1: number;
+	/** degrees */
+	r1: number;
+	/** CapCut feather 0..1 */
+	f1: number;
+	/** CapCut round corners 0..1 (rectangle only) */
+	c1: number;
+	i1: boolean;
+	/** shape 2: "none", "rectangle" or "circle" */
+	s2: CapCutMaskShape;
+	/** centre in half-sizes of the clip (-1..1), up is positive (CapCut's numbers) */
+	x2: number;
+	y2: number;
+	/** size as a part of the clip */
+	w2: number;
+	h2: number;
+	/** degrees */
+	r2: number;
+	/** CapCut feather 0..1 */
+	f2: number;
+	/** CapCut round corners 0..1 (rectangle only) */
+	c2: number;
+	i2: boolean;
+	/** shape 3: "none", "rectangle" or "circle" */
+	s3: CapCutMaskShape;
+	/** centre in half-sizes of the clip (-1..1), up is positive (CapCut's numbers) */
+	x3: number;
+	y3: number;
+	/** size as a part of the clip */
+	w3: number;
+	h3: number;
+	/** degrees */
+	r3: number;
+	/** CapCut feather 0..1 */
+	f3: number;
+	/** CapCut round corners 0..1 (rectangle only) */
+	c3: number;
+	i3: boolean;
+	/** shape 4: "none", "rectangle" or "circle" */
+	s4: CapCutMaskShape;
+	/** centre in half-sizes of the clip (-1..1), up is positive (CapCut's numbers) */
+	x4: number;
+	y4: number;
+	/** size as a part of the clip */
+	w4: number;
+	h4: number;
+	/** degrees */
+	r4: number;
+	/** CapCut feather 0..1 */
+	f4: number;
+	/** CapCut round corners 0..1 (rectangle only) */
+	c4: number;
+	i4: boolean;
 }
 
 export interface FreeformPathMaskParams extends BaseMaskParams {
@@ -109,6 +182,12 @@ export interface StarMask {
 	params: RectangleMaskParams;
 }
 
+export interface CapCutMask {
+	id: string;
+	type: "capcut";
+	params: CapCutMaskParams;
+}
+
 export interface TextMask {
 	id: string;
 	type: "text";
@@ -123,7 +202,8 @@ export type BuiltinShapeMask =
 	| HeartMask
 	| DiamondMask
 	| StarMask
-	| TextMask;
+	| TextMask
+	| CapCutMask;
 
 export interface FreeformPathMask {
 	id: string;

@@ -347,4 +347,8 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **Checked against your video:** recreating the GIRLFRIEND EXPOSED freeze frame from the photo with these formulas matches your finished video to about 8 out of 255 in brightness (best with the feathers at two-thirds of the script numbers; Ghidra run on videoeditor.dll to confirm where that comes from).
 - **Export:** a JEO spotlight now goes to CapCut as your exact setup: ONE freeze clip at full strength with a Rectangle (feather 0.58, round corners 1) and a Circle (feather 0.21). JEO keeps its three layers for the preview because it draws one mask per clip.
 
+- **JEO now draws masks the CapCut way.** New "CapCut mask": up to four shapes on one clip (Rectangle, Circle), drawn with CapCut's formulas and added together. Your GIRLFRIEND EXPOSED freeze frame with your exact numbers, rendered in JEO, differs from your finished CapCut video by about 7 out of 255 (median). Pictures in `outputound19-proof`.
+- **Mask panel like CapCut's:** tick box "Mask", tabs Mask1 Rectangle / Mask2 Circle / +, shape tiles (Split, Filmstrip, Circle, Rectangle, Stars, Heart, Text, Brush, Pen; only Circle and Rectangle work so far), Mask settings with invert and reset, Position X / Y and Size in clip pixels, Rotation, Feather and Round corners 0-100. Shapes can be dragged, resized, turned and softened on the preview.
+- **Spotlight** is now one freeze clip with that mask (Rectangle feather 58, round corners 100 + Circle feather 21), and exports to CapCut unchanged. Older layered spotlights still export as before.
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

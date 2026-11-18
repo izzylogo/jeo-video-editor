@@ -29,6 +29,8 @@ function withMaskId({ mask, id }: { mask: MaskWithoutId; id: string }): Mask {
 			return { ...mask, id };
 		case "text":
 			return { ...mask, id };
+		case "capcut":
+			return { ...mask, id };
 		case "freeform":
 			return { ...mask, id };
 	}
