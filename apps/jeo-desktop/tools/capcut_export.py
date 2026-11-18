@@ -303,8 +303,8 @@ class Draft:
                 "visible": True,
             }
         )
-        if item.get("mask"):
-            self.add_mask(segment, item["mask"])
+        for mask in item.get("masks") or ([item["mask"]] if item.get("mask") else []):
+            self.add_mask(segment, mask)
         return segment
 
     def add_mask(self, segment, mask):
@@ -327,7 +327,7 @@ class Draft:
             "rotation": float(mask.get("rotation", 0)),
             "feather": float(mask.get("feather", 0)),
             "expansion": 0.0,
-            "roundCorner": 0.0,
+            "roundCorner": float(mask.get("roundCorner", 0)),
             "invert": bool(mask.get("invert", False)),
             "aspectRatio": 1.0,
         }

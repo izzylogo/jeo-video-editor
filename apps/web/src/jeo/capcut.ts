@@ -111,6 +111,8 @@ function maskOf({
 	const sourceHeight = params.height * (asset.height ?? 1920);
 	return {
 		shape: mask.type === "ellipse" ? "circle" : "rectangle",
+		// the spotlight's rectangle is CapCut's rounded one, like the user's own
+		roundCorner: element.name === "Spotlight box" ? 1 : 0,
 		centerX: 2 * params.centerX,
 		centerY: -2 * params.centerY,
 		width: params.width * params.scale,
@@ -182,9 +184,41 @@ export async function openInCapCut({
 			mediaWidth: asset.width,
 			mediaHeight: asset.height,
 			mediaDuration: asset.duration ?? 0,
-			mask: maskOf({ element, asset }),
+			masks: [maskOf({ element, asset }), ...(extraMasks.get(element.id) ?? [])].filter(Boolean),
+			...(opacityOverride.has(element.id) ? { opacity: opacityOverride.get(element.id) } : {}),
 		});
 	};
+
+	// A JEO spotlight is three layers (dimmed freeze frame, rectangle copy,
+	// circle copy) because JEO draws one mask per clip. CapCut can hold several
+	// masks on one clip, so it gets the user's own setup: ONE freeze clip with
+	// both masks, at full strength. The copies are folded into it.
+	const extraMasks = new Map<string, Array<Record<string, unknown>>>();
+	const opacityOverride = new Map<string, number>();
+	const folded = new Set<string>();
+	for (const track of tracks.overlay) {
+		for (const element of track.elements as TimelineElement[]) {
+			if (element.type !== "video" && element.type !== "image") continue;
+			if (element.name !== "Spotlight" && element.name !== "Spotlight box") continue;
+			const base = tracks.main.elements.find(
+				(item) =>
+					"mediaId" in item &&
+					item.mediaId === element.mediaId &&
+					item.startTime === element.startTime &&
+					item.duration === element.duration,
+			);
+			const asset = assets.find((item) => item.id === element.mediaId);
+			const mask = asset ? maskOf({ element, asset }) : undefined;
+			if (!base || !mask) continue;
+			const list = extraMasks.get(base.id) ?? [];
+			// rectangle first, then circle (the order the user adds them)
+			if (element.name === "Spotlight box") list.unshift(mask);
+			else list.push(mask);
+			extraMasks.set(base.id, list);
+			opacityOverride.set(base.id, 1);
+			folded.add(element.id);
+		}
+	}
 	for (const element of tracks.main.elements) {
 		addVisual({ element: element as TimelineElement, overlay: false });
 	}
@@ -249,7 +283,7 @@ export async function openInCapCut({
 					align: element.params.textAlign ?? "center",
 				});
 			} else if (element.type === "video" || element.type === "image") {
-				addVisual({ element, overlay: true });
+				if (!folded.has(element.id)) addVisual({ element, overlay: true });
 			} else if (element.type === "effect") {
 				// CapCut has its own versions of three of these; the rest stay here
 				const kind =

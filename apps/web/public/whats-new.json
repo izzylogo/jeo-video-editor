@@ -1,5 +1,6 @@
 {
   "items": [
+    "Open in CapCut now gives a spotlight your exact CapCut setup: one freeze clip with a soft rounded Rectangle mask and a Circle mask",
     "Spotlight matches your own videos: the picture dimmed, a softer brighter rectangle, and the circle at full brightness (nothing goes black)",
     "Spotlights are now made with masks, like in CapCut: a darker soft rectangle on the freeze frame with a bright circle on top. They go to CapCut as real masks",
     "Open in CapCut now carries the spotlight across as a real CapCut Circle mask on the clip, and marks every colour flash with an (ADD C.F) text",

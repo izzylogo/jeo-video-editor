@@ -341,4 +341,10 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - Not checked inside CapCut 9.8 itself. JEO draws one mask per clip, which is why the circle is a second layer (CapCut could hold both on one clip).
 - **Corrected the same day:** your finished GIRLFRIEND EXPOSED video is not black outside. Measured from it: outside about 22 % bright, rectangle about 67 %, circle 100 %. The spotlight is now three layers: the freeze frame at 22 %, a Rectangle-masked copy at 58 % on top (which brings that area to 67 %), and a Circle-masked copy at 100 % on top of that. Measured in JEO afterwards: 0.22 / 0.67 / 1.00. In CapCut the layers keep the same order (bottom to top).
 
+## Round 19: how CapCut really draws masks (18 Nov 2026)
+
+- **Read from CapCut's own mask packages** (Cache\effect, read only). Each mask is a small shader: it paints a grey "how visible" picture, 1 inside and 0 outside, with a smooth soft edge. A second mask is **added** to the first (capped at fully visible). A final step multiplies the clip by that picture. Feather is stretched a lot: the Rectangle script multiplies it by 6, the Circle by 15, so 0.58 and 0.21 give very wide fades. That is why your spotlight is dim, not black: the rounded rectangle's fade reaches far outside it and its middle is only about 70 % bright; the circle adds on top and brings the jar to full brightness. There is no separate "darker" setting.
+- **Checked against your video:** recreating the GIRLFRIEND EXPOSED freeze frame from the photo with these formulas matches your finished video to about 8 out of 255 in brightness (best with the feathers at two-thirds of the script numbers; Ghidra run on videoeditor.dll to confirm where that comes from).
+- **Export:** a JEO spotlight now goes to CapCut as your exact setup: ONE freeze clip at full strength with a Rectangle (feather 0.58, round corners 1) and a Circle (feather 0.21). JEO keeps its three layers for the preview because it draws one mask per clip.
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.
