@@ -355,4 +355,9 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **Eye button on each mask** (Mask1, Mask2...) hides it in the preview so you can compare; hidden masks are also left out of "Open in CapCut". The Mask tick box now hides/shows all masks and keeps their settings.
 - **Export fix:** CapCut counts keyframe times on video clips from the start of the source file (seen in your FALLING DOG project); JEO counted from the clip start, so zooms on trimmed clips were off. Fixed.
 
+## CapCut reference (18 Nov 2026)
+
+- Full read of CapCut written up in `docs/capcut-reference.md`: how a CapCut project is built, every feature (cuts, speed, keyframes, masks, animations, transitions, effects, filters, colour adjust, blend modes, chroma key, text, shapes, stickers, audio) with how CapCut stores it, what JEO exports today and what to add next. Raw survey data (281 project files, ~600 effect packages, 33,521 program functions read with REA) is in `capcut-research\` next to the project folder (not on GitHub: it has project names and PC paths).
+- Ghidra could not finish on the 70 MB videoeditor.dll on this laptop (out of memory); REA's export-table read and the effect packages' own scripts gave the answers instead.
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.
