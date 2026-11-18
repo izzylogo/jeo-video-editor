@@ -360,4 +360,11 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - Full read of CapCut written up in `docs/capcut-reference.md`: how a CapCut project is built, every feature (cuts, speed, keyframes, masks, animations, transitions, effects, filters, colour adjust, blend modes, chroma key, text, shapes, stickers, audio) with how CapCut stores it, what JEO exports today and what to add next. Raw survey data (281 project files, ~600 effect packages, 33,521 program functions read with REA) is in `capcut-research\` next to the project folder (not on GitHub: it has project names and PC paths).
 - Ghidra could not finish on the 70 MB videoeditor.dll on this laptop (out of memory); REA's export-table read and the effect packages' own scripts gave the answers instead.
 
+## Round 20: shapes, replace, insert, clip references (18 Nov 2026)
+
+- **▼ and arrow as CapCut shapes.** Open in CapCut writes the tag triangle and the curved arrow as native CapCut shapes (`materials.shapes`, polycon on a sticker track) instead of a text character / "not carried over". Shape units measured on GIRLFRIEND EXPOSED: canvas pixels / (canvas width / 720), up positive. Drawn over JEO's own picture they line up exactly. Not opened inside CapCut itself.
+- **Replace media** (right-click a picture or video clip): pick from the project or import a file; keeps place, length, framing, masks, keyframes, effects, speed. A shorter video shortens the clip and says so.
+- **Insert on the main row:** dropping media, or dragging a clip, onto the main video row puts it at the nearest cut and pushes the rest along (texts and sounds too when the main row's magnet is on). Tested with the real mouse: a picture dropped at 4.1 s went in at the cut and moved everything after it by 5 s; a clip dragged from 2nd to 7th place moved with no overlaps. While dragging a clip, the preview still shows it on a row above; it lands in the main row when let go.
+- **Reference clips in the AI chat:** select a clip, press "+ Reference the selected clip" (chips you can remove), or right-click → Ask Claude about this clip. Claude gets the clip id, kind, row and times; the bubble shows a short label.
+
 - Not done: touch gestures on the timeline (dragging clips with a finger) are untested, so phone width is for looking and light changes, not full editing.

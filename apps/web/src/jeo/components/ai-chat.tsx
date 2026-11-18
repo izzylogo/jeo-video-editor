@@ -2,6 +2,7 @@
 
 import { Spinner, useElapsedSeconds } from "./feedback";
 import { ChatText } from "./chat-text";
+import { ChatRefsBar, refsForBubble, refsForClaude, useChatRefs } from "./chat-refs";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { useEditor } from "@/editor/use-editor";
@@ -185,11 +186,15 @@ export function AiChatView() {
 		const store = useChatStore.getState();
 		if (!text || store.isBusy || !desktop || !store.projectId) return;
 		setDraft("");
-		store.add({ role: "user", text });
+		// clips the user pointed at go in front of the message (ids for Claude,
+		// short labels in the bubble)
+		const refs = useChatRefs.getState().refs;
+		useChatRefs.getState().clear();
+		store.add({ role: "user", text: refsForBubble(refs) + text });
 		store.setBusy(true);
 		saveChat();
 		const outcome = await desktop
-			.chatSend({ projectId: store.projectId, text, sessionId: store.sessionId })
+			.chatSend({ projectId: store.projectId, text: refsForClaude(refs) + text, sessionId: store.sessionId })
 			.catch((error: unknown) => ({ ok: false, error: String(error) }));
 		if (!outcome.ok) {
 			store.add({ role: "error", text: outcome.error ?? "Could not reach Claude." });
@@ -283,7 +288,9 @@ export function AiChatView() {
 			</div>
 
 			<div className="shrink-0 border-t p-2">
+				<ChatRefsBar />
 				<textarea
+					data-jeo="chat-input"
 					value={draft}
 					onChange={(event) => setDraft(event.target.value)}
 					onKeyDown={(event) => {

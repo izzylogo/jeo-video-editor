@@ -75,7 +75,7 @@ def library():
     global _LIBRARY
     if _LIBRARY is not None:
         return _LIBRARY
-    found = {"video_effects": {}, "transitions": {}, "masks": {}, "effect_segment": None, "effect_track": None}
+    found = {"video_effects": {}, "transitions": {}, "masks": {}, "shape": None, "effect_segment": None, "effect_track": None}
     # the user's projects, plus the copies CapCut keeps of cloud projects
     folders = []
     for name in os.listdir(DRAFTS):
@@ -99,6 +99,8 @@ def library():
             for item in materials.get(kind) or []:
                 if item.get("name") and os.path.exists(item.get("path") or "") and item["name"] not in found[kind]:
                     found[kind][item["name"]] = item
+        if found["shape"] is None and (materials.get("shapes") or []):
+            found["shape"] = materials["shapes"][0]
         # masks (circle, rectangle...), by shape, if CapCut still has the shape
         for item in materials.get("common_mask") or []:
             shape = item.get("resource_type")
@@ -426,6 +428,70 @@ class Draft:
         self.materials.setdefault("transitions", []).append(material)
         before["extra_material_refs"].append(material["id"])
 
+    # ----- shapes: the ▼ under tags and the curved arrow, as real CapCut shapes -----
+    SHAPE_FALLBACK = {
+        "type": "shape", "shape_type": 4, "roundness": [], "global_alpha": 1.0, "color": "",
+        "border_line_style": 0, "border_width": 0.0, "border_color": "#FFFFFF",
+        "shadow_color": "#000000", "shadow_alpha": 0.5, "shadow_distance": 10.0, "shadow_angle": 45.0,
+        "check_flag": 1, "name": "polycon_item", "combo_info": {"text_templates": []}, "shape_scale": [],
+        "border_alpha": 1.0, "shadow_ambiguity": 0.0, "endpoint_left_style": 0, "endpoint_right_style": 0,
+        "line_style": 0, "constant_material_id": "",
+        "fill_render_style": {"color": {"solid": {"color": "#FFFFFF", "alpha": 1.0},
+            "gradient": {"color": [], "alpha": [], "percent": [], "angle": 0.0, "mode": "all", "style": "linear"},
+            "texture": {"path": "", "flip": [], "scale": 1.0, "alpha": 1.0, "angle": 0.0, "blend": "no", "range": 0,
+                        "fill": "tile", "resource_id": "", "effect_id": "", "play_speed": 1.0},
+            "render_type": "solid"}, "alpha": 1.0},
+    }
+
+    def shape_segment(self, item):
+        template = library()["shape"] or self.SHAPE_FALLBACK
+        material = copy.deepcopy(template)
+        points = [float(v) for v in item["points"]]
+        xs, ys = points[0::2], points[1::2]
+        material.update(
+            {
+                "id": new_id(),
+                "type": "shape",
+                "name": "polycon_item",
+                "shape_type": 4,
+                "custom_points": points,
+                "custom_points_in": [0.0] * len(points),
+                "custom_points_out": [0.0] * len(points),
+                "shape_size": [max(xs) - min(xs), max(ys) - min(ys)],
+                "border_width": float(item.get("borderWidth", 0)),
+                "border_color": str(item.get("border", "#FFFFFF")).upper(),
+                "border_alpha": 1.0,
+            }
+        )
+        style = material.setdefault("fill_render_style", copy.deepcopy(self.SHAPE_FALLBACK["fill_render_style"]))
+        style.setdefault("color", {}).setdefault("solid", {})
+        style["color"]["solid"]["color"] = str(item.get("fill", "#FFFFFF")).upper()
+        style["color"]["solid"]["alpha"] = float(item.get("fillAlpha", 1))
+        style["color"]["render_type"] = "solid"
+        self.materials.setdefault("shapes", []).append(material)
+        _, pattern = segment_pattern(self.pattern, "sticker", True)
+        if pattern is None:
+            _, pattern = segment_pattern(self.pattern, "text", True)
+        segment = copy.deepcopy(pattern)
+        box = self.clip_box({**item, "scale": 1.0})
+        segment.update(
+            {
+                "id": new_id(),
+                "material_id": material["id"],
+                "source_timerange": None,
+                "target_timerange": {"start": us(item["start"]), "duration": us(item["duration"])},
+                "clip": box,
+                "uniform_scale": {"on": True, "value": 1.0},
+                "extra_material_refs": [],
+                "render_index": 14001,
+                "keyframe_refs": [],
+                "common_keyframes": self.keyframes(item),
+                "group_id": "",
+                "visible": True,
+            }
+        )
+        return segment
+
     # ----- texts -----
     def text_segment(self, item):
         _, pattern = segment_pattern(self.pattern, "text", True)
@@ -657,6 +723,8 @@ def main():
     draft.track("video", main_segments)
     for row in lay_out_rows(data.get("texts", [])):
         draft.track("text", [draft.text_segment(item) for item in row])
+    for row in lay_out_rows(data.get("shapes", [])):
+        draft.track("sticker", [draft.shape_segment(item) for item in row])
     for number, row in enumerate(lay_out_rows(overlay_clips)):
         draft.track("video", [draft.video_segment(clip, 1 + number) for clip in row], overlay=True)
     for row in lay_out_rows([item for item in effects if item.get("kind") != "transition"]):

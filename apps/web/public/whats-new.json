@@ -1,5 +1,9 @@
 {
   "items": [
+    "Open in CapCut: the triangle under tags and the curved arrow now go across as real CapCut shapes you can edit",
+    "Replace media: right-click a picture or video clip, pick another file; place, length, framing, masks, keyframes and effects are kept",
+    "Drop media or drag a clip onto the main video row between clips: it slots in at the nearest cut and the rest moves along",
+    "Point Claude at a clip: select it and press Reference the selected clip in the AI tab, or right-click a clip and choose Ask Claude about this clip",
     "Mask sliders now follow the mouse; each mask has an eye button to hide it and compare; the Mask tick box hides all masks without losing them",
     "Open in CapCut: keyframes on trimmed video clips now land at the right moment",
     "Masks work like CapCut: several shapes on one clip (Mask1 Rectangle, Mask2 Circle...), drawn with CapCut's own formula, and a Mask panel laid out like CapCut's",

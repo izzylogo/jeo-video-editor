@@ -1472,3 +1472,85 @@ export function addTransition({
 		`${TRANSITION_NAMES[style]} added on the cut at ${(cut / 120000).toFixed(2)} s.`,
 	);
 }
+
+// ---------- replace media (like CapCut's "Replace") ----------
+
+/**
+ * Swaps the picture or video inside a clip and keeps everything else: its
+ * place and length on the timeline, framing, opacity, masks, keyframes,
+ * effects and speed. A video that is too short for the clip makes the clip
+ * shorter (and says so); a picture fits any length.
+ */
+export function replaceClipMedia({
+	trackId,
+	elementId,
+	mediaId,
+}: {
+	trackId: string;
+	elementId: string;
+	mediaId: string;
+}): ActionResult {
+	const before = tracks();
+	if (!before) return fail("Open a project first.");
+	const track = allTracks(before).find((item) => item.id === trackId);
+	const old = track?.elements.find((item) => item.id === elementId);
+	if (!track || !old || (old.type !== "video" && old.type !== "image")) {
+		return fail("Pick a video or picture clip to replace.");
+	}
+	const asset = editor()
+		.media.getAssets()
+		.find((item) => item.id === mediaId);
+	if (!asset || (asset.type !== "video" && asset.type !== "image")) {
+		return fail("Pick a video or a picture.");
+	}
+	const rate = old.type === "video" ? (old.retime?.rate ?? 1) : 1;
+	let duration = old.duration;
+	let note = "";
+	let trimStart: MediaTime = toTime(0);
+	let sourceDuration = duration;
+	if (asset.type === "video") {
+		sourceDuration = seconds(asset.duration ?? 0);
+		const needed = Math.round(duration * rate);
+		if (sourceDuration < needed) {
+			duration = toTime(Math.floor(sourceDuration / rate));
+			note = ` The new video is shorter, so the clip is now ${(duration / TICKS_PER_SECOND).toFixed(2)} s.`;
+		}
+		// keep the same moment of the new video if it is long enough
+		const keep: number = old.type === "video" ? old.trimStart : 0;
+		trimStart = toTime(keep + Math.round(duration * rate) <= sourceDuration ? keep : 0);
+	}
+	const fresh = buildElementFromMedia({
+		mediaId: asset.id,
+		mediaType: asset.type,
+		name: asset.name,
+		duration,
+		startTime: old.startTime,
+	}) as TimelineElement;
+	const replaced = {
+		...fresh,
+		id: old.id,
+		params: { ...(fresh as { params: Record<string, unknown> }).params, ...old.params },
+		...("animations" in old && old.animations ? { animations: old.animations } : {}),
+		...(old.masks ? { masks: old.masks } : {}),
+		...(old.effects ? { effects: old.effects } : {}),
+		...(asset.type === "video"
+			? {
+					trimStart,
+					trimEnd: toTime(Math.max(0, sourceDuration - trimStart - Math.round(duration * rate))),
+					sourceDuration,
+					...(old.type === "video" && old.retime ? { retime: old.retime } : {}),
+				}
+			: {}),
+	} as TimelineElement;
+	const swap = <TTrack extends TimelineTrack>(item: TTrack): TTrack =>
+		item.id === trackId
+			? ({ ...item, elements: item.elements.map((element) => (element.id === elementId ? replaced : element)) } as TTrack)
+			: item;
+	const after: SceneTracks = {
+		overlay: before.overlay.map((item) => swap(item)),
+		main: swap(before.main),
+		audio: before.audio,
+	};
+	editor().command.execute({ command: new TracksSnapshotCommand({ before, after }) });
+	return ok(`Replaced with ${asset.name}. Framing, masks, keyframes and effects were kept.${note}`);
+}

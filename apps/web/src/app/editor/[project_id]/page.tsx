@@ -11,6 +11,7 @@ import { PropertiesPanel } from "@/components/editor/panels/properties";
 import { Timeline } from "@/timeline/components";
 import { PreviewPanel } from "@/preview/components";
 import { EditorHeader } from "@/components/editor/editor-header";
+import { ReplaceMediaDialog } from "@/jeo/components/replace-media";
 import { EditorProvider } from "@/components/providers/editor-provider";
 import { MigrationDialog } from "@/project/components/migration-dialog";
 import { usePanelStore } from "@/editor/panel-store";
@@ -52,6 +53,7 @@ export default function Editor() {
 					<MigrationDialog />
 					<AiChatRuntime />
 					<CapCutImportRunner />
+					<ReplaceMediaDialog />
 				</div>
 			</EditorProvider>
 		</MobileGate>

@@ -14,10 +14,14 @@ import {
 	buildElementFromMedia,
 	buildEffectElement,
 } from "@/timeline/element-utils";
-import { AddTrackCommand, InsertElementCommand } from "@/commands/timeline";
+import { AddTrackCommand, InsertElementCommand, TracksSnapshotCommand } from "@/commands/timeline";
+import { insertOnMain } from "@/timeline/insert-on-main";
+import { isTrackMagnetOn } from "@/ripple";
+import { generateUUID } from "@/utils/id";
+import type { TimelineElement } from "@/timeline";
 import { BatchCommand } from "@/commands";
 import type { Command } from "@/commands/base-command";
-import { computeDropTarget } from "@/timeline/components/drop-target";
+import { computeDropTarget, getTrackAtY } from "@/timeline/components/drop-target";
 import type { TimelineDragSource } from "@/timeline/drag-source";
 import type {
 	TrackType,
@@ -242,6 +246,8 @@ export class DragDropController {
 		}
 	}
 
+	private dropOverMain = false;
+
 	onDrop(event: DragEvent): void {
 		event.preventDefault();
 		this.enterCount = 0;
@@ -252,6 +258,14 @@ export class DragDropController {
 
 		const currentTarget = this.dropTarget;
 		this.setIdle();
+		// JEO: let go over the main video row = insert there (even if JEO
+		// would otherwise have opened a new row to avoid an overlap)
+		const dropCoords = this.getMouseTimelineCoords({ event });
+		const scene = this.config.getSceneTracks();
+		const row = dropCoords
+			? getTrackAtY({ mouseY: dropCoords.mouseY, tracks: [...scene.overlay, scene.main, ...scene.audio] })
+			: null;
+		this.dropOverMain = Boolean(row && row.trackIndex === scene.overlay.length);
 
 		try {
 			if (dragData) {
@@ -325,6 +339,22 @@ export class DragDropController {
 		target: DropTarget;
 		trackType: TrackType;
 	}): void {
+		const scene = this.config.getSceneTracks();
+		if (
+			this.dropOverMain &&
+			(element.type === "video" || element.type === "image") &&
+			scene.main.elements.length > 0 &&
+			isTrackMagnetOn({ trackId: scene.main.id, mainTrackId: scene.main.id })
+		) {
+			this.dropOverMain = false;
+			const after = insertOnMain({
+				tracks: scene,
+				element: { ...element, id: generateUUID() } as TimelineElement,
+				dropTime: target.xPosition,
+			});
+			this.config.executeCommand(new TracksSnapshotCommand({ before: scene, after }));
+			return;
+		}
 		if (target.isNewTrack) {
 			const addTrackCmd = new AddTrackCommand({
 				type: trackType,
@@ -342,9 +372,26 @@ export class DragDropController {
 			return;
 		}
 
-		const tracks = orderedTracks({ sceneTracks: this.config.getSceneTracks() });
+		const sceneTracks = this.config.getSceneTracks();
+		const tracks = orderedTracks({ sceneTracks });
 		const track = tracks[target.trackIndex];
 		if (!track) return;
+		// JEO: on the main row (magnet on) a picture or video slots in at the
+		// nearest cut and pushes the rest along, like CapCut
+		if (
+			track.id === sceneTracks.main.id &&
+			(element.type === "video" || element.type === "image") &&
+			sceneTracks.main.elements.length > 0 &&
+			isTrackMagnetOn({ trackId: track.id, mainTrackId: sceneTracks.main.id })
+		) {
+			const after = insertOnMain({
+				tracks: sceneTracks,
+				element: { ...element, id: generateUUID() } as TimelineElement,
+				dropTime: target.xPosition,
+			});
+			this.config.executeCommand(new TracksSnapshotCommand({ before: sceneTracks, after }));
+			return;
+		}
 		this.config.insertElement({
 			placement: { mode: "explicit", trackId: track.id },
 			element,
@@ -432,8 +479,9 @@ export class DragDropController {
 		target: DropTarget;
 		dragData: Extract<TimelineDragData, { type: "media" }>;
 	}): void {
-		if (target.targetElement) {
-			// Replace media source — not yet implemented
+		// JEO: over the main row it is an insert at the nearest cut, even when
+		// it lands on a clip (to swap a clip's media, right-click → Replace media)
+		if (target.targetElement && !this.dropOverMain) {
 			return;
 		}
 

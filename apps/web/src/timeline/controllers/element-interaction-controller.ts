@@ -1,3 +1,7 @@
+import { EditorCore } from "@/core";
+import { TracksSnapshotCommand } from "@/commands/timeline";
+import { moveOnMain } from "@/timeline/insert-on-main";
+import { isTrackMagnetOn } from "@/ripple";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import {
 	buildMoveGroup,
@@ -718,6 +722,33 @@ export class ElementInteractionController {
 				originalStartTime !== move.newStartTime
 			);
 		});
+
+		// JEO: one clip dragged along the main row (magnet on) is taken out and
+		// slotted in at the nearest cut, with the rest moving to make room
+		const single = groupMoveResult.moves.length === 1 ? groupMoveResult.moves[0] : null;
+		const editor = EditorCore.getInstance();
+		const scene = editor.scenes.getActiveSceneOrNull()?.tracks;
+		// still on the main row = the pointer stayed at about the same height
+		// (JEO's own move would open a new row to avoid the overlap)
+		const stayedOnRow = Math.abs(clientY - mousedown.origin.y) < 26;
+		if (
+			didMove &&
+			single &&
+			scene &&
+			single.sourceTrackId === scene.main.id &&
+			(single.targetTrackId === scene.main.id || stayedOnRow) &&
+			isTrackMagnetOn({ trackId: scene.main.id, mainTrackId: scene.main.id })
+		) {
+			const moving = scene.main.elements.find((element) => element.id === single.elementId);
+			// drop point = the middle of where the clip was let go
+			const dropTime = single.newStartTime + (moving ? moving.duration / 2 : 0);
+			const after = moveOnMain({ tracks: scene, elementId: single.elementId, dropTime });
+			if (after) {
+				editor.command.execute({ command: new TracksSnapshotCommand({ before: scene, after }) });
+				this.finishSession();
+				return;
+			}
+		}
 
 		if (didMove || groupMoveResult.createTracks.length > 0) {
 			this.deps.timeline.moveElements({

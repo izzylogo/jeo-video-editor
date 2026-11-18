@@ -7,6 +7,9 @@ import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-pa
 import { AudioWaveform, WAVEFORM_GAIN_SAMPLE_COUNT } from "./audio-waveform";
 import { AudioVolumeLine } from "./audio-volume-line";
 import { TextMenuItems } from "@/jeo/components/text-menu";
+import { useReplaceMedia } from "@/jeo/components/replace-media";
+import { askClaudeAboutClip } from "@/jeo/components/chat-refs";
+import { AiChat02Icon } from "@hugeicons/core-free-icons";
 import { useElementPreview } from "@/timeline/hooks/use-element-preview";
 import {
 	useKeyframeDrag,
@@ -384,6 +387,7 @@ export function TimelineElement({
 			<ContextMenu>
 				<ContextMenuTrigger asChild>
 					<div
+						data-element-id={element.id}
 						className="absolute top-0 select-none"
 						style={{
 							left: `${elementLeft}px`,
@@ -501,11 +505,27 @@ export function TimelineElement({
 								Reveal media
 							</ContextMenuItem>
 							<ContextMenuItem
-								icon={<HugeiconsIcon icon={Exchange01Icon} />}
-								disabled
+								icon={<HugeiconsIcon icon={AiChat02Icon} />}
+								data-jeo-menu="ask-claude"
+								onClick={(event: React.MouseEvent) => {
+									event.stopPropagation();
+									askClaudeAboutClip({ trackId: track.id, elementId: element.id });
+								}}
 							>
-								Replace media
+								Ask Claude about this clip
 							</ContextMenuItem>
+							{(element.type === "video" || element.type === "image") && (
+								<ContextMenuItem
+									icon={<HugeiconsIcon icon={Exchange01Icon} />}
+									data-jeo-menu="replace-media"
+									onClick={(event: React.MouseEvent) => {
+										event.stopPropagation();
+										useReplaceMedia.getState().open({ trackId: track.id, elementId: element.id });
+									}}
+								>
+									Replace media…
+								</ContextMenuItem>
+							)}
 						</>
 					)}
 					<ContextMenuSeparator />

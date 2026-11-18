@@ -19,6 +19,8 @@
  * arrows. Those are listed back to the user.
  */
 import { EditorCore } from "@/core";
+import type { TextElement } from "@/timeline";
+import { getTextMeasurementContext, measureTextElement } from "@/text/measure-element";
 import type { TimelineElement } from "@/timeline";
 import { getDesktopBridge } from "@/services/desktop/bridge";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
@@ -155,6 +157,182 @@ function masksOf({
 	return single ? [single] : [];
 }
 
+// ---------- shapes (▼ under tags, the curved arrow) as real CapCut shapes ----------
+//
+// CapCut stores them in materials.shapes (name "polycon_item") on a sticker
+// track: custom_points are x, y pairs around the shape's centre with UP
+// positive, in canvas pixels divided by (canvas width / 720) — measured on the
+// user's GIRLFRIEND EXPOSED project (a 70 x 43 triangle shows as 138 x 86 on
+// a 1440-wide canvas).
+
+type ShapeItem = {
+	start: number;
+	duration: number;
+	/** centre, frame pixels from the frame centre, y down (JEO style) */
+	x: number;
+	y: number;
+	rotation: number;
+	/** points around the centre in CapCut shape units, y up */
+	points: number[];
+	fill: string;
+	fillAlpha: number;
+	border: string;
+	borderWidth: number;
+	keyframes: Record<string, Array<[number, number]>>;
+};
+
+function shapeUnit(frameWidth: number): number {
+	return frameWidth / 720;
+}
+
+/** JEO's ▼ (see text-node.ts): 70 x 46 at a 1440-high frame, white at 85 %. */
+function triangleFor({
+	element,
+	frameWidth,
+	frameHeight,
+}: {
+	element: TimelineElement;
+	frameWidth: number;
+	frameHeight: number;
+}): ShapeItem | null {
+	if (element.type !== "text") return null;
+	let layout: ReturnType<typeof measureTextElement>;
+	try {
+		layout = measureTextElement({
+			element: element as TextElement,
+			canvasHeight: frameHeight,
+			localTime: 0,
+			ctx: getTextMeasurementContext(),
+		});
+	} catch {
+		return null;
+	}
+	const unit = frameHeight / 1440;
+	// the size it rests at (a pop-up starts small; the shape follows it with
+	// its own scale keyframes below)
+	const scale = Math.abs(settled({ element, path: "transform.scaleX", fallback: 1 }));
+	const rotation = starting({ element, path: "transform.rotate", fallback: 0 });
+	const blockBottom =
+		(layout.lines.length - 0.5) * layout.lineHeightPx - layout.block.visualCenterOffset;
+	const localCentre = (blockBottom + 2 * unit + 23 * unit) * scale; // below the text centre
+	const angle = (rotation * Math.PI) / 180;
+	const dx = -Math.sin(angle) * localCentre;
+	const dy = Math.cos(angle) * localCentre;
+	const x0 = starting({ element, path: "transform.positionX", fallback: 0 });
+	const y0 = starting({ element, path: "transform.positionY", fallback: 0 });
+	const k = shapeUnit(frameWidth);
+	const half = (35 * unit * scale) / k;
+	const h = (46 * unit * scale) / k;
+	// the user's own triangle: apex at +y, turned 180 degrees = ▼
+	const points = [-half, -h / 2, 0, h / 2, half, -h / 2];
+	const keyframes = keyframesOf(element);
+	const moved: Record<string, Array<[number, number]>> = {};
+	if (keyframes.x) moved.x = keyframes.x.map(([at, v]) => [at, v + dx]);
+	if (keyframes.y) moved.y = keyframes.y.map(([at, v]) => [at, v + dy]);
+	if (keyframes.opacity) moved.opacity = keyframes.opacity;
+	if (keyframes.scale) {
+		// grow with the text, and stay under it while it grows
+		moved.scale = keyframes.scale.map(([at, v]) => [at, v / Math.max(scale, 1e-6)]);
+		if (!keyframes.y) {
+			moved.y = keyframes.scale.map(([at, v]) => [at, y0 + (dy * v) / Math.max(scale, 1e-6)]);
+		}
+	}
+	return {
+		start: element.startTime / S,
+		duration: element.duration / S,
+		x: x0 + dx,
+		y: y0 + dy,
+		rotation: 180 + rotation,
+		points,
+		fill: "#FFFFFF",
+		fillAlpha: 0.85,
+		border: "#FFFFFF",
+		borderWidth: 0,
+		keyframes: moved,
+	};
+}
+
+/** JEO's curved arrow (graphics.ts) as one outline: shaft both sides + head. */
+function arrowFor({
+	element,
+	frameWidth,
+	frameHeight,
+}: {
+	element: TimelineElement;
+	frameWidth: number;
+	frameHeight: number;
+}): ShapeItem | null {
+	if (element.type !== "graphic") return null;
+	const params = element.params as Record<string, unknown>;
+	const side = Math.min(frameWidth, frameHeight);
+	const sx = starting({ element, path: "transform.scaleX", fallback: 1 });
+	const sy = starting({ element, path: "transform.scaleY", fallback: Math.abs(sx) });
+	const w = side * Math.abs(sx);
+	const h = side * Math.abs(sy);
+	const thickness = (Number(params.thickness ?? 44) / 512) * w;
+	const curve = Number(params.curve ?? 45) / 100;
+	const tail = { x: w * 0.14, y: h * 0.84 };
+	const tip = { x: w * 0.84, y: h * 0.16 };
+	const mid = { x: (tail.x + tip.x) / 2, y: (tail.y + tip.y) / 2 };
+	const control = { x: mid.x + w * 0.36 * curve, y: mid.y + h * 0.36 * curve };
+	const angle = Math.atan2(tip.y - control.y, tip.x - control.x);
+	const headLength = thickness * 2.4;
+	const headHalf = thickness * 1.55;
+	const base = { x: tip.x - Math.cos(angle) * headLength, y: tip.y - Math.sin(angle) * headLength };
+	const at = (t: number) => ({
+		x: (1 - t) ** 2 * tail.x + 2 * (1 - t) * t * control.x + t * t * base.x,
+		y: (1 - t) ** 2 * tail.y + 2 * (1 - t) * t * control.y + t * t * base.y,
+	});
+	const normal = (t: number) => {
+		const dx = 2 * (1 - t) * (control.x - tail.x) + 2 * t * (base.x - control.x);
+		const dy = 2 * (1 - t) * (control.y - tail.y) + 2 * t * (base.y - control.y);
+		const len = Math.hypot(dx, dy) || 1;
+		return { x: -dy / len, y: dx / len };
+	};
+	const r = thickness / 2;
+	const left: Array<{ x: number; y: number }> = [];
+	const right: Array<{ x: number; y: number }> = [];
+	const steps = 16;
+	for (let i = 0; i <= steps; i++) {
+		const t = i / steps;
+		const p = at(t);
+		const n = normal(t);
+		left.push({ x: p.x + n.x * r, y: p.y + n.y * r });
+		right.push({ x: p.x - n.x * r, y: p.y - n.y * r });
+	}
+	const perp = { x: Math.cos(angle + Math.PI / 2), y: Math.sin(angle + Math.PI / 2) };
+	const outline = [
+		...left,
+		{ x: base.x + perp.x * headHalf, y: base.y + perp.y * headHalf },
+		tip,
+		{ x: base.x - perp.x * headHalf, y: base.y - perp.y * headHalf },
+		...right.reverse(),
+	];
+	// round tail cap
+	const n0 = normal(0);
+	const capAngle = Math.atan2(-n0.y, -n0.x);
+	for (let i = 1; i < 6; i++) {
+		const a = capAngle + (Math.PI * i) / 6;
+		outline.push({ x: tail.x + Math.cos(a) * r, y: tail.y + Math.sin(a) * r });
+	}
+	const k = shapeUnit(frameWidth);
+	const flip = sx < 0 ? -1 : 1;
+	const points = outline.flatMap((p) => [((p.x - w / 2) * flip) / k, -(p.y - h / 2) / k]);
+	return {
+		start: element.startTime / S,
+		duration: element.duration / S,
+		x: starting({ element, path: "transform.positionX", fallback: 0 }),
+		y: starting({ element, path: "transform.positionY", fallback: 0 }),
+		rotation: starting({ element, path: "transform.rotate", fallback: 0 }),
+		points,
+		fill: String(params.fill ?? "#ff2d2d"),
+		fillAlpha: 1,
+		border: String(params.outline ?? "#ffffff"),
+		borderWidth: (thickness * 0.28 * 2) / k,
+		keyframes: keyframesOf(element),
+	};
+}
+
 export interface CapCutExportResult {
 	ok: boolean;
 	error?: string;
@@ -258,6 +436,12 @@ export async function openInCapCut({
 	const texts: Array<Record<string, unknown>> = [];
 	const effects: Array<Record<string, unknown>> = [];
 	const spotlights: Array<Record<string, unknown>> = [];
+	const shapes: ShapeItem[] = [];
+	const pushShape = (shape: ShapeItem | null): boolean => {
+		if (!shape) return false;
+		shapes.push(shape);
+		return true;
+	};
 	const frameWidth = project.settings.canvasSize.width;
 	const frameHeight = project.settings.canvasSize.height;
 	/** a plain scene text in the house style (white, dark outline, centred) */
@@ -297,7 +481,10 @@ export async function openInCapCut({
 					rotation: starting({ element, path: "transform.rotate", fallback: 0 }),
 					opacity: starting({ element, path: "opacity", fallback: 1 }),
 					keyframes: keyframesOf(element),
-					triangle: element.params["tag.triangle"] === true,
+					// the ▼ goes as a real CapCut shape when it can be measured
+					triangle:
+						element.params["tag.triangle"] === true &&
+						!pushShape(triangleFor({ element, frameWidth, frameHeight })),
 					color: typeof element.params.color === "string" ? element.params.color : "#ffffff",
 					stroke: element.params["stroke.enabled"] !== false,
 					strokeColor:
@@ -365,6 +552,10 @@ export async function openInCapCut({
 						(num(element.params.holeY, 0) / 100) * height,
 					radius: (num(element.params.radius, 24) / 100) * width,
 				});
+			} else if (element.type === "graphic" && element.definitionId === "jeo-arrow") {
+				if (!pushShape(arrowFor({ element, frameWidth, frameHeight }))) {
+					leftOut.add("arrow graphic");
+				}
 			} else if (element.type === "graphic") {
 				leftOut.add(`${element.name.toLowerCase()} graphic`);
 			} else {
@@ -443,6 +634,7 @@ export async function openInCapCut({
 			audio,
 			effects,
 			spotlights,
+			shapes,
 			coverBase64,
 		},
 	});
