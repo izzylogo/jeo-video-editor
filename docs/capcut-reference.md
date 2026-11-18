@@ -128,8 +128,9 @@ The raw survey files are listed in section 9.
   reaches far outside the shape. The circle adds on top and brings the object to
   100 %. There is no separate darkness setting.
 - Matching the user's finished video works best with two-thirds of the script's
-  feather numbers (× 4 and × 10); JEO uses those (median difference 7/255). The
-  two-thirds was not found in the compiled code (open question 1).
+  feather numbers (× 4 and × 10; median difference 7/255). The two-thirds was not
+  found in the compiled code (open question 1). Since 18 Nov 2026 JEO uses the
+  script's own × 6 and × 15, because the user wanted a stronger feather.
 - In JEO: `apps/web/src/masks/builtin/definitions/capcut.ts` (drawing),
   `apps/web/src/masks/components/capcut-mask-panel.tsx` (CapCut-style panel),
   export in `apps/web/src/jeo/capcut.ts` → `apps/jeo-desktop/tools/capcut_export.py`.

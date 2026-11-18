@@ -1,5 +1,6 @@
 {
   "items": [
+    "Mask feather is stronger: it now uses CapCut's own softness numbers, so each step softens more",
     "Open in CapCut: the triangle under tags and the curved arrow now go across as real CapCut shapes you can edit",
     "Replace media: right-click a picture or video clip, pick another file; place, length, framing, masks, keyframes and effects are kept",
     "Drop media or drag a clip onto the main video row between clips: it slots in at the nearest cut and the rest moves along",

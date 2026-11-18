@@ -7,9 +7,9 @@
  *  - several masks on one clip are ADDED together, capped at fully visible
  *    (the shader's addBlend), then the clip is multiplied by the result;
  *  - feather is stretched: the scripts multiply it by 6 (rectangle) and 15
- *    (circle). Matching the user's finished GIRLFRIEND EXPOSED video showed
- *    two-thirds of that (4 and 10) is what reaches the screen, so those are
- *    used here.
+ *    (circle). Those exact numbers are used (the user asked for a stronger
+ *    feather, 18 Nov 2026). Note: the user's finished GIRLFRIEND EXPOSED video
+ *    matched two-thirds of them (4 and 10) slightly better; why is unknown.
  * Numbers are kept in CapCut's units: centre in half-sizes of the clip with up
  * positive, size as a part of the clip, feather and round corners 0..1.
  */
@@ -22,8 +22,8 @@ import type {
 } from "@/masks/types";
 import type { ParamDefinition } from "@/params";
 
-export const CAPCUT_RECT_FEATHER_SCALE = 4;
-export const CAPCUT_CIRCLE_FEATHER_SCALE = 10;
+export const CAPCUT_RECT_FEATHER_SCALE = 6;
+export const CAPCUT_CIRCLE_FEATHER_SCALE = 15;
 export const CAPCUT_MASK_SLOTS = [1, 2, 3, 4] as const;
 export type CapCutSlot = (typeof CAPCUT_MASK_SLOTS)[number];
 
