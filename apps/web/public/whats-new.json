@@ -1,5 +1,6 @@
 {
   "items": [
+    "The time under the preview now follows your mouse as it moves over the timeline, and goes back to the playhead time when the mouse leaves",
     "AI chat: when Claude Code is signed out, the chat now says so once, in plain words, with how to sign in again",
     "The preview now opens at 50% instead of Fit, with the zoom bar's knob in the middle (middle = 50%)",
     "Open in CapCut: if a JEO project with the same name is already in CapCut, a box asks: Replace it (the old one is kept in output/_capcut-replaced) or Add as (2)",

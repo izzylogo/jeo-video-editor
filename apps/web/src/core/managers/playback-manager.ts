@@ -124,9 +124,20 @@ export class PlaybackManager {
 	 * preview shows it while the video is paused; the playhead stays put.
 	 */
 	private hoverTime: MediaTime | null = null;
+	private hoverListeners = new Set<(time: MediaTime | null) => void>();
 
 	setHoverTime({ time }: { time: MediaTime | null }): void {
+		if (time === this.hoverTime) return;
 		this.hoverTime = time;
+		for (const listener of this.hoverListeners) listener(time);
+	}
+
+	/** called when the moment under the mouse changes (null = mouse left) */
+	onHover(listener: (time: MediaTime | null) => void): () => void {
+		this.hoverListeners.add(listener);
+		return () => {
+			this.hoverListeners.delete(listener);
+		};
 	}
 
 	getHoverTime(): MediaTime | null {

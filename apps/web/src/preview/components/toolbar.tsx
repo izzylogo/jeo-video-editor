@@ -71,19 +71,30 @@ function TimecodeDisplay() {
 		editor.playback.getCurrentTime(),
 	);
 
+	// JEO: while the mouse moves over the timeline, the clock shows the moment
+	// under the mouse (like CapCut); it goes back to the playhead when it leaves
+	const [hoverTime, setHoverTime] = useState<MediaTime | null>(() =>
+		editor.playback.getHoverTime(),
+	);
+
 	useEffect(() => {
 		const unsubscribeUpdate = editor.playback.onUpdate(setCurrentTime);
 		const unsubscribeSeek = editor.playback.onSeek(setCurrentTime);
+		const unsubscribeHover = editor.playback.onHover(setHoverTime);
 		return () => {
 			unsubscribeUpdate();
 			unsubscribeSeek();
+			unsubscribeHover();
 		};
 	}, [editor.playback]);
 
+	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
+	const shownTime = hoverTime !== null && !isPlaying ? hoverTime : currentTime;
+
 	return (
-		<div className="flex items-center">
+		<div className="flex items-center" data-jeo="preview-clock" data-hover={hoverTime !== null && !isPlaying}>
 			<EditableTimecode
-				time={currentTime}
+				time={shownTime}
 				duration={totalDuration}
 				format="HH:MM:SS:FF"
 				fps={fps}

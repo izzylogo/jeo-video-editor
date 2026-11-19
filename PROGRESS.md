@@ -404,3 +404,8 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 
 - The chat errors ("Claude stopped (code 1)", "Failed to authenticate: OAuth token revoked") came from Claude Code itself: its sign-in on this laptop had run out. Checked directly: Claude Code answers "OAuth session expired and could not be refreshed". Nothing is wrong with JEO.
 - The chat now shows one plain message instead of the raw error twice: Claude Code is signed out; open PowerShell, type `claude`, then `/login`, then send the message again. Tested while signed out.
+
+## Round 26: the preview clock follows the mouse (19 Nov 2026)
+
+- Moving the mouse over the timeline (without clicking) now also changes the time under the preview, so it matches the moment under the mouse, like CapCut. When the mouse leaves the timeline, the clock goes back to the playhead time. While the video plays, the clock shows the playing time as before.
+- Tested with the real mouse: sweeping across the timeline counted the clock up from 1 s to 16 s, and it went back to the playhead (0 s) when the mouse left.
