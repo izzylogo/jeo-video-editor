@@ -399,3 +399,8 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 
 - The preview now opens at **50%** instead of Fit, and the zoom bar's knob starts in the **middle** (the bar now runs from 5% to 500%, so the middle is 50%). Fit and the other sizes are still in the size menu. On this laptop 50% is bigger than the preview panel, so the edges of the video are cut off at first; zoom out or pick Fit to see the whole frame.
 - Checked in the app: the size reads "50%" and the knob sits exactly in the middle.
+
+## Round 25: "signed out" message in the AI chat (19 Nov 2026)
+
+- The chat errors ("Claude stopped (code 1)", "Failed to authenticate: OAuth token revoked") came from Claude Code itself: its sign-in on this laptop had run out. Checked directly: Claude Code answers "OAuth session expired and could not be refreshed". Nothing is wrong with JEO.
+- The chat now shows one plain message instead of the raw error twice: Claude Code is signed out; open PowerShell, type `claude`, then `/login`, then send the message again. Tested while signed out.

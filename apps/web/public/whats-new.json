@@ -1,5 +1,6 @@
 {
   "items": [
+    "AI chat: when Claude Code is signed out, the chat now says so once, in plain words, with how to sign in again",
     "The preview now opens at 50% instead of Fit, with the zoom bar's knob in the middle (middle = 50%)",
     "Open in CapCut: if a JEO project with the same name is already in CapCut, a box asks: Replace it (the old one is kept in output/_capcut-replaced) or Add as (2)",
     "Tabs: double-click a tab (or F2) to rename the project. Right-click a tab for Rename, Make a copy, Show folder, Stop Claude, Move left or right, Close, Close others, Close to the right",

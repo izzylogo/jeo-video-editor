@@ -1049,6 +1049,11 @@ async function fakeClaude({ projectId, text, onEvent, onChild, onDone }) {
 	onDone({ sessionId: null });
 }
 
+/** Claude Code's own sign-in ran out: say how to fix it in plain words. */
+const SIGNED_OUT = /failed to authenticate|oauth|not logged in|please log in|invalid api key|\/login/i;
+const SIGNED_OUT_HELP =
+	"Claude Code is signed out on this laptop, so Claude can't edit right now. To fix it: open PowerShell, type claude and press Enter, then type /login and follow the steps in the browser. Then send your message again.";
+
 /** Starts one headless Claude for one project's message (jobs.cjs decides when). */
 async function startClaude({ projectId, text, sessionId, onEvent, onChild, onDone }) {
 	if (process.env.JEO_FAKE_CLAUDE) return fakeClaude({ projectId, text, onEvent, onChild, onDone });
@@ -1094,7 +1099,8 @@ async function startClaude({ projectId, text, sessionId, onEvent, onChild, onDon
 		if (event.session_id) latestSession = event.session_id;
 		if (event.type === "assistant" && Array.isArray(event.message?.content)) {
 			for (const part of event.message.content) {
-				if (part.type === "text" && part.text) onEvent({ type: "text", text: part.text });
+				// the sign-in error also arrives as a reply; it is shown once, below
+				if (part.type === "text" && part.text && !SIGNED_OUT.test(part.text)) onEvent({ type: "text", text: part.text });
 				else if (part.type === "tool_use") onEvent({ type: "tool", ...describeToolUse(part) });
 			}
 		} else if (event.type === "result" && event.is_error) {
@@ -1110,7 +1116,11 @@ async function startClaude({ projectId, text, sessionId, onEvent, onChild, onDon
 	child.on("exit", (_code, signal) => {
 		if (signal) stopped = true;
 	});
-	child.on("close", (code) => finish(code === 0 || stopped ? undefined : errorText.trim() || `Claude stopped (code ${code}).`));
+	child.on("close", (code) => {
+		if (stopped) return finish();
+		if (SIGNED_OUT.test(errorText)) return finish(SIGNED_OUT_HELP);
+		finish(code === 0 ? undefined : errorText.trim() || `Claude stopped (code ${code}).`);
+	});
 	child.stdin.write(String(text));
 	child.stdin.end();
 }
