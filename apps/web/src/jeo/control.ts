@@ -477,6 +477,11 @@ const POP_POINTS: actions.KeyPoint[] = [
 	[0.2, 1],
 ];
 
+/** Takes off double quote marks (straight and curly) around and inside a text. */
+function stripDoubleQuotes(text: string): string {
+	return text.replace(/["\u201C\u201D\u201E\u00AB\u00BB]/g, "").replace(/ {2,}/g, " ").trim();
+}
+
 function addText(args: Args): ToolResult {
 	requireTracks();
 	const kind = str(args.kind, "scene");
@@ -484,7 +489,10 @@ function addText(args: Args): ToolResult {
 	if (!preset) {
 		return { ok: false, error: `Unknown kind. Use one of: ${Object.keys(TEXT_KINDS).join(", ")}.` };
 	}
-	const text = str(args.text).toUpperCase();
+	// JEO rule: only the flash text (kind "quoted") has double quotes; dialogue
+	// and every other kind never do, so stray quote marks are taken off
+	const rawText = str(args.text).toUpperCase();
+	const text = kind === "quoted" ? rawText : stripDoubleQuotes(rawText);
 	if (!text) return { ok: false, error: "Give the words in `text`." };
 	const start = actions.seconds(num(args.start, 0));
 	const end = actions.seconds(num(args.end, num(args.start, 0) + 1.5));
@@ -1055,7 +1063,7 @@ const TOOLS: ToolDefinition[] = [
 	{
 		name: "add_text",
 		description:
-			"Add a text in JEO style (LEMON MILK Bold, white, outline; words are upper-cased). kind: scene (*ACTION*), narrative, quoted (\"BEAT\"), twist, dialogue, speaker_name (small NAME:), speaker_action, identity_tag (label with ▼, on the head), feeling_tag (*FEELING*, above the head), custom. start/end in TIMELINE seconds; a text must start exactly on its scene's cut. x/y = centre of the text in frame pixels (captions default to the centre 540,720). popup=true makes it pop in. Write the asterisks or quote marks yourself.",
+			"Add a text in JEO style (LEMON MILK Bold, white, outline; words are upper-cased). kind: scene (*ACTION*), narrative, quoted (\"BEAT\"), twist, dialogue, speaker_name (small NAME:), speaker_action, identity_tag (label with ▼, on the head), feeling_tag (*FEELING*, above the head), custom. start/end in TIMELINE seconds; a text must start exactly on its scene's cut. x/y = centre of the text in frame pixels (captions default to the centre 540,720). popup=true makes it pop in. Write the asterisks yourself. Only the flash text (kind quoted) has double quotes; dialogue and all other kinds never have quote marks (they are removed).",
 		inputSchema: schema(
 			{ kind: string, text: string, start: number, end: number, x: number, y: number, size: number, popup: { type: "boolean" } },
 			["kind", "text", "start", "end"],

@@ -16,6 +16,8 @@ export default function Home() {
 
 		(async () => {
 			try {
+				// if the list cannot be read, this throws and we go to the projects
+				// page (which says so) instead of making a new empty project
 				await editor.project.loadAllProjects();
 				const projects = editor.project.getFilteredAndSortedProjects({
 					searchQuery: "",

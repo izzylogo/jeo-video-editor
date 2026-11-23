@@ -248,31 +248,47 @@ export class ProjectManager {
 		return this.exportState;
 	}
 
+	/**
+	 * Reads the list of projects. JEO: a failed read is tried again, and if it
+	 * still fails the error is kept (getLoadError) and thrown, so nobody takes
+	 * an empty list for "no projects" (that once made a stray "New project"
+	 * and hid all the others).
+	 */
 	async loadAllProjects(): Promise<void> {
 		if (!this.isInitialized) {
 			this.isLoading = true;
 			this.notify();
 		}
-
-		try {
-			await this.ensureStorageMigrations();
+		let lastError: unknown = null;
+		for (let attempt = 0; attempt < 3; attempt++) {
 			try {
+				await this.ensureStorageMigrations();
 				const metadata = await storageService.loadAllProjectsMetadata();
 				this.savedProjects = metadata;
-				this.notify();
-			} catch (error) {
-				console.error("Failed to load projects:", error);
-			} finally {
+				this.loadError = null;
 				this.isLoading = false;
 				this.isInitialized = true;
 				this.notify();
+				return;
+			} catch (error) {
+				lastError = error;
+				console.error(`Failed to load projects (try ${attempt + 1} of 3):`, error);
+				// a failed migration is tried again from the start
+				this.storageMigrationPromise = null;
+				await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
 			}
-		} catch (error) {
-			console.error("Failed to run migrations:", error);
-			this.isLoading = false;
-			this.isInitialized = true;
-			this.notify();
 		}
+		this.loadError = lastError instanceof Error ? lastError.message : String(lastError);
+		this.isLoading = false;
+		this.notify();
+		throw lastError instanceof Error ? lastError : new Error(this.loadError);
+	}
+
+	private loadError: string | null = null;
+
+	/** why the project list could not be read last time (null = it was fine) */
+	getLoadError(): string | null {
+		return this.loadError;
 	}
 
 	async deleteProjects({ ids }: { ids: string[] }): Promise<void> {

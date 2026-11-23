@@ -1,5 +1,8 @@
 {
   "items": [
+    "Texts: dialogue and other texts never get double quotes; only the flash text (quoted beat) has them",
+    "Projects page: smaller boxes, 6 in a row on a wide screen",
+    "Fixed: if the project list could not be read when the app opened, JEO made an empty New project and hid your others. Now it tries again, the projects page always reloads the list, and it says so if it cannot read it",
     "Open in CapCut: texts now arrive with the same font size and scale the editor shows (your standard text is 12 at 120%; smaller names and tags keep their smaller font size, still at 120%; a scale you changed yourself is kept)",
     "The time under the preview now follows your mouse as it moves over the timeline, and goes back to the playhead time when the mouse leaves",
     "AI chat: when Claude Code is signed out, the chat now says so once, in plain words, with how to sign in again",

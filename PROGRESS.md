@@ -416,3 +416,9 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **Now:** texts go to CapCut with the same two numbers the editor shows: font size (12 for your standard text, 8.5 for small names, 10.1 for tags) and scale 120%. A scale you changed yourself goes across as you set it (for example 150% stays 150%). Pop-up texts still grow in and end at 120%.
 - **Editor default:** a new text is already font size 12 at scale 120% (unchanged; it was set on 14 Nov).
 - Tested by exporting BIGGEST INTROVERT into a scratch drafts folder: 17 texts at 12 / 120%, 9 at 8.5 / 120%, 1 at 10.1 / 120%, and 3 pop-ups growing to 120%. Not yet opened in CapCut itself.
+
+## Round 28: projects list, quotes rule, smaller boxes (23 Nov 2026)
+
+- **"My projects are gone":** they were never gone; every project folder was safe on disk. When the app opened on 23 Nov at 08:44, reading the project list failed once. The app hid that error, thought there were no projects, made an empty "New project" and kept showing only that. Fixed: a failed read is tried again (3 times); a failed read never makes a new project; the All projects page reads the list again every time it opens; and if it still cannot read it, the page says so with a Try again button instead of looking empty. Tested on a copy of all your projects and of the app's memory: all 9 projects show.
+- **Quotes rule:** only the flash text (the "quoted beat", e.g. "BUSTED") has double quotes. Dialogue and every other kind of text never do; quote marks Claude adds are taken off. Tested: "STOP THAT" as dialogue became STOP THAT, "BUSTED" stayed quoted.
+- **Projects page:** smaller boxes, 6 in a row (7 on a very wide window).

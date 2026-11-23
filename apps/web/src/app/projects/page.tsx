@@ -93,14 +93,15 @@ export default function ProjectsPage() {
 
 	const isLoading = useEditor((e) => e.project.getIsLoading());
 	const isInitialized = useEditor((e) => e.project.getIsInitialized());
+	const loadError = useEditor((e) => e.project.getLoadError());
 	const projectsToDisplay = useEditor((e) =>
 		e.project.getFilteredAndSortedProjects({ searchQuery, sortOption }),
 	);
 
+	// JEO: read the list from storage every time this page opens, so it is
+	// never an old or half-loaded list
 	useEffect(() => {
-		if (!editor.project.getIsInitialized()) {
-			editor.project.loadAllProjects();
-		}
+		editor.project.loadAllProjects().catch(() => {});
 	}, [editor.project]);
 
 	return (
@@ -110,7 +111,9 @@ export default function ProjectsPage() {
 			<ProjectsHeader />
 			<ProjectsToolbar projectIds={projectsToDisplay.map((p) => p.id)} />
 			<main className="mx-auto px-4 pt-2 pb-6 flex flex-col gap-4">
-				{isLoading || !isInitialized ? (
+				{loadError && !isLoading ? (
+					<LoadErrorState message={loadError} />
+				) : isLoading || !isInitialized ? (
 					<ProjectsSkeleton />
 				) : projectsToDisplay.length === 0 ? (
 					<EmptyState />
@@ -118,7 +121,7 @@ export default function ProjectsPage() {
 					<div
 						className={
 							viewMode === "grid"
-								? "xs:grid-cols-2 grid grid-cols-1 gap-6 sm:grid-cols-3 lg:grid-cols-4 px-4"
+								? "grid grid-cols-2 gap-4 px-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-7"
 								: "flex flex-col"
 						}
 					>
@@ -923,7 +926,7 @@ function ProjectsSkeleton() {
 	);
 
 	return (
-		<div className="px-4 xs:grid-cols-2 grid grid-cols-1 gap-6 sm:grid-cols-3 lg:grid-cols-4">
+		<div className="grid grid-cols-2 gap-4 px-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-7">
 			{skeletonIds.map((skeletonId) => (
 				<Card
 					key={skeletonId}
@@ -943,6 +946,32 @@ function ProjectsSkeleton() {
 					</CardContent>
 				</Card>
 			))}
+		</div>
+	);
+}
+
+/** JEO: the list could not be read. Say so, and never pretend there are no projects. */
+function LoadErrorState({ message }: { message: string }) {
+	const editor = useEditor();
+	const [isRetrying, setIsRetrying] = useState(false);
+	return (
+		<div role="alert" className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+			<h3 className="text-lg font-medium">Your projects could not be read just now</h3>
+			<p className="text-muted-foreground max-w-md text-sm">
+				They are safe in the projects folder on this computer. Try again; if it keeps
+				happening, close JEO Editor and open it again.
+			</p>
+			<p className="text-muted-foreground max-w-md font-mono text-xs">{message}</p>
+			<Button
+				disabled={isRetrying}
+				onClick={async () => {
+					setIsRetrying(true);
+					await editor.project.loadAllProjects().catch(() => {});
+					setIsRetrying(false);
+				}}
+			>
+				{isRetrying ? "Trying…" : "Try again"}
+			</Button>
 		</div>
 	);
 }
