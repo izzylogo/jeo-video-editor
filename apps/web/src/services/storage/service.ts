@@ -468,7 +468,16 @@ class StorageService {
 			const storedFiles = new Set(storedFileIds);
 
 			for (const { mediaId, metaJson } of onDisk) {
-				if (storedFiles.has(mediaId)) continue;
+				// JEO: a stored copy that can no longer be read (damaged storage,
+				// "Failed to read large IndexedDB value") is rebuilt from disk too
+				if (storedFiles.has(mediaId)) {
+					const readable = await Promise.all([
+						mediaAssetsAdapter.get(mediaId).then((file) => Boolean(file), () => false),
+						mediaMetadataAdapter.get(mediaId).then((meta) => Boolean(meta), () => false),
+					]);
+					if (readable[0] && readable[1]) continue;
+					console.error(`[jeo] clip ${mediaId} was damaged in storage; restoring it from the media folder`);
+				}
 				const meta = JSON.parse(metaJson) as MediaAssetData & {
 					mimeType?: string;
 				};
@@ -550,9 +559,14 @@ class StorageService {
 		const mediaItems: MediaAsset[] = [];
 
 		for (const id of mediaIds) {
-			const item = await this.loadMediaAsset({ projectId, id });
-			if (item) {
-				mediaItems.push(item);
+			// one unreadable clip must not stop all the others from loading
+			try {
+				const item = await this.loadMediaAsset({ projectId, id });
+				if (item) {
+					mediaItems.push(item);
+				}
+			} catch (error) {
+				console.error(`[jeo] clip ${id} could not be read:`, error);
 			}
 		}
 
