@@ -89,6 +89,7 @@ export function ProjectTabsRuntime() {
 		const tabs = useProjectTabs.getState();
 		tabs.addTab({ id: projectId, name: projectName });
 		tabs.renameTab({ id: projectId, name: projectName });
+		tabs.setLastActive(projectId);
 	}, [projectId, projectName]);
 
 	// once a project has opened: its undo steps and playhead come back

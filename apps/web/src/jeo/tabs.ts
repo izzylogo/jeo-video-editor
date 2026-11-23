@@ -28,6 +28,9 @@ export interface ProjectTab {
 
 interface TabsStore {
 	tabs: ProjectTab[];
+	/** the tab that was showing last (opened again when the app starts) */
+	lastActiveId: string | null;
+	setLastActive: (id: string | null) => void;
 	/** the tab being opened right now (shows a spinner on it) */
 	switchingTo: string | null;
 	addTab: (tab: ProjectTab) => void;
@@ -41,6 +44,8 @@ export const useProjectTabs = create<TabsStore>()(
 	persist(
 		(set) => ({
 			tabs: [],
+			lastActiveId: null,
+			setLastActive: (id) => set({ lastActiveId: id }),
 			switchingTo: null,
 			addTab: (tab) =>
 				set((state) =>
@@ -71,7 +76,7 @@ export const useProjectTabs = create<TabsStore>()(
 		}),
 		{
 			name: "jeo-project-tabs",
-			partialize: (state) => ({ tabs: state.tabs }),
+			partialize: (state) => ({ tabs: state.tabs, lastActiveId: state.lastActiveId }),
 		},
 	),
 );
