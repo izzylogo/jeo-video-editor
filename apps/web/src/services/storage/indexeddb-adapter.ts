@@ -94,11 +94,37 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
 		const transaction = db.transaction([this.storeName], "readonly");
 		const store = transaction.objectStore(this.storeName);
 
-		return new Promise((resolve, reject) => {
-			const request = store.getAll();
-			request.onerror = () => reject(request.error);
-			request.onsuccess = () => resolve(request.result || []);
-		});
+		try {
+			return await new Promise<T[]>((resolve, reject) => {
+				const request = store.getAll();
+				request.onerror = () => reject(request.error);
+				request.onsuccess = () => resolve(request.result || []);
+			});
+		} catch (error) {
+			// JEO: one damaged entry ("Failed to read large IndexedDB value")
+			// must not hide all the others: read them one by one, skip the bad
+			console.error(`[storage] ${this.storeName}: reading all at once failed, reading one by one`, error);
+			const values: T[] = [];
+			for (const key of await this.list()) {
+				try {
+					const value = await this.get(key);
+					if (value) values.push(value);
+				} catch (itemError) {
+					console.error(`[storage] ${this.storeName}: entry ${key} is damaged`, itemError);
+				}
+			}
+			return values;
+		}
+	}
+
+	/** JEO: can this entry be read? (a damaged one throws on read) */
+	async isReadable(key: string): Promise<boolean> {
+		try {
+			await this.get(key);
+			return true;
+		} catch {
+			return false;
+		}
 	}
 
 	async clear(): Promise<void> {

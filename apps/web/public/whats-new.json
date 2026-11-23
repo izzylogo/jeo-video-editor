@@ -1,5 +1,6 @@
 {
   "items": [
+    "Fixed: one damaged project in the app memory (Failed to read large IndexedDB value) no longer hides all projects; it is repaired from its folder on disk",
     "Texts: dialogue and other texts never get double quotes; only the flash text (quoted beat) has them",
     "Projects page: smaller boxes, 6 in a row on a wide screen",
     "Fixed: if the project list could not be read when the app opened, JEO made an empty New project and hid your others. Now it tries again, the projects page always reloads the list, and it says so if it cannot read it",

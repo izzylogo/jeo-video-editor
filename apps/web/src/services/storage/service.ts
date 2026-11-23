@@ -197,6 +197,14 @@ class StorageService {
 						this.projectsAdapter.list(),
 					]);
 					const known = new Set(storedIds);
+					// a damaged entry (it can no longer be read) is replaced by the
+					// project's own folder, which is written on every save
+					for (const id of storedIds) {
+						if (!(await this.projectsAdapter.isReadable(id))) {
+							console.error(`[jeo] project ${id} was damaged in storage; restoring it from its folder`);
+							known.delete(id);
+						}
+					}
 					// the trash wins: a project whose folder was moved to
 					// projects\_trash (and is not also live on disk) leaves the app
 					try {
