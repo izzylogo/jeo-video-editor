@@ -293,9 +293,16 @@ function registerIpc() {
 		for (const name of names) {
 			if (!name.endsWith(".json")) continue;
 			try {
+				const mediaId = name.slice(0, -5);
+				// the real file's size, so the editor can spot a wrong stored copy
+				const fileName = names.find(
+					(other) => !other.endsWith(".json") && !other.endsWith(".tmp") && path.parse(other).name === mediaId,
+				);
+				const stat = fileName ? await fsp.stat(path.join(mediaDir, fileName)).catch(() => null) : null;
 				items.push({
-					mediaId: name.slice(0, -5),
+					mediaId,
 					metaJson: await fsp.readFile(path.join(mediaDir, name), "utf8"),
+					size: stat ? stat.size : null,
 				});
 			} catch {
 				// skip unreadable entries

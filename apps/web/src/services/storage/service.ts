@@ -467,16 +467,22 @@ class StorageService {
 			]);
 			const storedFiles = new Set(storedFileIds);
 
-			for (const { mediaId, metaJson } of onDisk) {
+			for (const { mediaId, metaJson, size } of onDisk) {
 				// JEO: a stored copy that can no longer be read (damaged storage,
 				// "Failed to read large IndexedDB value") is rebuilt from disk too
+				// A stored file of the wrong size is a mix-up (one clip's entry
+				// pointing at another clip's file): the media folder wins.
 				if (storedFiles.has(mediaId)) {
 					const readable = await Promise.all([
-						mediaAssetsAdapter.get(mediaId).then((file) => Boolean(file), () => false),
+						mediaAssetsAdapter
+							.get(mediaId)
+							.then((file) => Boolean(file) && (typeof size !== "number" || file?.size === size), () => false),
 						mediaMetadataAdapter.get(mediaId).then((meta) => Boolean(meta), () => false),
 					]);
 					if (readable[0] && readable[1]) continue;
-					console.error(`[jeo] clip ${mediaId} was damaged in storage; restoring it from the media folder`);
+					console.error(`[jeo] clip ${mediaId} was damaged or mixed up in storage; restoring it from the media folder`);
+					// drop the bad copy first, so a fresh file is written
+					await mediaAssetsAdapter.remove(mediaId).catch(() => {});
 				}
 				const meta = JSON.parse(metaJson) as MediaAssetData & {
 					mimeType?: string;

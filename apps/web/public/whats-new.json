@@ -1,5 +1,6 @@
 {
   "items": [
+    "Fixed: some projects showed another project video (She Changed the Rules) in the preview. A stored video that does not match the file in the project media folder is now replaced with the real one",
     "Fixed: a damaged clip record in the app memory left the preview black with no clip pictures; it is now rebuilt from the media folder",
     "Fixed: one damaged project in the app memory (Failed to read large IndexedDB value) no longer hides all projects; it is repaired from its folder on disk",
     "Texts: dialogue and other texts never get double quotes; only the flash text (quoted beat) has them",

@@ -17,7 +17,7 @@ export interface JeoDesktopBridge {
 	}): Promise<void>;
 	listMedia(args: {
 		projectId: string;
-	}): Promise<Array<{ mediaId: string; metaJson: string }>>;
+	}): Promise<Array<{ mediaId: string; metaJson: string; size?: number | null }>>;
 	readMedia(args: {
 		projectId: string;
 		mediaId: string;
