@@ -60,6 +60,17 @@ say which lines are yours.
 - A text never starts before its scene. If it belongs to a new shot it starts exactly on the
   cut, and it stays until the next change. Dialogue may come in at any moment.
 - One text on screen at a time, plus now and then a feeling tag. A new text about every 1–2 s.
+- **A dialogue line never covers the face (the user's rule).** It always sits BELOW the mouth,
+  best just under the chin: the top of the text starts below the chin, never over the eyes,
+  nose or mouth. Look at the frame (view_source) before placing it. When it follows a head with
+  `follow_head`, use an offset that keeps it under the chin. If there is no room under the chin
+  (the face is at the bottom of the frame), use the centre with the speaker's name label.
+- **Never two texts popping in at the same moment (the user's rule).** A dialogue line and its
+  scene text, a feeling tag and a dialogue line, a feeling tag and its scene text, a ▼ label and
+  a scene text, a quoted (flash) text and anything else: each one comes in on its own, the second
+  at least 0.3 s after the first (on the freeze: the ▼ label first, the scene text after it).
+  The add_text tool refuses a text that starts within 0.3 s of another one. Only a speaker's
+  small name and its action line ("TEACHER:" over "*COUGHS*") come in together, as one caption.
 - Intro: the video plays 1.333 s (1 s + 10 frames), then a 2.0 s freeze with a ▼ label on the
   head + a scene text (or an ↗ arrow with a spotlight on an object). Only one freeze per video.
 - ▼ triangle = a 1–2 word identity label, used when it adds emotional depth. ↗ arrow = a longer

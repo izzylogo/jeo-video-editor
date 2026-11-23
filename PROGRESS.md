@@ -430,3 +430,9 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 
 - Starting JEO opens the tab that was showing when you closed it (your other tabs are still there). With no tabs open, it goes to **All projects** so you pick one; it never makes a "New project" by itself any more. A tab whose project was deleted is dropped.
 - Tested: first start with no tabs went to All projects; after opening grape thief, the next start opened grape thief.
+
+## Round 30: two text rules for Claude (24 Nov 2026)
+
+- **Dialogue never covers the face:** it sits below the mouth, best just under the chin. Added to Claude's instructions in JEO and to `style/your-style.md`.
+- **Two texts never pop in at the same moment** (dialogue + scene text, feeling tag + dialogue, feeling tag + scene text, flash text + anything): each comes in on its own. Claude's add-text tool now refuses a text that starts within 0.3 s of another one and tells Claude to move it; a speaker's small name and its action line may still come in together (they are one caption). Tested: same moment refused, 0.4 s later accepted, name + action together accepted.
+- Not changed: texts already on your timelines. The chin rule is followed by Claude looking at the frame; the editor does not check faces by itself.

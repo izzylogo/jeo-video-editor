@@ -477,6 +477,9 @@ const POP_POINTS: actions.KeyPoint[] = [
 	[0.2, 1],
 ];
 
+/** Texts must come in at least this far apart (the user's rule). */
+const TEXT_START_GAP_SECONDS = 0.3;
+
 /** Takes off double quote marks (straight and curly) around and inside a text. */
 function stripDoubleQuotes(text: string): string {
 	return text.replace(/["\u201C\u201D\u201E\u00AB\u00BB]/g, "").replace(/ {2,}/g, " ").trim();
@@ -497,6 +500,21 @@ function addText(args: Args): ToolResult {
 	const start = actions.seconds(num(args.start, 0));
 	const end = actions.seconds(num(args.end, num(args.start, 0) + 1.5));
 	if (end <= start) return { ok: false, error: "`end` must be after `start`." };
+	// JEO rule: two texts never pop in at the same moment (a speaker's small
+	// name and its action line are one caption, so they may)
+	if (kind !== "speaker_name" && kind !== "speaker_action") {
+		const gap = actions.seconds(TEXT_START_GAP_SECONDS);
+		const clash = requireTracks()
+			.overlay.flatMap((track) => track.elements as TimelineElement[])
+			.find((element) => element.type === "text" && Math.abs(element.startTime - start) < gap);
+		if (clash) {
+			const at = Math.round((clash.startTime / S) * 100) / 100;
+			return {
+				ok: false,
+				error: `Another text ("${String(clash.params.content ?? "").slice(0, 30)}", id ${clash.id}) already comes in at ${at} s. Two texts must never pop in at the same moment: start this one at least ${TEXT_START_GAP_SECONDS} s after it (or before it).`,
+			};
+		}
+	}
 
 	const { width } = canvasSize();
 	const { px, py } = toPosition({
@@ -1063,7 +1081,7 @@ const TOOLS: ToolDefinition[] = [
 	{
 		name: "add_text",
 		description:
-			"Add a text in JEO style (LEMON MILK Bold, white, outline; words are upper-cased). kind: scene (*ACTION*), narrative, quoted (\"BEAT\"), twist, dialogue, speaker_name (small NAME:), speaker_action, identity_tag (label with ▼, on the head), feeling_tag (*FEELING*, above the head), custom. start/end in TIMELINE seconds; a text must start exactly on its scene's cut. x/y = centre of the text in frame pixels (captions default to the centre 540,720). popup=true makes it pop in. Write the asterisks yourself. Only the flash text (kind quoted) has double quotes; dialogue and all other kinds never have quote marks (they are removed).",
+			"Add a text in JEO style (LEMON MILK Bold, white, outline; words are upper-cased). kind: scene (*ACTION*), narrative, quoted (\"BEAT\"), twist, dialogue, speaker_name (small NAME:), speaker_action, identity_tag (label with ▼, on the head), feeling_tag (*FEELING*, above the head), custom. start/end in TIMELINE seconds; a text must start exactly on its scene's cut. x/y = centre of the text in frame pixels (captions default to the centre 540,720). popup=true makes it pop in. Write the asterisks yourself. Only the flash text (kind quoted) has double quotes; dialogue and all other kinds never have quote marks (they are removed). Two texts never pop in at the same moment: a text that starts within 0.3 s of another is refused (a speaker_name and its speaker_action may start together). Dialogue goes BELOW the speaker's mouth, best just under the chin, never over the face.",
 		inputSchema: schema(
 			{ kind: string, text: string, start: number, end: number, x: number, y: number, size: number, popup: { type: "boolean" } },
 			["kind", "text", "start", "end"],
