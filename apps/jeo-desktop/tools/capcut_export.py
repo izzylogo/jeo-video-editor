@@ -507,7 +507,10 @@ class Draft:
                 "fill": {"content": {"render_type": "solid", "solid": {"color": [1, 1, 1]}}},
                 "strokes": [{"content": {"render_type": "solid", "solid": {"color": [0, 0, 0]}}, "width": 0.08, "mode": 0}],
             }
-        style["size"] = 12
+        # JEO shows the same numbers CapCut does: font size = fontSize x 12/5.478,
+        # scale = JEO scale x 120 % (your standard text is CapCut 12 at 120 %)
+        font_size = capcut_font_size(item)
+        style["size"] = font_size
         style["range"] = [0, len(words.encode("utf-16-le")) // 2]
         fill = item.get("color") or "#ffffff"
         style["fill"] = {"content": {"render_type": "solid", "solid": {"color": rgb(fill)}}}
@@ -535,7 +538,7 @@ class Draft:
                 "recognize_text": "",
                 "base_content": "",
                 "text_color": fill.upper(),
-                "font_size": 12.0,
+                "font_size": font_size,
                 "alignment": {"left": 0, "center": 1, "right": 2}.get(item.get("align", "center"), 1),
             }
         )
@@ -566,10 +569,11 @@ class Draft:
             animation["animations"] = []
             refs.append(animation["id"])
         segment = copy.deepcopy(pattern)
-        # JEO size 4.2 (about 67 px on 1080 wide) matches CapCut size 12 at about 92 %
-        # (measured by opening an exported draft in CapCut 9.7)
-        text_factor = 0.92 * float(item.get("size", 4.2)) / 4.2
-        box = self.clip_box({**item, "scale": text_factor * float(item.get("scale", 1))})
+        # JEO scale 1 = CapCut 120 %; the size difference is in the font size
+        # (measured: JEO 4.2 = CapCut 12 at 92 %, so 5.478 = 12 at 120 %)
+        text_factor = TEXT_SCALE
+        signed = float(item.get("scale", 1))
+        box = self.clip_box({**item, "scale": text_factor * signed, **({"scaleY": text_factor * float(item["scaleY"])} if item.get("scaleY") else {})})
         segment.update(
             {
                 "id": new_id(),
@@ -680,6 +684,16 @@ def lay_out_rows(items):
         else:
             rows.append([item])
     return rows
+
+
+STANDARD_TEXT_SIZE = 5.478  # JEO fontSize shown as 12 (see apps/web/src/jeo/text-units.ts)
+TEXT_SCALE = 1.2  # JEO text scale 1 is shown, and exported, as 120 %
+
+
+def capcut_font_size(item):
+    """JEO fontSize as CapCut's font size, the number the JEO panel shows."""
+    size = float(item.get("size", STANDARD_TEXT_SIZE)) * 12 / STANDARD_TEXT_SIZE
+    return round(size, 1)
 
 
 def unique_folder(name):

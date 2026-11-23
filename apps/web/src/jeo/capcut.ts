@@ -481,7 +481,7 @@ export async function openInCapCut({
 					duration: element.duration / S,
 					x: starting({ element, path: "transform.positionX", fallback: 0 }),
 					y: starting({ element, path: "transform.positionY", fallback: 0 }),
-					size: num(element.params.fontSize, 4.2),
+					size: num(element.params.fontSize, 5.478),
 					scale: starting({ element, path: "transform.scaleX", fallback: 1 }),
 					rotation: starting({ element, path: "transform.rotate", fallback: 0 }),
 					opacity: starting({ element, path: "opacity", fallback: 1 }),

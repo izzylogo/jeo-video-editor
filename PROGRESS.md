@@ -409,3 +409,10 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 
 - Moving the mouse over the timeline (without clicking) now also changes the time under the preview, so it matches the moment under the mouse, like CapCut. When the mouse leaves the timeline, the clock goes back to the playhead time. While the video plays, the clock shows the playing time as before.
 - Tested with the real mouse: sweeping across the timeline counted the clock up from 1 s to 16 s, and it went back to the playhead (0 s) when the mouse left.
+
+## Round 27: text scale 120% in CapCut (23 Nov 2026)
+
+- **Problem:** Open in CapCut always wrote font size 12 and put any size difference into the scale, so smaller texts (names, tags) arrived at 85% or 101% instead of 120%.
+- **Now:** texts go to CapCut with the same two numbers the editor shows: font size (12 for your standard text, 8.5 for small names, 10.1 for tags) and scale 120%. A scale you changed yourself goes across as you set it (for example 150% stays 150%). Pop-up texts still grow in and end at 120%.
+- **Editor default:** a new text is already font size 12 at scale 120% (unchanged; it was set on 14 Nov).
+- Tested by exporting BIGGEST INTROVERT into a scratch drafts folder: 17 texts at 12 / 120%, 9 at 8.5 / 120%, 1 at 10.1 / 120%, and 3 pop-ups growing to 120%. Not yet opened in CapCut itself.

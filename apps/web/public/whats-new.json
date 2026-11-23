@@ -1,5 +1,6 @@
 {
   "items": [
+    "Open in CapCut: texts now arrive with the same font size and scale the editor shows (your standard text is 12 at 120%; smaller names and tags keep their smaller font size, still at 120%; a scale you changed yourself is kept)",
     "The time under the preview now follows your mouse as it moves over the timeline, and goes back to the playhead time when the mouse leaves",
     "AI chat: when Claude Code is signed out, the chat now says so once, in plain words, with how to sign in again",
     "The preview now opens at 50% instead of Fit, with the zoom bar's knob in the middle (middle = 50%)",
