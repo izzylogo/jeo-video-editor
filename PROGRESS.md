@@ -443,3 +443,8 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - Items dragged in from the panels (a sound from Audio, a text, a picture) now snap too, with the same line. Hold Shift while dragging to place freely. The magnet button in the timeline toolbar turns snapping on and off.
 - Tested with the real mouse: a text let go 6 px after a cut snapped exactly onto the cut, and the line showed during the drag. Dragging in from a panel was not tested with the real mouse.
 - **Round 31b (your feedback):** snapping now works like CapCut: a dragged item sticks to the **sides of nearby clips** (either of its own sides, its start or its end) and the playhead, catching from 14 px instead of 10 px. Points inside animations no longer pull items to odd places. The line no longer runs the whole timeline height: it only **joins the dragged item and the clip it sticks to** (the nearest one when several clips share that cut). Tested with the real mouse: let go 12 px past a cut, the text landed exactly on it, and the line joined the text to the video clip below.
+
+## Round 32: space under the timeline rows (25 Nov 2026)
+
+- Like CapCut, there is now empty space under the last row, so the bottom sounds are easy to see and grab when you scroll down. The row labels on the left got matching room, so they stay in line with the clips at the very bottom (they slipped one row before).
+- Snapping re-tested with the real mouse on a sound: let go 10 px before a video clip's side, its end snapped onto that side and the line joined the two (snapshot in `output\screenshots\snapping-sound-onto-clip-side.png`).

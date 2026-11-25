@@ -1,5 +1,6 @@
 {
   "items": [
+    "Timeline: empty space under the last row, like CapCut, so the bottom sounds are easy to see",
     "Snapping now works like CapCut: items stick to the sides of nearby clips (and the playhead) from a little further away, the line only joins the two clips, and animation points no longer pull items to odd places",
     "Snapping like CapCut: a clear line shows when a dragged clip, text or sound sticks to a cut or the playhead, and items dragged in from the panels snap too (hold Shift to place freely)",
     "Claude rules: dialogue goes under the chin, never over the face; two texts never pop in at the same moment (Claude cannot add a text within 0.3 s of another)",

@@ -92,6 +92,8 @@ import { cn } from "@/utils/ui";
 
 const TRACKS_CONTAINER_MAX_HEIGHT = 800;
 const FALLBACK_CONTAINER_WIDTH = 1000;
+/** JEO: empty space under the last row (like CapCut), so the bottom sounds are easy to see */
+const TIMELINE_BOTTOM_SPACE_PX = 96;
 const TRACKS_CONTAINER_HEIGHT = { min: 0, max: TRACKS_CONTAINER_MAX_HEIGHT };
 const TRACK_ICONS: Record<TimelineTrack["type"], ReactNode> = {
 	video: <OcVideoIcon className="text-muted-foreground size-4 shrink-0" />,
@@ -671,6 +673,7 @@ function TrackLabelsPanel({
 			/>
 			<div ref={trackLabelsRef} className="flex-1 overflow-hidden">
 				<div ref={trackLabelsScrollRef} className="size-full overflow-hidden">
+					{/* the rows above, then the same empty space as under the clips */}
 					{tracks.length > 0 && (
 						<div
 							className="flex flex-col"
@@ -738,6 +741,9 @@ function TrackLabelsPanel({
 							})}
 						</div>
 					)}
+					{/* extra room: the labels must be able to scroll as far as the clips
+					    (their window is a little taller), or they slip out of line */}
+					<div aria-hidden style={{ height: `${TIMELINE_BOTTOM_SPACE_PX + 160}px` }} />
 				</div>
 			</div>
 			<div
@@ -925,7 +931,12 @@ function TimelineGutter({
 }) {
 	return (
 		// eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- spatial gesture surface (empty space below tracks); clicks here clear selection. Keyboard control is global timeline shortcuts.
-		<div className="flex-1" onMouseDown={onMouseDown} onClick={onClick} />
+		<div
+			className="flex-1 shrink-0"
+			style={{ minHeight: `${TIMELINE_BOTTOM_SPACE_PX}px` }}
+			onMouseDown={onMouseDown}
+			onClick={onClick}
+		/>
 	);
 }
 
