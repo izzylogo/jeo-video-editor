@@ -7,7 +7,6 @@ import {
 } from "@/timeline/snapping";
 import { getElementEdgeSnapPoints } from "@/timeline/element-snap-source";
 import { getPlayheadSnapPoints } from "@/timeline/playhead-snap-source";
-import { getAnimationKeyframeSnapPointsForTimeline } from "@/timeline/animation-snap-points";
 import type { MoveGroup } from "./types";
 import { addMediaTime, type MediaTime, subMediaTime } from "@/wasm";
 
@@ -34,11 +33,8 @@ export function snapGroupEdges({
 		sources: [
 			() => getElementEdgeSnapPoints({ tracks, excludeElementIds }),
 			() => getPlayheadSnapPoints({ playheadTime }),
-			() =>
-				getAnimationKeyframeSnapPointsForTimeline({
-					tracks,
-					excludeElementIds,
-				}),
+			// JEO: only the sides of clips and the playhead (like CapCut);
+			// keyframes inside animations pulled items to odd places
 		],
 	});
 	const maxSnapDistance = getTimelineSnapThresholdInTicks({ zoomLevel });

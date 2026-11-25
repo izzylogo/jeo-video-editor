@@ -388,6 +388,7 @@ export function TimelineElement({
 				<ContextMenuTrigger asChild>
 					<div
 						data-element-id={element.id}
+						data-jeo-dragging={isDragging && isBeingDragged ? "1" : undefined}
 						className="absolute top-0 select-none"
 						style={{
 							left: `${elementLeft}px`,

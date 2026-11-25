@@ -1,7 +1,8 @@
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/timeline/scale";
 import { TICKS_PER_SECOND } from "@/wasm";
 
-const DEFAULT_TIMELINE_SNAP_THRESHOLD_PX = 10;
+// JEO: a little wider than OpenCut's 10 px, so items catch a nearby side easily
+const DEFAULT_TIMELINE_SNAP_THRESHOLD_PX = 14;
 
 export function getTimelineSnapThresholdInTicks({
 	zoomLevel,
