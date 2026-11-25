@@ -1,5 +1,6 @@
 {
   "items": [
+    "Snapping like CapCut: a clear line shows when a dragged clip, text or sound sticks to a cut or the playhead, and items dragged in from the panels snap too (hold Shift to place freely)",
     "Claude rules: dialogue goes under the chin, never over the face; two texts never pop in at the same moment (Claude cannot add a text within 0.3 s of another)",
     "Starting JEO: it opens the tab you had open last. With no tabs open it goes to All projects, where you pick one; it no longer makes a New project by itself",
     "Fixed: some projects showed another project video (She Changed the Rules) in the preview. A stored video that does not match the file in the project media folder is now replaced with the real one",

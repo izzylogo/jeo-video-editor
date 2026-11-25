@@ -35,6 +35,14 @@ import type { TimelineDragData } from "@/timeline/drag";
 import type { MediaAsset } from "@/media/types";
 import type { ProcessedMediaAsset } from "@/media/processing";
 import { roundFrameTime, type MediaTime } from "@/wasm";
+import { useTimelineStore } from "@/timeline/timeline-store";
+import { getElementEdgeSnapPoints } from "@/timeline/element-snap-source";
+import { getPlayheadSnapPoints } from "@/timeline/playhead-snap-source";
+import {
+	getTimelineSnapThresholdInTicks,
+	resolveTimelineSnap,
+	type SnapPoint,
+} from "@/timeline/snapping";
 
 // --- Config ---
 
@@ -75,6 +83,8 @@ interface DragOverState {
 	kind: "over";
 	dropTarget: DropTarget | null;
 	elementType: ElementType | null;
+	/** JEO: the cut or playhead the dragged item snapped to (shown as a line) */
+	snapPoint?: SnapPoint | null;
 }
 
 type DragDropState = { kind: "idle" } | DragOverState;
@@ -163,6 +173,10 @@ export class DragDropController {
 		return this.state.kind === "over" ? this.state.dropTarget : null;
 	}
 
+	get snapPoint(): SnapPoint | null {
+		return this.state.kind === "over" ? (this.state.snapPoint ?? null) : null;
+	}
+
 	get dragElementType(): ElementType | null {
 		return this.state.kind === "over" ? this.state.elementType : null;
 	}
@@ -233,7 +247,35 @@ export class DragDropController {
 			? roundFrameTime({ time: target.xPosition, fps })
 			: target.xPosition;
 
-		this.setOver({ dropTarget: target, elementType });
+		// JEO: like CapCut, an item dragged in from a panel snaps its start or
+		// its end to a nearby cut (any clip's start or end) or the playhead,
+		// and a line shows where. Hold Shift to place it freely.
+		let snapPoint: SnapPoint | null = null;
+		if (useTimelineStore.getState().snappingEnabled && !event.shiftKey) {
+			const snapPoints = [
+				...getElementEdgeSnapPoints({ tracks: sceneTracks }),
+				...getPlayheadSnapPoints({ playheadTime: this.config.getCurrentPlayheadTime() }),
+			];
+			const maxSnapDistance = getTimelineSnapThresholdInTicks({ zoomLevel: this.config.zoomLevel });
+			const atStart = resolveTimelineSnap({ targetTime: target.xPosition, snapPoints, maxSnapDistance });
+			const atEnd =
+				duration > 0
+					? resolveTimelineSnap({
+							targetTime: (target.xPosition + duration) as MediaTime,
+							snapPoints,
+							maxSnapDistance,
+						})
+					: null;
+			if (atStart.snapPoint && (!atEnd?.snapPoint || atStart.snapDistance <= atEnd.snapDistance)) {
+				target.xPosition = atStart.snappedTime;
+				snapPoint = atStart.snapPoint;
+			} else if (atEnd?.snapPoint) {
+				target.xPosition = Math.max(0, atEnd.snappedTime - duration) as MediaTime;
+				snapPoint = atEnd.snapPoint;
+			}
+		}
+
+		this.setOver({ dropTarget: target, elementType, snapPoint });
 		event.dataTransfer.dropEffect = "copy";
 	}
 
@@ -293,6 +335,7 @@ export class DragDropController {
 	private setOver(state: {
 		dropTarget: DropTarget | null;
 		elementType: ElementType | null;
+		snapPoint?: SnapPoint | null;
 	}): void {
 		this.state = { kind: "over", ...state };
 		this.notify();

@@ -436,3 +436,9 @@ Dev notes: the live token in `live\control.json` is a local secret; never print 
 - **Dialogue never covers the face:** it sits below the mouth, best just under the chin. Added to Claude's instructions in JEO and to `style/your-style.md`.
 - **Two texts never pop in at the same moment** (dialogue + scene text, feeling tag + dialogue, feeling tag + scene text, flash text + anything): each comes in on its own. Claude's add-text tool now refuses a text that starts within 0.3 s of another one and tells Claude to move it; a speaker's small name and its action line may still come in together (they are one caption). Tested: same moment refused, 0.4 s later accepted, name + action together accepted.
 - Not changed: texts already on your timelines. The chin rule is followed by Claude looking at the frame; the editor does not check faces by itself.
+
+## Round 31: snapping with a clear line, like CapCut (25 Nov 2026)
+
+- JEO already snapped dragged clips, texts and sounds to cuts (any clip's start or end) and the playhead, but its snap line was drawn at 40% strength and 80% see-through, so it could not be seen. It is now a bright line in your accent colour with a soft glow.
+- Items dragged in from the panels (a sound from Audio, a text, a picture) now snap too, with the same line. Hold Shift while dragging to place freely. The magnet button in the timeline toolbar turns snapping on and off.
+- Tested with the real mouse: a text let go 6 px after a cut snapped exactly onto the cut, and the line showed during the drag. Dragging in from a panel was not tested with the real mouse.

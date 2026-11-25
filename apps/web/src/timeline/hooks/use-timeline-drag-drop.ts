@@ -48,6 +48,7 @@ export function useTimelineDragDrop({
 	return {
 		isDragOver: controller.isDragOver,
 		dropTarget: controller.dropTarget,
+		dropSnapPoint: controller.snapPoint,
 		dragElementType: controller.dragElementType,
 		dragProps: {
 			onDragEnter: controller.onDragEnter,

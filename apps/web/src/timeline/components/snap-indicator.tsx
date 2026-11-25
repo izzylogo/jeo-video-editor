@@ -44,7 +44,11 @@ export function SnapIndicator({
 				zIndex: TIMELINE_LAYERS.snapIndicator,
 			}}
 		>
-			<div className={"bg-primary/40 h-full w-0.5 opacity-80"} />
+			{/* JEO: a clear line, like CapCut's, so you see what it sticks to */}
+			<div
+				data-jeo="snap-line"
+				className="bg-primary h-full w-0.5 shadow-[0_0_6px_var(--primary)]"
+			/>
 		</div>
 	);
 }

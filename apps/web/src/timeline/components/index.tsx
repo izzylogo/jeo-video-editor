@@ -352,7 +352,7 @@ export function Timeline() {
 			playheadRef,
 		});
 
-	const { isDragOver, dropTarget, dragProps } = useTimelineDragDrop({
+	const { isDragOver, dropTarget, dropSnapPoint, dragProps } = useTimelineDragDrop({
 		containerRef: tracksContainerRef,
 		tracksScrollRef,
 		zoomLevel,
@@ -425,10 +425,12 @@ export function Timeline() {
 		contentWidth: dynamicTimelineWidth,
 	});
 
+	// JEO: dragging in from a panel snaps too, and shows the same line
+	const shownSnapPoint = isDragOver ? dropSnapPoint : currentSnapPoint;
 	const showSnapIndicator =
 		snappingEnabled &&
-		currentSnapPoint !== null &&
-		(isElementDragging || bookmarkDragState.isDragging || isResizing);
+		shownSnapPoint !== null &&
+		(isElementDragging || bookmarkDragState.isDragging || isResizing || isDragOver);
 
 	const {
 		handleTracksMouseDown,
@@ -605,12 +607,12 @@ export function Timeline() {
 						timelineRef={timelineRef}
 						playheadRef={playheadRef}
 						isSnappingToPlayhead={
-							showSnapIndicator && currentSnapPoint?.type === "playhead"
+							showSnapIndicator && shownSnapPoint?.type === "playhead"
 						}
 					/>
 				</div>
 				<SnapIndicator
-					snapPoint={currentSnapPoint}
+					snapPoint={shownSnapPoint}
 					zoomLevel={zoomLevel}
 					timelineRef={timelineRef}
 					tracksScrollRef={tracksScrollRef}
